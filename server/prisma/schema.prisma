@@ -1,0 +1,177 @@
+generator client {
+  provider      = "prisma-client-js"
+  // "native" untuk lokal; "rhel-openssl-3.0.x" untuk runtime serverless Vercel.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Neon: DATABASE_URL = koneksi POOLED (-pooler) untuk runtime serverless,
+  // DIRECT_URL = koneksi langsung untuk migrasi/db push. Boleh sama jika tak pakai pooler.
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  picture   String?
+  role           String   @default("USER") // USER | ADMIN
+  balance        Int      @default(0) // saldo dalam IDR (Rupiah)
+  checkInStreak  Int      @default(0) // posisi terakhir di cycle check-in 7 hari (0-6)
+  lastCheckInAt  DateTime? // kapan terakhir check-in
+  createdAt      DateTime @default(now())
+
+  orders             Order[]
+  reviews            Review[]
+  notifications      Notification[]
+  balanceTransactions BalanceTransaction[]
+  exhaustedProducts  UserProductStock[]
+}
+
+model Order {
+  id            String   @id // nomor pesanan UPB-...
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  deliveryEmail String
+  activation    String   @default("new") // new | own
+  ownEmail      String?
+  ownPassword   String? // dienkripsi at-rest
+  ownNote       String?
+  status        String   @default("PROCESSING") // PROCESSING | COMPLETED | CANCELLED
+  estimate      String?
+  currency      String   @default("IDR") // IDR (lokal) | USD (internasional)
+  subtotal      Int
+  discount      Int      @default(0)
+  couponCode    String?
+  total         Int
+  paymentMethod String // qris | crypto
+  paymentAsset  String?
+  paymentAmount String?
+  paymentTxHash String?
+  paymentProof  String? // path file bukti
+  adminNote     String?
+  // Pengajuan refund: NONE | REQUESTED | APPROVED | REJECTED
+  refundStatus  String   @default("NONE")
+  refundReason  String?
+  refundNote    String? // catatan admin saat memproses
+  refundAt      DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items OrderItem[]
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  name      String
+  vendor    String
+  logo      String?
+  brand     String?
+  tierLabel String
+  price     Int
+  qty       Int
+
+  // Kredensial yang diisi admin saat menyelesaikan pesanan
+  credKind     String? // account | apikey
+  credEmail    String?
+  credPassword String?
+  credApiKey   String?
+  credNote     String?
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  name      String
+  avatar    String?
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  @@unique([productId, userId])
+}
+
+model Product {
+  id              String  @id
+  name            String
+  vendor          String
+  category        String
+  tagline         String?
+  description     String?
+  features        String  @default("[]") // JSON array string
+  logo            String?
+  brand           String?
+  period          String? // "bln", "12 bln", "paket"
+  rating          Float   @default(5)
+  sold            Int     @default(0)
+  price           Int // harga lokal (IDR)
+  priceIntl       Int     @default(0) // harga internasional (USD, dalam sen)
+  estimate        String?
+  tiers           String // JSON: [{ "label", "price"(IDR), "priceIntl"(USD sen), "note" }]
+  stock           Int     @default(-1) // -1 = tak terbatas
+  active          Boolean @default(true)
+  discountPercent Int     @default(0) // 0–90%
+  discountStart   DateTime?
+  discountEnd     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Coupon {
+  code       String   @id
+  type       String // percent | fixed
+  value      Int
+  label      String
+  active     Boolean  @default(true)
+  minSpend   Int      @default(0)
+  usageLimit Int      @default(0) // 0 = tak terbatas
+  usedCount  Int      @default(0)
+  expiresAt  DateTime?
+  createdAt  DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String // order_created | order_completed | order_cancelled | refund_requested | refund_done | admin_new_order | admin_refund
+  title     String
+  body      String?
+  orderId   String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+}
+
+model BalanceTransaction {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Int // positif = masuk (refund), negatif = keluar (pakai/withdraw)
+  type      String // refund | purchase | withdraw
+  note      String?
+  orderId   String? // terkait pesanan (optional)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Stok habis per-user (fitur: produk 30k-80k auto stock-out setelah dibeli)
+model UserProductStock {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  productId String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@index([userId])
+}

@@ -1,0 +1,31 @@
+# dependencies
+node_modules/
+**/node_modules/
+
+# env / secrets
+.env
+**/.env
+*.local
+
+# build output
+dist/
+app/dist/
+.vercel/
+
+# database lokal (SQLite lama) — produksi pakai Neon Postgres
+*.db
+*.db-journal
+server/prisma/dev.db
+server/prisma/migrations/dev.db*
+
+# uploads lokal — produksi pakai Vercel Blob
+server/uploads/*
+!server/uploads/.gitkeep
+
+# logs / os / editor
+*.log
+.DS_Store
+.idea/
+.vscode/
+.vercel
+.env*

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "builds": [
+    { "src": "app/package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } },
+    { "src": "api/index.js", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/index.js" },
+    { "handle": "filesystem" },
+    { "src": "/assets/(.*)", "dest": "/app/assets/$1" },
+    { "src": "/(.*)", "dest": "/app/index.html" }
+  ],
+  "crons": [
+    { "path": "/api/cron/shuffle-ratings", "schedule": "0 * * * *" }
+  ]
+}
