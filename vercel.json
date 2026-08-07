@@ -8,8 +8,7 @@
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/index.js" },
     { "handle": "filesystem" },
-    { "src": "/assets/(.*)", "dest": "/app/assets/$1" },
-    { "src": "/(.*)", "dest": "/app/index.html" }
+    { "src": "/(.*)", "dest": "/index.html" }
   ],
   "crons": [
     { "path": "/api/cron/shuffle-ratings", "schedule": "0 * * * *" }
