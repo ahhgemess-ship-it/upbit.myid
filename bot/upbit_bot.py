@@ -438,27 +438,6 @@ def on_check(call):
     # Reset state
     set_state(uid, {"lang":lang,"step":"menu"})
 
-# ── TX HASH INPUT (Crypto) ──
-@bot.message_handler(func=lambda m: True)
-def on_text(m):
-    uid = str(m.chat.id)
-    st = get_state(uid)
-    if st.get("waiting_tx") and st.get("pay_method") == "crypto":
-        tx = m.text.strip()
-        if len(tx) < 10:
-            lang = st.get("lang","id")
-            bot.send_message(m.chat.id, t("tx_short",lang))
-            return
-        st["tx_hash"] = tx
-        st["waiting_tx"] = False
-        set_state(uid, st)
-        bot.send_message(m.chat.id, f"✅ TX Hash disimpan!\n\nKlik tombol <b>Cek Pembayaran</b> di atas untuk lanjut.")
-        return
-
-    # Fallback
-    lang = st.get("lang","id")
-    bot.send_message(m.chat.id, "Gunakan menu di bawah ya 👇", reply_markup=main_keyboard(lang))
-
 # ── BALANCE ──
 @bot.message_handler(func=lambda m: "Saldo" in (m.text or ""))
 def balance_info(m):
@@ -494,6 +473,27 @@ def help_cmd(m):
     kb = types.InlineKeyboardMarkup()
     kb.add(types.InlineKeyboardButton("🌐 Buka Website", url=STORE_URL))
     bot.send_message(m.chat.id, t("help_text",lang), reply_markup=kb)
+
+# ── TX HASH INPUT (Crypto) + FALLBACK (HARUS PALING AKHIR) ──
+@bot.message_handler(func=lambda m: True)
+def on_text(m):
+    uid = str(m.chat.id)
+    st = get_state(uid)
+    if st.get("waiting_tx") and st.get("pay_method") == "crypto":
+        tx = m.text.strip()
+        if len(tx) < 10:
+            lang = st.get("lang","id")
+            bot.send_message(m.chat.id, t("tx_short",lang))
+            return
+        st["tx_hash"] = tx
+        st["waiting_tx"] = False
+        set_state(uid, st)
+        bot.send_message(m.chat.id, f"✅ TX Hash disimpan!\n\nKlik tombol <b>Cek Pembayaran</b> di atas untuk lanjut.")
+        return
+
+    # Fallback
+    lang = st.get("lang","id")
+    bot.send_message(m.chat.id, "Gunakan menu di bawah ya 👇", reply_markup=main_keyboard(lang))
 
 # ═══════════════════════ MAIN ═══════════════════════
 if __name__ == "__main__":
