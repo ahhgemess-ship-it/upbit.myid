@@ -16,7 +16,7 @@
 set -euo pipefail
 
 # ---------- Konfigurasi ----------
-SCOPE="remove-82076395"
+# SCOPE tidak diperlukan (personal account)
 DOMAIN="upbit.my.id"
 TOKEN="${UPBIT_VERCEL_TOKEN}"
 MAX_WAIT=150          # detik maksimal menunggu status Ready
