@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Star, Lock, LogIn, ShoppingBag, Check, AlertCircle } from 'lucide-react'
+import { Star, Lock, LogIn, ShoppingBag, Check, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import Asterisk from './Asterisk.jsx'
 import { api } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
+
+const INITIAL_SHOW = 3
 
 function Stars({ value, onChange, size = 26, readOnly = false }) {
   const [hover, setHover] = useState(0)
@@ -56,6 +58,7 @@ export default function ReviewSection({ product }) {
   const [comment, setComment] = useState('')
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
+  const [showAll, setShowAll] = useState(false)
 
   const loadReviews = useCallback(() => {
     api.reviews(product.id).then((d) => setReviews(d.reviews)).catch(() => setReviews([]))
@@ -184,44 +187,66 @@ export default function ReviewSection({ product }) {
 
       {/* daftar ulasan */}
       {reviews.length > 0 && (
-        <div style={{ marginTop: 26, display: 'grid', gap: 14 }}>
-          {reviews.map((r, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.35, delay: (i % 4) * 0.05 }}
-              className="card"
-              style={{ padding: 18 }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  {r.avatar ? (
-                    <img
-                      className="avatar"
-                      src={r.avatar}
-                      alt={r.name}
-                      loading="lazy"
-                      onError={(e) => { e.currentTarget.style.display = 'none' }}
-                      style={{ objectFit: 'cover', padding: 0 }}
-                    />
-                  ) : (
-                    <span className="avatar" style={{ background: 'var(--ink)' }}>
-                      {r.name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase()}
-                    </span>
-                  )}
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 14.5 }}>{r.name}</div>
-                    <span className="chip chip-lime" style={{ fontSize: 10, padding: '2px 7px', marginTop: 3 }}>{t('rev.verified')}</span>
+        <div style={{ marginTop: 26 }}>
+          <div style={{ display: 'grid', gap: 14 }}>
+            {(showAll ? reviews : reviews.slice(0, INITIAL_SHOW)).map((r, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.35, delay: (i % 4) * 0.05 }}
+                className="card"
+                style={{ padding: 18 }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {r.avatar ? (
+                      <img
+                        className="avatar"
+                        src={r.avatar}
+                        alt={r.name}
+                        loading="lazy"
+                        onError={(e) => { e.currentTarget.style.display = 'none' }}
+                        style={{ objectFit: 'cover', padding: 0 }}
+                      />
+                    ) : (
+                      <span className="avatar" style={{ background: 'var(--ink)' }}>
+                        {r.name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase()}
+                      </span>
+                    )}
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14.5 }}>{r.name}</div>
+                      <span className="chip chip-lime" style={{ fontSize: 10, padding: '2px 7px', marginTop: 3 }}>{t('rev.verified')}</span>
+                    </div>
                   </div>
+                  <Stars value={r.rating} readOnly size={16} />
                 </div>
-                <Stars value={r.rating} readOnly size={16} />
-              </div>
-              {r.comment && <p style={{ fontSize: 14.5, lineHeight: 1.55, marginTop: 12, color: 'var(--ink-soft)' }}>{r.comment}</p>}
-              <div className="text-muted" style={{ fontSize: 12.5, marginTop: 10 }}>{fmtDate(r.date)}</div>
-            </motion.div>
-          ))}
+                {r.comment && <p style={{ fontSize: 14.5, lineHeight: 1.55, marginTop: 12, color: 'var(--ink-soft)' }}>{r.comment}</p>}
+                <div className="text-muted" style={{ fontSize: 12.5, marginTop: 10 }}>{fmtDate(r.date)}</div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Load More button */}
+          {reviews.length > INITIAL_SHOW && (
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={() => setShowAll((v) => !v)}
+              className="pill"
+              style={{
+                marginTop: 18, width: '100%', justifyContent: 'center',
+                padding: '12px 20px', fontSize: 14, fontWeight: 600,
+                background: 'var(--surface)', borderColor: 'var(--line-soft)',
+              }}
+            >
+              {showAll ? (
+                <><ChevronUp size={18} /> {t('rev.showLess')}</>
+              ) : (
+                <><ChevronDown size={18} /> {t('rev.showAll')} ({reviews.length})</>
+              )}
+            </motion.button>
+          )}
         </div>
       )}
     </div>

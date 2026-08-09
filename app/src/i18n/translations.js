@@ -306,6 +306,8 @@ export const T = {
   'rev.verified': { en: 'Verified', zh: '已验证', ja: '認証済み', id: 'Terverifikasi', ru: 'Проверено', ms: 'Disahkan', hi: 'सत्यापित', de: 'Verifiziert', vi: 'Đã xác minh' },
   'rev.pickStars': { en: 'Pick a star rating first.', zh: '请先选择星级。', ja: '先に星評価を選んでください。', id: 'Pilih jumlah bintang dulu.', ru: 'Сначала выберите количество звёзд.', ms: 'Pilih bilangan bintang dahulu.', hi: 'पहले स्टार रेटिंग चुनें।', de: 'Wählen Sie zuerst eine Sternebewertung.', vi: 'Chọn số sao trước.' },
   'rev.submitFail': { en: 'Failed to submit review.', zh: '提交评价失败。', ja: 'レビューの送信に失敗しました。', id: 'Gagal mengirim ulasan.', ru: 'Не удалось отправить отзыв.', ms: 'Gagal menghantar ulasan.', hi: 'समीक्षा भेजने में विफल।', de: 'Bewertung konnte nicht gesendet werden.', vi: 'Gửi đánh giá thất bại.' },
+  'rev.showAll': { en: 'Show All Reviews', zh: '查看所有评价', ja: 'すべてのレビューを見る', id: 'Lihat Semua Ulasan', ru: 'Все отзывы', ms: 'Lihat Semua Ulasan', hi: 'सभी समीक्षाएं देखें', de: 'Alle Bewertungen', vi: 'Xem tất cả đánh giá' },
+  'rev.showLess': { en: 'Show Less', zh: '收起', ja: '折りたたむ', id: 'Sembunyikan', ru: 'Скрыть', ms: 'Sembunyi', hi: 'कम दिखाएं', de: 'Weniger anzeigen', vi: 'Ẩn bớt' },
 
   // ---------- Product Detail ----------
   'pd.notFound': { en: 'PRODUCT NOT FOUND', zh: '未找到产品', ja: '製品が見つかりません', id: 'PRODUK TIDAK DITEMUKAN', ru: 'ТОВАР НЕ НАЙДЕН', ms: 'PRODUK TIDAK DIJUMPAI', hi: 'उत्पाद नहीं मिला', de: 'PRODUKT NICHT GEFUNDEN', vi: 'KHÔNG TÌM THẤY SẢN PHẨM' },
