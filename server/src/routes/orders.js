@@ -233,12 +233,35 @@ router.post('/', requireAuth, upload.single('proof'), async (req, res) => {
     }
 
     // ───────── Auto stock-out: produk harga 30.000–80.000 IDR → refund otomatis ─────────
+    // ───────── Juga: mark SEMUA produk yang di-order sebagai "dibeli" (stok habis per user) ─────────
     const hasStockOutItem = validatedItems.some((it) => {
       const prod = byId[it.productId]
       if (!prod) return false
       const tier = prod.tiers.find((t) => t.label === it.tierLabel) || prod.tiers[0]
       return isStockOutPrice(tier.price, currency)
     })
+
+    // Mark semua produk yang di-order sebagai dibeli (UserProductStock) — untuk stok habis per user
+    try {
+      const orderedProductIds = validatedItems.map((it) => it.productId).filter(Boolean)
+      // Juga mark SEMUA produk 30k-80k sebagai stok habis (untuk konsistensi cross-tier)
+      const allStockOutIds = catalog
+        .filter((p) => {
+          const tiers = JSON.parse(p.tiers || '[]')
+          return tiers.some((t) => isStockOutPrice(t.price, currency))
+        })
+        .map((p) => p.id)
+      const allIds = [...new Set([...orderedProductIds, ...allStockOutIds])]
+      for (const productId of allIds) {
+        await prisma.userProductStock.upsert({
+          where: { userId_productId: { userId: req.user.id, productId } },
+          create: { userId: req.user.id, productId },
+          update: {},
+        }).catch(() => {})
+      }
+    } catch (e) {
+      console.error('mark purchased error:', e)
+    }
 
     let stockOut = false
     if (hasStockOutItem) {
@@ -251,20 +274,6 @@ router.post('/', requireAuth, upload.single('proof'), async (req, res) => {
           })
           for (const r of reserved) await tx.product.update({ where: { id: r.id }, data: { stock: { increment: r.qty } } }).catch(() => {})
           if (couponOk) await tx.coupon.update({ where: { code: couponRes.code }, data: { usedCount: { decrement: 1 } } }).catch(() => {})
-          // Mark SEMUA produk 30k-80k sebagai stok habis untuk user ini (bukan hanya yang di order)
-          const allStockOutIds = catalog
-            .filter((p) => {
-              const tiers = JSON.parse(p.tiers || '[]')
-              return tiers.some((t) => isStockOutPrice(t.price, currency))
-            })
-            .map((p) => p.id)
-          for (const productId of allStockOutIds) {
-            await tx.userProductStock.upsert({
-              where: { userId_productId: { userId: req.user.id, productId } },
-              create: { userId: req.user.id, productId },
-              update: {},
-            })
-          }
           if (refundAmount > 0) {
             await tx.user.update({ where: { id: req.user.id }, data: { balance: { increment: refundAmount } } })
             await tx.balanceTransaction.create({

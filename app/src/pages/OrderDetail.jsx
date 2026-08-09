@@ -30,6 +30,7 @@ export default function OrderDetail() {
   const [copied, setCopied] = useState('')
 
   const showStockAnim = order && (order.status === 'PROCESSING' || (order.status === 'CANCELLED' && order.refundReason === 'Stok habis'))
+  const isStockOutOrder = order && order.status === 'CANCELLED' && order.refundReason === 'Stok habis'
 
   useEffect(() => {
     if (!order || !showStockAnim) return
@@ -40,7 +41,7 @@ export default function OrderDetail() {
     const t1 = setTimeout(() => {
       setStockAnimation('found')
       localStorage.setItem(animKey, '1')
-    }, 5000)
+    }, 3000)
     // Tandai produk sebagai dibeli (stok habis per user)
     for (const it of order.items) {
       if (it.productId) markPurchased(it.productId)
@@ -179,41 +180,64 @@ export default function OrderDetail() {
               transition={{ duration: 0.3 }}
               style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}
             >
-              <span style={{
-                display: 'grid', placeItems: 'center', width: 50, height: 50, borderRadius: 999,
-                background: 'rgba(245,158,11,.15)', border: '1.5px solid #f59e0b', flexShrink: 0,
-              }}>
-                <Ban size={22} color="#f59e0b" />
-              </span>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <div style={{ fontWeight: 800, fontSize: 16, color: '#b45309' }}>
-                  {t('stock.empty')}
-                </div>
-                <div style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--ink-soft)', marginTop: 6 }}>
-                  {t('stock.emptyDesc')}
-                </div>
-                <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <Link to="/balance" style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 13,
-                    color: '#fff', background: 'var(--indigo)', padding: '9px 18px', borderRadius: 999,
-                    textDecoration: 'none', border: '1.5px solid var(--indigo)',
+              {isStockOutOrder ? (
+                <>
+                  <span style={{
+                    display: 'grid', placeItems: 'center', width: 50, height: 50, borderRadius: 999,
+                    background: 'rgba(245,158,11,.15)', border: '1.5px solid #f59e0b', flexShrink: 0,
                   }}>
-                    <Wallet size={15} /> {t('stock.viewBalance')}
-                  </Link>
-                  <Link to="/orders" style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 5, fontWeight: 600, fontSize: 12.5,
-                    color: '#b45309',
+                    <Ban size={22} color="#f59e0b" />
+                  </span>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <div style={{ fontWeight: 800, fontSize: 16, color: '#b45309' }}>
+                      {t('stock.empty')}
+                    </div>
+                    <div style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--ink-soft)', marginTop: 6 }}>
+                      {t('stock.emptyDesc')}
+                    </div>
+                    <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <Link to="/balance" style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 13,
+                        color: '#fff', background: 'var(--indigo)', padding: '9px 18px', borderRadius: 999,
+                        textDecoration: 'none', border: '1.5px solid var(--indigo)',
+                      }}>
+                        <Wallet size={15} /> {t('stock.viewBalance')}
+                      </Link>
+                      <button onClick={() => setStockAnimation('done')} style={{
+                        background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--muted)',
+                        marginLeft: 'auto',
+                      }}>
+                        ✕ {t('stock.close')}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span style={{
+                    display: 'grid', placeItems: 'center', width: 50, height: 50, borderRadius: 999,
+                    background: 'rgba(37,211,102,.12)', border: '1.5px solid var(--lime)', flexShrink: 0,
                   }}>
-                    <AlertCircle size={13} /> {t('stock.refund')}
-                  </Link>
-                  <button onClick={() => setStockAnimation('done')} style={{
-                    background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--muted)',
-                    marginLeft: 'auto',
-                  }}>
-                    ✕ {t('stock.close')}
-                  </button>
-                </div>
-              </div>
+                    <CheckCircle2 size={22} color="var(--lime)" />
+                  </span>
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <div style={{ fontWeight: 800, fontSize: 16, color: '#1a7f3f' }}>
+                      {t('stock.processing')}
+                    </div>
+                    <div style={{ fontSize: 13.5, lineHeight: 1.6, color: 'var(--ink-soft)', marginTop: 6 }}>
+                      {t('stock.processingDesc')}
+                    </div>
+                    <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <button onClick={() => setStockAnimation('done')} style={{
+                        background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--muted)',
+                        marginLeft: 'auto',
+                      }}>
+                        ✕ {t('stock.close')}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </motion.div>
           )}
         </motion.div>

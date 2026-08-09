@@ -496,6 +496,8 @@ export const T = {
   'stock.viewBalance': { en: 'View Balance', zh: '查看余额', ja: '残高を見る', id: 'Lihat Saldo', ru: 'Посмотреть баланс', ms: 'Lihat Baki', hi: 'बैलेंस देखें', de: 'Guthaben ansehen', vi: 'Xem số dư' },
   'stock.refund': { en: 'Request Refund', zh: '申请退款', ja: '返金を申請', id: 'Ajukan Refund', ru: 'Запросить возврат', ms: 'Minta Refund', hi: 'रिफंड अनुरोध', de: 'Rückerstattung anfordern', vi: 'Yêu cầu hoàn tiền' },
   'stock.close': { en: 'Close', zh: '关闭', ja: '閉じる', id: 'Tutup', ru: 'Закрыть', ms: 'Tutup', hi: 'बंद करें', de: 'Schließen', vi: 'Đóng' },
+  'stock.processing': { en: 'Order is being processed!', zh: '订单正在处理中！', ja: '注文を処理中です！', id: 'Pesanan sedang diproses!', ru: 'Заказ обрабатывается!', ms: 'Pesanan sedang diproses!', hi: 'ऑर्डर प्रोसेस हो रहा है!', de: 'Bestellung wird bearbeitet!', vi: 'Đơn hàng đang được xử lý!' },
+  'stock.processingDesc': { en: 'Your payment has been received. Admin will review and deliver your access details shortly.', zh: '已收到您的付款。管理员将审核并尽快发送访问详情。', ja: 'お支払いを受領しました。管理者が確認し、まもなくアクセス情報をお届けします。', id: 'Pembayaran kamu sudah diterima. Admin akan meninjau dan mengirim detail akses secepatnya.', ru: 'Ваш платеж получен. Админ проверит и скоро отправит данные доступа.', ms: 'Bayaran anda telah diterima. Admin akan meninjau dan menghantar butiran akses sebentar lagi.', hi: 'आपका भुगतान प्राप्त हो गया है। एडमिन जल्द ही समीक्षा कर एक्सेस विवरण भेजेगा।', de: 'Deine Zahlung wurde erhalten. Der Admin prüft und sendet dir bald die Zugangsdaten.', vi: 'Thanh toán của bạn đã được nhận. Admin sẽ xem xét và gửi chi tiết truy cập sớm.' },
 
   // ─────── Tx filter ───────
   'tx.all': { en: 'All', zh: '全部', ja: 'すべて', id: 'Semua', ru: 'Все', ms: 'Semua', hi: 'सभी', de: 'Alle', vi: 'Tất cả' },
