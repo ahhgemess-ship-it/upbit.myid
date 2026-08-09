@@ -104,6 +104,72 @@ export default function Home() {
         </motion.div>
       </section>
 
+      {/* Telegram Bot Banner */}
+      <section className="section" style={{ paddingTop: 0 }}>
+        <div className="container">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            style={{
+              background: 'linear-gradient(135deg, #24A1DE 0%, #1B92D1 100%)',
+              border: '2px solid var(--ink)',
+              borderRadius: 24,
+              padding: 'clamp(22px, 4vw, 36px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 20,
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Decorative circles */}
+            <div style={{ position: 'absolute', right: -20, top: -40, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', left: 60, bottom: -60, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
+
+            <div style={{ position: 'relative', zIndex: 1, flex: '1 1 280px' }}>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: 7,
+                background: 'rgba(255,255,255,0.18)', color: '#fff',
+                fontSize: 11.5, fontWeight: 700, padding: '5px 12px', borderRadius: 999,
+                letterSpacing: 0.4, marginBottom: 14,
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.87 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.94z"/></svg>
+                {t('home.telegramBadge')}
+              </span>
+              <h3 style={{ fontSize: 'clamp(1.15rem, 2.5vw, 1.5rem)', fontWeight: 800, color: '#fff', margin: '0 0 8px', letterSpacing: -0.3 }}>
+                {t('home.telegramTitle')}
+              </h3>
+              <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: 14.5, lineHeight: 1.55, maxWidth: 440 }}>
+                {t('home.telegramText')}
+              </p>
+            </div>
+
+            <a
+              href="https://t.me/upbitstorebot"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="pill"
+              style={{
+                position: 'relative', zIndex: 1,
+                background: '#fff', borderColor: 'var(--ink)',
+                color: '#24A1DE', fontWeight: 700,
+                padding: '12px 22px', fontSize: 15,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {t('home.telegramCta')}
+              <span className="pill-ic" style={{ background: '#24A1DE', color: '#fff' }}>
+                <ArrowUpRight size={16} strokeWidth={2.6} />
+              </span>
+            </a>
+          </motion.div>
+        </div>
+      </section>
+
       {/* Benefits */}
       <section className="section">
         <div className="container">
