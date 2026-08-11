@@ -166,15 +166,38 @@ def flash(m):
     l = bot.send_message(m.chat.id, "<i>Memuat Flash Sale...</i>")
     p = prods()
     if not p: bot.edit_message_text("Gagal memuat produk", m.chat.id, l.message_id); return
-    promo = [x for x in p if x.get("category")=="Promo"][:12]
+    promo = [x for x in p if x.get("category")=="Promo"]
+    # Group by name for clean display
     kb = types.InlineKeyboardMarkup(row_width=1)
     for x in promo:
-        kb.add(types.InlineKeyboardButton(f"{x['name']} · {fp(x['price'])}", callback_data=f"sel|{x['id']}"))
+        label = f"{x['name']} · {fp(x['price'])}"
+        period = x.get('period','')
+        if period:
+            label = f"{x['name']} ({period}) · {fp(x['price'])}"
+        kb.add(types.InlineKeyboardButton(label, callback_data=f"sel|{x['id']}"))
     kb.add(types.InlineKeyboardButton("« Kembali", callback_data="back_menu"))
-    t = "\n".join(f"<b>{x['name']}</b> · {fp(x['price'])} · Diskon {x.get('discount',0)}%" for x in promo[:6])
+    
+    # Build text list: show price range per product name
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for x in promo:
+        groups[x['name']].append(x)
+    
+    lines = []
+    for name, items in groups.items():
+        prices = sorted(set(it['price'] for it in items))
+        if len(prices) == 1:
+            lines.append(f"<b>{name}</b> · {fp(prices[0])}")
+        else:
+            minp, maxp = min(prices), max(prices)
+            lines.append(f"<b>{name}</b> · {fp(minp)} – {fp(maxp)}")
+    
+    t = "\n".join(lines[:15])
+    extra = f"\n<i>... dan {len(lines)-15} lainnya</i>" if len(lines) > 15 else ""
+    
     bot.edit_message_text(
         f"<b>FLASH SALE</b>\n"
-        f"━━━━━━━━━━━━━━━━━━\n{t}\n"
+        f"━━━━━━━━━━━━━━━━━━\n{t}{extra}\n"
         f"━━━━━━━━━━━━━━━━━━\n"
         f"<i>{len(promo)} produk promo · pilih di bawah</i>",
         m.chat.id, l.message_id, reply_markup=kb)
