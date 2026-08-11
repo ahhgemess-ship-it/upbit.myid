@@ -116,6 +116,39 @@ def gen_qr(data):
     img = qr.make_image(fill_color="black", back_color="white")
     buf = io.BytesIO(); img.save(buf, format="PNG"); buf.seek(0); return buf
 
+# ═══ HELPERS ═══
+def get_period_label(p):
+    """Ketahui label durasi dari produk"""
+    period = p.get('period', '')
+    # Good labels langsung pakai
+    if period and period not in ('bln', 'paket'):
+        return period
+    # Derive dari product ID
+    pid = p.get('id', '')
+    if '-multi' in pid or 'multi' in pid:
+        return '3 Bulan'
+    if '-4bln' in pid:
+        return '4 Bulan'
+    if '-6bln' in pid:
+        return '6 Bulan'
+    if '-1thn' in pid:
+        return '1 Tahun'
+    if '-12' in pid:
+        return '12 Bulan'
+    if '-18' in pid:
+        return '18 Bulan'
+    # Default
+    price = p.get('price', 0)
+    name = p.get('name', '')
+    # Claude Max 20x single variant
+    if '20x' in pid or 'Max 20x' in name:
+        return '1 Bulan'
+    if price <= 50000:
+        return '1 Bulan'
+    if price <= 100000:
+        return '1 Bulan'
+    return '1 Bulan'
+
 # ═══ KEYBOARDS ═══
 def lang_kb():
     kb = types.InlineKeyboardMarkup(row_width=3)
@@ -167,36 +200,41 @@ def flash(m):
     p = prods()
     if not p: bot.edit_message_text("Gagal memuat produk", m.chat.id, l.message_id); return
     promo = [x for x in p if x.get("category")=="Promo"]
-    # Group by name for clean display
-    kb = types.InlineKeyboardMarkup(row_width=1)
+    
+    # Group by product name → 1 tombol per nama
+    from collections import defaultdict, OrderedDict
+    groups = OrderedDict()
     for x in promo:
-        label = f"{x['name']} · {fp(x['price'])}"
-        period = x.get('period','')
-        if period:
-            label = f"{x['name']} ({period}) · {fp(x['price'])}"
-        kb.add(types.InlineKeyboardButton(label, callback_data=f"sel|{x['id']}"))
+        name = x['name']
+        if name not in groups:
+            groups[name] = []
+        groups[name].append(x)
+    
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    for name, items in groups.items():
+        prices = sorted(set(it['price'] for it in items))
+        if len(prices) == 1:
+            label = f"{name} · {fp(prices[0])}"
+        else:
+            label = f"{name} · {fp(min(prices))} – {fp(max(prices))}"
+            label += f"  ({len(items)} paket)"
+        kb.add(types.InlineKeyboardButton(label, callback_data=f"selgrp|{name}"))
     kb.add(types.InlineKeyboardButton("« Kembali", callback_data="back_menu"))
     
-    # Build text list: show price range per product name
-    from collections import defaultdict
-    groups = defaultdict(list)
-    for x in promo:
-        groups[x['name']].append(x)
-    
+    # Build text list
     lines = []
     for name, items in groups.items():
         prices = sorted(set(it['price'] for it in items))
         if len(prices) == 1:
             lines.append(f"<b>{name}</b> · {fp(prices[0])}")
         else:
-            minp, maxp = min(prices), max(prices)
-            lines.append(f"<b>{name}</b> · {fp(minp)} – {fp(maxp)}")
+            lines.append(f"<b>{name}</b> · {fp(min(prices))} – {fp(max(prices))}")
     
     t = "\n".join(lines[:15])
     extra = f"\n<i>... dan {len(lines)-15} lainnya</i>" if len(lines) > 15 else ""
     
     bot.edit_message_text(
-        f"<b>FLASH SALE</b>\n"
+        f"<b>🔥 FLASH SALE</b>\n"
         f"━━━━━━━━━━━━━━━━━━\n{t}{extra}\n"
         f"━━━━━━━━━━━━━━━━━━\n"
         f"<i>{len(promo)} produk promo · pilih di bawah</i>",
@@ -229,22 +267,89 @@ def on_cat(call):
     bot.edit_message_text(f"<b>{cat}</b>\n{'━'*20}\n{len(pl)} produk\n<i>Pilih:</i>",
         call.message.chat.id, call.message.message_id, reply_markup=kb)
 
-# ── PRODUCT → TIER ──
+# ── FLASH SALE GROUP → VARIAN DURASI ──
+@bot.callback_query_handler(func=lambda c: c.data.startswith("selgrp|"))
+def on_selgrp(call):
+    name = call.data.split("|")[1]; uid = str(call.message.chat.id)
+    p = prods()
+    # Cari SEMUA produk dengan nama yang sama di Flash Sale
+    variants = [x for x in (p or []) if x.get("name")==name and x.get("category")=="Promo"]
+    variants.sort(key=lambda x: x['price'])
+    
+    if not variants: bot.answer_callback_query(call.id,"Tidak ditemukan"); return
+    
+    st = get_st(uid); st.update({"pname": name}); set_st(uid, st)
+    
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    for v in variants:
+        period = get_period_label(v)
+        label = f"{period} · {fp(v['price'])}"
+        if v.get('discountPercent'):
+            label += f"  (-{v['discountPercent']}%)"
+        kb.add(types.InlineKeyboardButton(label, callback_data=f"tier|{v['id']}|{period}|{v['price']}"))
+    kb.add(types.InlineKeyboardButton("« Kembali", callback_data="back_menu"))
+    
+    tagline = variants[0].get('tagline','')
+    prices = sorted(set(v['price'] for v in variants))
+    if len(prices) == 1:
+        price_text = fp(prices[0])
+    else:
+        price_text = f"{fp(min(prices))} – {fp(max(prices))}"
+    
+    bot.edit_message_text(
+        f"<b>{name}</b>\n"
+        f"<i>{tagline}</i>\n{'━'*20}\n"
+        f"Harga: {price_text}\n"
+        f"<b>Pilih durasi:</b>",
+        call.message.chat.id, call.message.message_id, reply_markup=kb)
+
+# ── PRODUCT (KATALOG) → TIER ──
 @bot.callback_query_handler(func=lambda c: c.data.startswith("sel|"))
 def on_sel(call):
     pid = call.data.split("|")[1]; uid = str(call.message.chat.id)
     p = prods(); prod = next((x for x in (p or []) if x["id"]==pid), None)
     if not prod: bot.answer_callback_query(call.id,"Tidak ditemukan"); return
-    tiers = prod.get("tiers",[]) or [{"label":"Default","price":prod["price"]}]
-    st = get_st(uid); st.update({"pid":pid,"pname":prod["name"]}); set_st(uid, st)
-    kb = types.InlineKeyboardMarkup(row_width=1)
-    for t in tiers:
-        kb.add(types.InlineKeyboardButton(f"{t['label']} · {fp(t['price'])}",
-            callback_data=f"tier|{pid}|{t['label']}|{t['price']}"))
+    
+    # Cek apakah produk ini punya varian lain dengan nama sama
+    name = prod['name']
+    variants = [x for x in (p or []) if x.get("name")==name and x.get("category")=="Promo"]
+    
+    if len(variants) > 1:
+        # Multi-varian: tampilkan semua
+        variants.sort(key=lambda x: x['price'])
+        st = get_st(uid); st.update({"pname": name}); set_st(uid, st)
+        kb = types.InlineKeyboardMarkup(row_width=1)
+        for v in variants:
+            period = get_period_label(v)
+            kb.add(types.InlineKeyboardButton(f"{period} · {fp(v['price'])}",
+                callback_data=f"tier|{v['id']}|{period}|{v['price']}"))
+        kb.add(types.InlineKeyboardButton("« Kembali", callback_data="back_menu"))
+        prices = sorted(set(v['price'] for v in variants))
+        price_text = fp(prices[0]) if len(prices)==1 else f"{fp(min(prices))} – {fp(max(prices))}"
+        bot.edit_message_text(
+            f"<b>{name}</b>\n"
+            f"<i>{prod.get('tagline','')}</i>\n{'━'*20}\n"
+            f"Harga: {price_text}\n"
+            f"<b>Pilih durasi:</b>",
+            call.message.chat.id, call.message.message_id, reply_markup=kb)
+        return
+    
+    # Single product: langsung ke payment
+    st = get_st(uid)
+    st.update({"pid": pid, "pname": name, "tier_label": "Standard", "tier_price": prod["price"]})
+    set_st(uid, st)
+    
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        types.InlineKeyboardButton(f"QRIS · {fp(prod['price'])}", callback_data=f"pay|qris|{prod['price']}"),
+        types.InlineKeyboardButton("Crypto", callback_data=f"pay|crypto|{prod['price']}"))
     kb.add(types.InlineKeyboardButton("« Kembali", callback_data="back_menu"))
-    bot.edit_message_text(f"<b>{prod['name']}</b>\n"
+    bot.edit_message_text(
+        f"<b>{prod['name']}</b>\n"
         f"<i>{prod.get('tagline','')}</i>\n{'━'*20}\n"
-        f"Pilih paket:", call.message.chat.id, call.message.message_id, reply_markup=kb)
+        f"Harga: {fp(prod['price'])}\n"
+        f"<i>Metode pembayaran:</i>",
+        call.message.chat.id, call.message.message_id, reply_markup=kb)
 
 # ── TIER → PAYMENT ──
 @bot.callback_query_handler(func=lambda c: c.data.startswith("tier|"))
