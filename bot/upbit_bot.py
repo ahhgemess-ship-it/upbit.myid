@@ -1183,14 +1183,9 @@ def _do_checkin(b):
 @bot.message_handler(func=lambda m: m.text in _WEBSITE_LABELS)
 def website(m):
     uid = str(m.chat.id)
-    menu = MENU.get(lang_of(uid), MENU["id"])
-    kb = types.InlineKeyboardMarkup(row_width=2)
-    kb.add(
-        types.InlineKeyboardButton(menu["flash"], url=f"{STORE_URL}/flash-sale"),
-        types.InlineKeyboardButton(menu["store"], url=f"{STORE_URL}/store"),
-        types.InlineKeyboardButton(menu["saldo"], url=f"{STORE_URL}/balance"),
-        types.InlineKeyboardButton(menu["account"], url=f"{STORE_URL}/account"))
-    kb.add(types.InlineKeyboardButton(menu["home"], url=STORE_URL))
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    kb.add(types.InlineKeyboardButton(tr(uid, "open_web"), url=STORE_URL))
+    kb.add(types.InlineKeyboardButton("💬 WhatsApp Admin", url="https://wa.me/6287797127865"))
     bot.send_message(m.chat.id,
         f"<b>UPBIT STORE</b>\n"
         f"{'━' * 20}\n"
@@ -1201,8 +1196,10 @@ def website(m):
 @bot.message_handler(func=lambda m: m.text in _HELP_LABELS)
 def help_cmd(m):
     uid = str(m.chat.id)
-    kb = types.InlineKeyboardMarkup()
-    kb.add(types.InlineKeyboardButton(tr(uid, "open_web"), url=STORE_URL))
+    kb = types.InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        types.InlineKeyboardButton(tr(uid, "open_web"), url=STORE_URL),
+        types.InlineKeyboardButton("💬 WhatsApp", url="https://wa.me/6287797127865"))
     bot.send_message(m.chat.id,
         f"{tr(uid, 'help_title')}\n"
         f"{'━' * 20}\n"
