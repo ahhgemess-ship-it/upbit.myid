@@ -16,6 +16,47 @@ export const LANGS = [
 
 export const DEFAULT_LANG = 'id'
 
+// ═══ Mata Uang per Bahasa ═══
+// Balance selalu disimpan dalam IDR di backend. Display dikonversi sesuai bahasa.
+const USD_RATE = 16300 // 1 USD = Rp 16.300
+export const CURRENCY = {
+  id: { symbol: 'Rp',   rate: 1,       dec: 0, locale: 'id-ID', name: 'IDR' },
+  ms: { symbol: 'Rp',   rate: 1,       dec: 0, locale: 'id-ID', name: 'IDR' },
+  en: { symbol: '$',    rate: USD_RATE, dec: 2, locale: 'en-US', name: 'USD' },
+  zh: { symbol: '¥',    rate: USD_RATE / 7.2, dec: 2, locale: 'zh-CN', name: 'CNY' },
+  ja: { symbol: '¥',    rate: USD_RATE / 150, dec: 0, locale: 'ja-JP', name: 'JPY' },
+  ru: { symbol: '₽',    rate: USD_RATE / 95,  dec: 2, locale: 'ru-RU', name: 'RUB' },
+  hi: { symbol: '₹',    rate: USD_RATE / 83.5,dec: 2, locale: 'hi-IN', name: 'INR' },
+  de: { symbol: '€',    rate: USD_RATE / 0.92,dec: 2, locale: 'de-DE', name: 'EUR' },
+  vi: { symbol: '₫',    rate: USD_RATE / 25450,dec: 0,locale: 'vi-VN', name: 'VND' },
+}
+
+/** Format saldo (dari IDR) ke mata uang sesuai bahasa. */
+export const formatCurrency = (idrAmount, lang) => {
+  const c = CURRENCY[lang] || CURRENCY.id
+  const converted = (idrAmount || 0) / c.rate
+  const formatted = converted.toLocaleString(c.locale, {
+    minimumFractionDigits: c.dec,
+    maximumFractionDigits: c.dec,
+  })
+  return c.symbol + ' ' + formatted
+}
+
+/** Format compact untuk navbar (e.g., "Rp 12rb", "$0.74", "¥96") */
+export const formatCurrencyCompact = (idrAmount, lang) => {
+  const c = CURRENCY[lang] || CURRENCY.id
+  const converted = (idrAmount || 0) / c.rate
+  if (c.rate === 1 && converted >= 1000) {
+    // IDR compact: Rp 12rb
+    return 'Rp ' + (converted / 1000).toFixed(converted % 1000 === 0 ? 0 : 1) + 'rb'
+  }
+  // Non-IDR: full symbol + number
+  return c.symbol + ' ' + converted.toLocaleString(c.locale, {
+    minimumFractionDigits: c.dec,
+    maximumFractionDigits: c.dec,
+  })
+}
+
 export const T = {
   // ---------- Navbar ----------
   'nav.home': { en: 'Home', zh: '首页', ja: 'ホーム', id: 'Beranda', ru: 'Главная', ms: 'Laman Utama', hi: 'होम', de: 'Startseite', vi: 'Trang chủ' },

@@ -558,10 +558,35 @@ def prods():
         PCACHE["t"] = n - 240
     return d or PCACHE["d"]
 
-def fp(n):
-    if n >= 1_000_000:
-        return f"Rp {n / 1_000_000:,.1f}jt"
-    return f"Rp {n:,}"
+# ═══ MATA UANG per BAHASA ═══
+# Balance disimpan dalam IDR. Display dikonversi sesuai bahasa user.
+USD_RATE = 16300  # 1 USD = Rp 16.300
+CURRENCY = {
+    "id": {"symbol": "Rp",   "rate": 1,             "dec": 0},
+    "ms": {"symbol": "Rp",   "rate": 1,             "dec": 0},
+    "en": {"symbol": "$",    "rate": USD_RATE,       "dec": 2},
+    "zh": {"symbol": "¥",    "rate": USD_RATE / 7.2, "dec": 2},
+    "ja": {"symbol": "¥",    "rate": USD_RATE / 150, "dec": 0},
+    "ru": {"symbol": "₽",    "rate": USD_RATE / 95,  "dec": 2},
+    "hi": {"symbol": "₹",    "rate": USD_RATE / 83.5,"dec": 2},
+    "de": {"symbol": "€",    "rate": USD_RATE / 0.92,"dec": 2},
+    "vi": {"symbol": "₫",    "rate": USD_RATE / 25450,"dec": 0},
+}
+
+def fp(n, uid=None):
+    """Format harga/saldo sesuai bahasa user. Tanpa uid → IDR."""
+    lang = get_st(uid).get("lang", "id") if uid else "id"
+    c = CURRENCY.get(lang, CURRENCY["id"])
+    val = (n or 0) / c["rate"]
+    sym = c["symbol"]
+    if c["dec"] == 0:
+        s = f"{val:,.0f}"
+    else:
+        s = f"{val:,.{c["dec"]}f}"
+    # Bersihkan trailing zeros (tapi pertahankan desimal untuk USD/EUR/dll)
+    if c["dec"] > 0:
+        s = s.rstrip("0").rstrip(".") if "." in s else s
+    return f"{sym} {s}"
 
 def is_stock_out_price(price):
     """Sama dengan aturan server: 30.000–80.000 IDR selalu auto-refund."""
@@ -682,9 +707,9 @@ def build_flash_keyboard(groups, page, total_pages, uid):
     for name, items in page_items:
         prices = sorted(set(it['price'] for it in items))
         if len(prices) == 1:
-            label = f"{name} · {fp(prices[0])}"
+            label = f"{name} · {fp(prices[0], uid)}"
         else:
-            label = f"{name} · {fp(min(prices))} – {fp(max(prices))}  ({len(items)} paket)"
+            label = f"{name} · {fp(min(prices), uid)} – {fp(max(prices), uid)}  ({len(items)} paket)"
         if all(it['id'] in purchased for it in items):
             label += " ❌"
         kb.add(types.InlineKeyboardButton(label, callback_data=f"selgrp|{name}"))
@@ -711,9 +736,9 @@ def build_flash_text(groups, page, total_pages, uid):
         prices = sorted(set(it['price'] for it in items))
         sold = all(it['id'] in purchased for it in items)
         if len(prices) == 1:
-            line = f"<b>{esc(name)}</b> · {fp(prices[0])}"
+            line = f"<b>{esc(name)}</b> · {fp(prices[0], uid)}"
         else:
-            line = f"<b>{esc(name)}</b> · {fp(min(prices))} – {fp(max(prices))}"
+            line = f"<b>{esc(name)}</b> · {fp(min(prices), uid)} – {fp(max(prices), uid)}"
         if sold:
             line += " ❌"
         lines.append(line)
@@ -787,7 +812,7 @@ def on_cat(call):
     pl = [x for x in (p or []) if x.get("category") == cat]
     kb = types.InlineKeyboardMarkup(row_width=1)
     for x in pl[:10]:
-        kb.add(types.InlineKeyboardButton(f"{x['name']} · {fp(x['price'])}", callback_data=f"sel|{x['id']}"))
+        kb.add(types.InlineKeyboardButton(f"{x['name']} · {fp(x['price'], uid)}", callback_data=f"sel|{x['id']}"))
     kb.add(types.InlineKeyboardButton(tr(uid, "back"), callback_data="back_menu"))
     bot.edit_message_text(
         f"<b>{esc(cat)}</b>\n{'━' * 20}\n{tr(uid, 'catalog_total', n=len(pl))}\n<i>{tr(uid, 'pick_item')}</i>",
@@ -812,7 +837,7 @@ def on_selgrp(call):
     kb = types.InlineKeyboardMarkup(row_width=1)
     for v in variants:
         period = get_period_label(v)
-        label = f"{period} · {fp(v['price'])}"
+        label = f"{period} · {fp(v['price'], uid)}"
         if v.get('discountPercent'):
             label += f"  (-{v['discountPercent']}%)"
         if v['id'] in purchased:
@@ -822,7 +847,7 @@ def on_selgrp(call):
 
     tagline = variants[0].get('tagline', '')
     prices = sorted(set(v['price'] for v in variants))
-    price_text = fp(prices[0]) if len(prices) == 1 else f"{fp(min(prices))} – {fp(max(prices))}"
+    price_text = fp(prices[0], uid) if len(prices) == 1 else f"{fp(min(prices), uid)} – {fp(max(prices), uid)}"
 
     bot.edit_message_text(
         f"<b>{esc(name)}</b>\n"
@@ -852,13 +877,13 @@ def on_sel(call):
         kb = types.InlineKeyboardMarkup(row_width=1)
         for v in variants:
             period = get_period_label(v)
-            label = f"{period} · {fp(v['price'])}"
+            label = f"{period} · {fp(v['price'], uid)}"
             if v['id'] in purchased:
                 label += " ❌ " + tr(uid, "stock_out_tag")
             kb.add(types.InlineKeyboardButton(label, callback_data=f"tier|{v['id']}|{period}|{v['price']}"))
         kb.add(types.InlineKeyboardButton(tr(uid, "back"), callback_data="back_menu"))
         prices = sorted(set(v['price'] for v in variants))
-        price_text = fp(prices[0]) if len(prices) == 1 else f"{fp(min(prices))} – {fp(max(prices))}"
+        price_text = fp(prices[0], uid) if len(prices) == 1 else f"{fp(min(prices), uid)} – {fp(max(prices), uid)}"
         bot.edit_message_text(
             f"<b>{esc(name)}</b>\n"
             f"<i>{esc(prod.get('tagline', ''))}</i>\n{'━' * 20}\n"
@@ -872,13 +897,13 @@ def on_sel(call):
 
     kb = types.InlineKeyboardMarkup(row_width=2)
     kb.add(
-        types.InlineKeyboardButton(f"QRIS · {fp(prod['price'])}", callback_data=f"pay|qris|{prod['price']}"),
+        types.InlineKeyboardButton(f"QRIS · {fp(prod['price'], uid)}", callback_data=f"pay|qris|{prod['price']}"),
         types.InlineKeyboardButton("Crypto", callback_data=f"pay|crypto|{prod['price']}"))
     kb.add(types.InlineKeyboardButton(tr(uid, "back"), callback_data="back_menu"))
     bot.edit_message_text(
         f"<b>{esc(prod['name'])}</b>\n"
         f"<i>{esc(prod.get('tagline', ''))}</i>\n{'━' * 20}\n"
-        f"{tr(uid, 'price', price=fp(prod['price']))}\n"
+        f"{tr(uid, 'price', price=fp(prod['price'], uid))}\n"
         f"{tr(uid, 'pay_method')}",
         call.message.chat.id, call.message.message_id, reply_markup=kb)
 
@@ -899,7 +924,7 @@ def on_tier(call):
     st = update_st(uid, lambda s: {**s, "pid": pid, "tier_label": label, "tier_price": price})
     kb = types.InlineKeyboardMarkup(row_width=2)
     kb.add(
-        types.InlineKeyboardButton(f"QRIS · {fp(price)}", callback_data=f"pay|qris|{price}"),
+        types.InlineKeyboardButton(f"QRIS · {fp(price, uid)}", callback_data=f"pay|qris|{price}"),
         types.InlineKeyboardButton("Crypto", callback_data=f"pay|crypto|{price}"))
     kb.add(types.InlineKeyboardButton(tr(uid, "back"), callback_data="back_menu"))
     bot.edit_message_text(
@@ -930,7 +955,7 @@ def on_pay(call):
         kb.add(types.InlineKeyboardButton(tr(uid, "back"), callback_data="back_menu"))
         bot.delete_message(call.message.chat.id, call.message.message_id)
         bot.send_photo(call.message.chat.id, qr,
-            caption=f"{tr(uid, 'qris_title', amount=fp(amt))}\n"
+            caption=f"{tr(uid, 'qris_title', amount=fp(amt, uid))}\n"
                     f"{'━' * 20}\n"
                     f"{tr(uid, 'qris_scan')}",
             reply_markup=kb)
@@ -1021,7 +1046,7 @@ def on_check(call):
             bot.send_message(call.message.chat.id,
                 f"{tr(uid, 'stock_title')}\n"
                 f"{'━' * 20}\n"
-                f"{tr(uid, 'stock_msg', product=esc(pname), amount=fp(price), min=fp(MIN_WITHDRAW))}",
+                f"{tr(uid, 'stock_msg', product=esc(pname), amount=fp(price, uid), min=fp(MIN_WITHDRAW, uid))}",
                 reply_markup=main_kb(lang_of(uid)))
         else:
             # Pesanan dibuat (lokal) — hanya order NON-stok-habis yang masuk total transaksi
@@ -1031,7 +1056,7 @@ def on_check(call):
             bot.send_message(call.message.chat.id,
                 f"{tr(uid, 'order_title')}\n"
                 f"{'━' * 20}\n"
-                f"{tr(uid, 'order_msg', id=oid, product=esc(pname), price=fp(price))}",
+                f"{tr(uid, 'order_msg', id=oid, product=esc(pname), price=fp(price, uid))}",
                 reply_markup=main_kb(lang_of(uid)))
     finally:
         # Reset state flow (pertahankan bahasa) — sekaligus bersihkan flag _checking
@@ -1044,15 +1069,15 @@ def balance(m):
     uid = str(m.chat.id)
     bal = get_bal(uid)
     eligible = bal["totalSpent"] >= MIN_WITHDRAW
-    kurang = fp(MIN_WITHDRAW - bal["totalSpent"])
+    kurang = fp(MIN_WITHDRAW - bal["totalSpent"], uid)
     text = (
         f"{tr(uid, 'saldo_title')}\n"
         f"{'━' * 20}\n"
-        f"{tr(uid, 'saldo_avail', amount=fp(bal['balance']))}\n"
-        f"{tr(uid, 'saldo_spent', amount=fp(bal['totalSpent']))}\n"
+        f"{tr(uid, 'saldo_avail', amount=fp(bal['balance'], uid))}\n"
+        f"{tr(uid, 'saldo_spent', amount=fp(bal['totalSpent'], uid))}\n"
         f"{tr(uid, 'saldo_streak', n=bal['streak'])}\n"
         f"{'━' * 20}\n"
-        f"{tr(uid, 'saldo_min', amount=fp(MIN_WITHDRAW))}\n"
+        f"{tr(uid, 'saldo_min', amount=fp(MIN_WITHDRAW, uid))}\n"
         f"{tr(uid, 'saldo_can') if eligible else tr(uid, 'saldo_need', amount=kurang)}"
     )
     kb = types.InlineKeyboardMarkup(row_width=2)
@@ -1070,17 +1095,17 @@ def checkin(call):
         return
     reward, new_streak, is_bonus = result
     if is_bonus:
-        msg = tr(uid, "checkin_bonus", amount=fp(reward), n=new_streak)
+        msg = tr(uid, "checkin_bonus", amount=fp(reward, uid), n=new_streak)
     else:
-        msg = tr(uid, "checkin_ok", amount=fp(reward), n=new_streak)
+        msg = tr(uid, "checkin_ok", amount=fp(reward, uid), n=new_streak)
     bot.answer_callback_query(call.id, msg)
     bot.edit_message_text(
         f"{tr(uid, 'saldo_title')}\n"
         f"{'━' * 20}\n"
-        f"{tr(uid, 'saldo_avail', amount=fp(bal['balance']))}\n"
+        f"{tr(uid, 'saldo_avail', amount=fp(bal['balance'], uid))}\n"
         f"{tr(uid, 'saldo_streak', n=bal['streak'])}\n"
         f"{'━' * 20}\n"
-        f"{tr(uid, 'checkin_msg', amount=fp(reward))}",
+        f"{tr(uid, 'checkin_msg', amount=fp(reward, uid))}",
         call.message.chat.id, call.message.message_id,
         reply_markup=types.InlineKeyboardMarkup().add(
             types.InlineKeyboardButton(tr(uid, "open_web"), url=f"{STORE_URL}/balance")))
@@ -1134,8 +1159,8 @@ def help_cmd(m):
         f"{'━' * 20}\n"
         f"{tr(uid, 'help_steps')}\n\n"
         f"{tr(uid, 'help_refund')}\n"
-        f"{tr(uid, 'help_withdraw', min=fp(MIN_WITHDRAW))}\n"
-        f"{tr(uid, 'help_checkin', reward=fp(CHECKIN_REWARD))}\n\n"
+        f"{tr(uid, 'help_withdraw', min=fp(MIN_WITHDRAW, uid))}\n"
+        f"{tr(uid, 'help_checkin', reward=fp(CHECKIN_REWARD, uid))}\n\n"
         f"{'━' * 20}\n"
         f"{tr(uid, 'help_contact')}",
         reply_markup=kb)

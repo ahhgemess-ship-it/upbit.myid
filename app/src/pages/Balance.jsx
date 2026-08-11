@@ -8,7 +8,8 @@ import {
 import Asterisk from '../components/Asterisk.jsx'
 import { useBalance } from '../context/BalanceContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
-import { useT } from '../context/LanguageContext.jsx'
+import { useLang } from '../context/LanguageContext.jsx'
+import { formatCurrency, CURRENCY } from '../i18n/translations.js'
 
 const txMeta = {
   refund: { labelKey: 'tx.refund', icon: RefreshCw },
@@ -26,8 +27,7 @@ const FILTER_OPTIONS = [
 ]
 
 export default function Balance() {
-  const t = useT()
-  const { user } = useAuth()
+  const { t, lang } = useLang()
   const {
     balance, totalSpent, withdrawEligible, minWithdraw,
     history, loaded, fetchBalance, fetchHistory, withdraw,
@@ -52,7 +52,15 @@ export default function Balance() {
     return () => clearTimeout(id)
   }, [lockedAlert])
 
-  const formatIDR = (n) => 'Rp ' + (n || 0).toLocaleString('id-ID')
+  const fmt = (n) => formatCurrency(n, lang)
+  const fmtCompact = (n) => {
+    // Compact untuk quick amount: hilangkan .### di IDR, tampilkan penuh untuk non-IDR
+    if (lang === 'id' || lang === 'ms') {
+      const s = fmt(n)
+      return s.replace('.000', 'rb').replace('Rp ', '')
+    }
+    return fmt(n)
+  }
   const parsedAmount = parseInt(amount, 10) || 0
   const canWithdraw = withdrawEligible && balance > 0 && parsedAmount > 0 && parsedAmount <= balance
   const quickAmounts = [25000, 50000, 100000]
@@ -70,7 +78,7 @@ export default function Balance() {
     try {
       await withdraw(parsedAmount, method)
       setAmount('')
-      setMessage({ type: 'success', text: `${t('balance.withdrawSuccess')} ${formatIDR(parsedAmount)}` })
+      setMessage({ type: 'success', text: `${t('balance.withdrawSuccess')} ${fmt(parsedAmount)}` })
       fetchHistory()
     } catch (e) {
       setMessage({ type: 'error', text: e.message || t('balance.withdrawFailed') })
@@ -84,7 +92,7 @@ export default function Balance() {
     try {
       const res = await doCheckIn()
       if (res) {
-        setCheckInMsg({ type: 'success', text: `+${formatIDR(res.reward)} ${t('checkin.success')} ${res.newCycle ? `🎉 ${t('checkin.bonusDay7')}` : ''}` })
+        setCheckInMsg({ type: 'success', text: `+${fmt(res.reward)} ${t('checkin.success')} ${res.newCycle ? `🎉 ${t('checkin.bonusDay7')}` : ''}` })
         fetchBalance()
       }
     } catch (e) {
@@ -145,7 +153,7 @@ export default function Balance() {
             <div>
               <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: '.01em' }}>{t('checkin.title')}</div>
               <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 2 }}>
-                {canCheckIn ? `${t('checkin.todayReward')} ${formatIDR(checkInReward)} ${t('checkin.todaySuffix')}` : t('checkin.done')}
+                {canCheckIn ? `${t('checkin.todayReward')} ${fmt(checkInReward)} ${t('checkin.todaySuffix')}` : t('checkin.done')}
               </div>
             </div>
           </div>
@@ -158,7 +166,7 @@ export default function Balance() {
               </span>
               {checkInStreak >= checkInCycle - 1 && (
                 <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <Star size={11} fill="#16a34a" /> {t('checkin.tomorrowBonus')} {formatIDR(checkInBonus)}!
+                  <Star size={11} fill="#16a34a" /> {t('checkin.tomorrowBonus')} {fmt(checkInBonus)}!
                 </span>
               )}
             </div>
@@ -182,7 +190,7 @@ export default function Balance() {
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
               {Array.from({ length: checkInCycle }, (_, i) => (
                 <span key={i} style={{ fontSize: 10, fontWeight: i === checkInCycle - 1 ? 800 : 600, color: i < checkInStreak ? 'var(--lime-deep)' : i === checkInStreak && canCheckIn ? 'var(--ink)' : 'var(--muted)', textAlign: 'center', minWidth: 20 }}>
-                  {i === checkInCycle - 1 ? `🎁${formatIDR(checkInBonus).replace('Rp ', '')}` : `+${checkInReward}`}
+                  {i === checkInCycle - 1 ? `🎁${fmtCompact(checkInBonus)}` : `+${fmtCompact(checkInReward)}`}
                 </span>
               ))}
             </div>
@@ -254,10 +262,10 @@ export default function Balance() {
           </div>
 
           <div className="display" style={{ position: 'relative', fontSize: 'clamp(2.2rem, 5.5vw, 3.4rem)', color: 'var(--lime)', lineHeight: 1.05, letterSpacing: '.01em' }}>
-            {loaded ? formatIDR(balance) : <span style={{ opacity: .4 }}>•••••</span>}
+            {loaded ? fmt(balance) : <span style={{ opacity: .4 }}>•••••</span>}
           </div>
           <div style={{ position: 'relative', fontSize: 13, color: '#c9c7bd', marginTop: 8 }}>
-            {t('balance.totalTx')}: <strong style={{ color: 'var(--bg)' }}>{formatIDR(totalSpent)}</strong>
+            {t('balance.totalTx')}: <strong style={{ color: 'var(--bg)' }}>{fmt(totalSpent)}</strong>
           </div>
         </motion.div>
 
@@ -289,7 +297,7 @@ export default function Balance() {
                   opacity: canWithdraw ? 1 : 0.5, flexShrink: 0,
                 }}
               >
-                {submitting ? t('balance.processing') : `${t('balance.withdrawBtn')} ${parsedAmount > 0 ? formatIDR(parsedAmount) : ''}`}
+                {submitting ? t('balance.processing') : `${t('balance.withdrawBtn')} ${parsedAmount > 0 ? fmt(parsedAmount) : ''}`}
                 <span className="pill-ic"><ArrowUpRight size={16} strokeWidth={2.6} /></span>
               </motion.button>
             ) : (
@@ -325,7 +333,7 @@ export default function Balance() {
                   display: 'flex', alignItems: 'center', gap: 8,
                 }}>
                   <Info size={15} style={{ flexShrink: 0 }} />
-                  {t('balance.withdrawLockedAlert')} {formatIDR(minWithdraw)}{t('balance.withdrawLockedAlertSuffix')}
+                  {t('balance.withdrawLockedAlert')} {fmt(minWithdraw)}{t('balance.withdrawLockedAlertSuffix')}
                 </div>
               </motion.div>
             )}
@@ -348,7 +356,7 @@ export default function Balance() {
                       transition: 'background .15s ease, color .15s ease',
                     }}
                   >
-                    {formatIDR(q).replace('.000', 'rb').replace('Rp ', '')}
+                    {fmtCompact(q)}
                   </button>
                 ))}
                 <button
@@ -366,7 +374,7 @@ export default function Balance() {
               </div>
 
               <div className="input-ic">
-                <span style={{ fontWeight: 700, fontSize: 15, paddingLeft: 12 }}>Rp</span>
+                <span style={{ fontWeight: 700, fontSize: 15, paddingLeft: 12 }}>{CURRENCY[lang]?.symbol || 'Rp'}</span>
                 <input
                   className="input"
                   type="number"
@@ -379,7 +387,7 @@ export default function Balance() {
                 />
               </div>
               <div style={{ fontSize: 12, marginTop: 6, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
-                <span className="text-muted">{t('balance.available')}: <strong style={{ color: 'var(--ink)' }}>{formatIDR(balance)}</strong></span>
+                <span className="text-muted">{t('balance.available')}: <strong style={{ color: 'var(--ink)' }}>{fmt(balance)}</strong></span>
                 {parsedAmount > balance && (
                   <span style={{ color: '#dc2626', fontWeight: 700 }}>{t('balance.exceedsBalance')}</span>
                 )}
@@ -465,7 +473,7 @@ export default function Balance() {
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 700 }}>{t(s.tk)}</div>
                   <div className="text-muted" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 2 }}>
-                    {s.n === '3' ? `${t(s.dk)} ${formatIDR(minWithdraw)}.` : t(s.dk)}
+                    {s.n === '3' ? `${t(s.dk)} ${fmt(minWithdraw)}.` : t(s.dk)}
                   </div>
                 </div>
               </div>
@@ -555,7 +563,7 @@ export default function Balance() {
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
                         <span style={{ fontWeight: 800, fontSize: 14, color: isIn ? '#16a34a' : 'var(--ink)' }}>
-                          {isIn ? '+' : '−'}{formatIDR(Math.abs(tx.amount))}
+                          {isIn ? '+' : '−'}{fmt(Math.abs(tx.amount))}
                         </span>
                         <span className="text-muted" style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 3 }}>
                           <Clock size={10} />

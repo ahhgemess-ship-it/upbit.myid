@@ -6,6 +6,7 @@ import { useCart } from '../context/CartContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useBalance } from '../context/BalanceContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
+import { formatCurrencyCompact } from '../i18n/translations.js'
 import NotificationBell from './NotificationBell.jsx'
 import LanguageSwitcher from './LanguageSwitcher.jsx'
 
@@ -20,8 +21,8 @@ export default function Navbar() {
   const { count } = useCart()
   const { user, logout, isAdmin } = useAuth()
   const { balance } = useBalance()
-  const { t } = useLang()
-  const fmtBal = (n) => n >= 1000 ? 'Rp ' + (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'rb' : 'Rp ' + n
+  const { t, lang } = useLang()
+  const fmtBal = (n) => formatCurrencyCompact(n, lang)
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [acctOpen, setAcctOpen] = useState(false)
