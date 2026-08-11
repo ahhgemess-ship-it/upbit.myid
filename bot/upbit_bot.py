@@ -192,6 +192,56 @@ def back(call):
     bot.delete_message(call.message.chat.id, call.message.message_id)
     bot.send_message(call.message.chat.id, "<b>Menu Utama</b>", reply_markup=main_kb())
 
+# ═══ FLASH SALE PAGINATION ═══
+FLASH_PAGE_SIZE = 8
+
+def build_flash_keyboard(groups, page, total_pages):
+    start = page * FLASH_PAGE_SIZE
+    group_list = list(groups.items())
+    page_items = group_list[start:start + FLASH_PAGE_SIZE]
+
+    kb = types.InlineKeyboardMarkup(row_width=1)
+    for name, items in page_items:
+        prices = sorted(set(it['price'] for it in items))
+        if len(prices) == 1:
+            label = f"{name} · {fp(prices[0])}"
+        else:
+            label = f"{name} · {fp(min(prices))} – {fp(max(prices))}"
+            label += f"  ({len(items)} paket)"
+        kb.add(types.InlineKeyboardButton(label, callback_data=f"selgrp|{name}"))
+
+    # Navigation row
+    nav_row = []
+    if page > 0:
+        nav_row.append(types.InlineKeyboardButton("« Sebelumnya", callback_data=f"flashpage|{page-1}"))
+    if page < total_pages - 1:
+        nav_row.append(types.InlineKeyboardButton("Lihat lainnya →", callback_data=f"flashpage|{page+1}"))
+    if nav_row:
+        kb.row(*nav_row)
+    kb.add(types.InlineKeyboardButton("« Kembali", callback_data="back_menu"))
+    return kb
+
+def build_flash_text(groups, page, total_pages):
+    start = page * FLASH_PAGE_SIZE
+    group_list = list(groups.items())
+    page_items = group_list[start:start + FLASH_PAGE_SIZE]
+
+    lines = []
+    for name, items in page_items:
+        prices = sorted(set(it['price'] for it in items))
+        if len(prices) == 1:
+            lines.append(f"<b>{name}</b> · {fp(prices[0])}")
+        else:
+            lines.append(f"<b>{name}</b> · {fp(min(prices))} – {fp(max(prices))}")
+
+    t = "\n".join(lines)
+    page_info = f" · Hal {page+1}/{total_pages}" if total_pages > 1 else ""
+    total_items = sum(len(items) for _, items in groups.items())
+    return (f"<b>🔥 FLASH SALE</b>\n"
+            f"━━━━━━━━━━━━━━━━━━\n{t}\n"
+            f"━━━━━━━━━━━━━━━━━━\n"
+            f"<i>{total_items} produk · {len(groups)} grup{page_info}</i>")
+
 # ── FLASH SALE ──
 @bot.message_handler(func=lambda m: m.text=="Flash Sale")
 def flash(m):
@@ -200,45 +250,43 @@ def flash(m):
     p = prods()
     if not p: bot.edit_message_text("Gagal memuat produk", m.chat.id, l.message_id); return
     promo = [x for x in p if x.get("category")=="Promo"]
-    
-    # Group by product name → 1 tombol per nama
-    from collections import defaultdict, OrderedDict
+
+    # Group by product name
+    from collections import OrderedDict
     groups = OrderedDict()
     for x in promo:
         name = x['name']
         if name not in groups:
             groups[name] = []
         groups[name].append(x)
-    
-    kb = types.InlineKeyboardMarkup(row_width=1)
-    for name, items in groups.items():
-        prices = sorted(set(it['price'] for it in items))
-        if len(prices) == 1:
-            label = f"{name} · {fp(prices[0])}"
-        else:
-            label = f"{name} · {fp(min(prices))} – {fp(max(prices))}"
-            label += f"  ({len(items)} paket)"
-        kb.add(types.InlineKeyboardButton(label, callback_data=f"selgrp|{name}"))
-    kb.add(types.InlineKeyboardButton("« Kembali", callback_data="back_menu"))
-    
-    # Build text list
-    lines = []
-    for name, items in groups.items():
-        prices = sorted(set(it['price'] for it in items))
-        if len(prices) == 1:
-            lines.append(f"<b>{name}</b> · {fp(prices[0])}")
-        else:
-            lines.append(f"<b>{name}</b> · {fp(min(prices))} – {fp(max(prices))}")
-    
-    t = "\n".join(lines[:15])
-    extra = f"\n<i>... dan {len(lines)-15} lainnya</i>" if len(lines) > 15 else ""
-    
-    bot.edit_message_text(
-        f"<b>🔥 FLASH SALE</b>\n"
-        f"━━━━━━━━━━━━━━━━━━\n{t}{extra}\n"
-        f"━━━━━━━━━━━━━━━━━━\n"
-        f"<i>{len(promo)} produk promo · pilih di bawah</i>",
-        m.chat.id, l.message_id, reply_markup=kb)
+
+    total_pages = (len(groups) + FLASH_PAGE_SIZE - 1) // FLASH_PAGE_SIZE
+    kb = build_flash_keyboard(groups, 0, total_pages)
+    text = build_flash_text(groups, 0, total_pages)
+    bot.edit_message_text(text, m.chat.id, l.message_id, reply_markup=kb)
+
+@bot.callback_query_handler(func=lambda c: c.data.startswith("flashpage|"))
+def on_flashpage(call):
+    page = int(call.data.split("|")[1])
+    p = prods()
+    if not p: bot.answer_callback_query(call.id, "Gagal memuat"); return
+    promo = [x for x in p if x.get("category")=="Promo"]
+
+    from collections import OrderedDict
+    groups = OrderedDict()
+    for x in promo:
+        name = x['name']
+        if name not in groups:
+            groups[name] = []
+        groups[name].append(x)
+
+    total_pages = (len(groups) + FLASH_PAGE_SIZE - 1) // FLASH_PAGE_SIZE
+    kb = build_flash_keyboard(groups, page, total_pages)
+    text = build_flash_text(groups, page, total_pages)
+    try:
+        bot.edit_message_text(text, call.message.chat.id, call.message.message_id, reply_markup=kb)
+    except:
+        bot.answer_callback_query(call.id, "Sudah di halaman ini")
 
 # ── KATALOG ──
 @bot.message_handler(func=lambda m: m.text=="Katalog")
