@@ -45,9 +45,56 @@ CHECKIN_BONUS  = 2000           # bonus hari ke-7
 CHECKIN_CYCLE  = 7
 
 # ═══ Logging ═══
+MSG_LOG_FILE = os.path.join(DATA_DIR, "upbit-bot-messages.log")
+BANNED_FILE  = os.path.join(DATA_DIR, "upbit-bot-banned.json")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[logging.FileHandler(LOG_FILE, encoding="utf-8"), logging.StreamHandler()])
 log = logging.getLogger("upbit-bot")
+
+# ═══ SPAM PROTECTION ═══
+SPAM_KEYWORDS = [
+    "пробива", "БОТЫ", "боты", "Пробива", "ФИО", "Госномеру", "Паспорт",
+    "Поиск Человека", "spam", "scam", "buy followers", "boost telegram",
+    "@adm", "бесплатно", "заработок", "заработка", "реферал",
+    "telegram.org/dl", "free money", "claim reward",
+]
+
+def is_spam(text):
+    """Cek apakah teks mengandung keyword spam. Return (bool, reason)."""
+    if not text:
+        return False, ""
+    t = text.lower()
+    for kw in SPAM_KEYWORDS:
+        if kw.lower() in t:
+            return True, kw
+    return False, ""
+
+def load_banned():
+    """Load daftar user yang di-ban."""
+    return _read_json(BANNED_FILE, {})
+
+def is_banned(uid):
+    """Cek apakah user di-ban."""
+    banned = load_banned()
+    return str(uid) in banned
+
+def ban_user(uid, reason="spam"):
+    """Ban user dan simpan ke file."""
+    banned = load_banned()
+    banned[str(uid)] = {"banned_at": time.strftime("%Y-%m-%d %H:%M:%S"), "reason": reason}
+    _write_json(BANNED_FILE, banned)
+    log.warning(f"BANNED user {uid} — reason: {reason}")
+
+def log_msg(uid, username, first_name, text):
+    """Log pesan user ke file khusus."""
+    try:
+        ts = time.strftime("%Y-%m-%d %H:%M:%S")
+        name = username or first_name or "?"
+        preview = (text or "")[:200].replace("\n", "\\n")
+        with open(MSG_LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(f"{ts} | uid={uid} | {name} | {preview}\n")
+    except Exception:
+        pass
 
 bot = telebot.TeleBot(BOT_TOKEN, parse_mode="HTML")
 
@@ -669,6 +716,8 @@ def main_kb(lang="id"):
 @bot.message_handler(commands=["start"])
 def start(m):
     uid = str(m.chat.id)
+    if is_banned(uid):
+        return
     update_st(uid, lambda _: {"lang": "id"})
     bot.send_message(m.chat.id, tr(uid, "welcome"), reply_markup=lang_kb())
 
@@ -1165,19 +1214,50 @@ def help_cmd(m):
         f"{tr(uid, 'help_contact')}",
         reply_markup=kb)
 
-# ── TX HASH + FALLBACK (LAST) ──
+# ── TX HASH + SPAM FILTER + FALLBACK (LAST) ──
 @bot.message_handler(func=lambda m: True)
 def on_text(m):
     uid = str(m.chat.id)
+    username = getattr(m.from_user, 'username', None) or ''
+    first_name = getattr(m.from_user, 'first_name', None) or ''
+    text = (m.text or '').strip()
+
+    # Log semua pesan untuk tracking
+    log_msg(uid, username, first_name, text)
+
+    # Cek banned user
+    if is_banned(uid):
+        log.info(f"Blocked banned user {uid} ({username or first_name})")
+        return  # silent ignore
+
+    # Cek spam
+    is_sp, reason = is_spam(text)
+    if is_sp:
+        log.warning(f"SPAM from uid={uid} ({username or first_name}): reason={reason} text={text[:100]}")
+        # Coba hapus pesan spam
+        try:
+            bot.delete_message(m.chat.id, m.message_id)
+        except Exception:
+            pass
+        # Ban user otomatis
+        ban_user(uid, f"spam: {reason}")
+        try:
+            bot.send_message(m.chat.id, "🚫 <b>Akun diblokir karena spam/iklan.</b>", parse_mode="HTML")
+        except Exception:
+            pass
+        return
+
+    # TX Hash handler
     st = get_st(uid)
     if st.get("waiting_tx"):
-        tx = (m.text or "").strip()
+        tx = text
         if len(tx) < 10:
             bot.send_message(m.chat.id, tr(uid, "tx_short"))
             return
         update_st(uid, lambda s: {**s, "tx_hash": tx, "waiting_tx": False})
         bot.send_message(m.chat.id, tr(uid, "tx_ok"))
         return
+
     bot.send_message(m.chat.id, tr(uid, "use_menu"), reply_markup=main_kb(lang_of(uid)))
 
 # ═══ MAIN ═══
