@@ -117,6 +117,11 @@ def gen_qr(data):
     buf = io.BytesIO(); img.save(buf, format="PNG"); buf.seek(0); return buf
 
 # ═══ HELPERS ═══
+def esc(s):
+    """Escape karakter HTML untuk parse_mode=HTML"""
+    if s is None: return ""
+    return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
 def get_period_label(p):
     """Ketahui label durasi dari produk"""
     period = p.get('period', '')
@@ -137,17 +142,22 @@ def get_period_label(p):
         return '12 Bulan'
     if '-18' in pid:
         return '18 Bulan'
-    # Default
-    price = p.get('price', 0)
-    name = p.get('name', '')
-    # Claude Max 20x single variant
-    if '20x' in pid or 'Max 20x' in name:
-        return '1 Bulan'
-    if price <= 50000:
-        return '1 Bulan'
-    if price <= 100000:
-        return '1 Bulan'
     return '1 Bulan'
+
+def get_promo_groups():
+    """Ambil produk Flash Sale & group by nama (urutan stabil)"""
+    from collections import OrderedDict
+    p = prods()
+    if not p: return None
+    groups = OrderedDict()
+    for x in p:
+        if x.get("category") != "Promo":
+            continue
+        name = x['name']
+        if name not in groups:
+            groups[name] = []
+        groups[name].append(x)
+    return groups
 
 # ═══ KEYBOARDS ═══
 def lang_kb():
@@ -196,6 +206,7 @@ def back(call):
 FLASH_PAGE_SIZE = 8
 
 def build_flash_keyboard(groups, page, total_pages):
+    page = max(0, min(page, total_pages - 1))
     start = page * FLASH_PAGE_SIZE
     group_list = list(groups.items())
     page_items = group_list[start:start + FLASH_PAGE_SIZE]
@@ -222,6 +233,7 @@ def build_flash_keyboard(groups, page, total_pages):
     return kb
 
 def build_flash_text(groups, page, total_pages):
+    page = max(0, min(page, total_pages - 1))
     start = page * FLASH_PAGE_SIZE
     group_list = list(groups.items())
     page_items = group_list[start:start + FLASH_PAGE_SIZE]
@@ -230,9 +242,9 @@ def build_flash_text(groups, page, total_pages):
     for name, items in page_items:
         prices = sorted(set(it['price'] for it in items))
         if len(prices) == 1:
-            lines.append(f"<b>{name}</b> · {fp(prices[0])}")
+            lines.append(f"<b>{esc(name)}</b> · {fp(prices[0])}")
         else:
-            lines.append(f"<b>{name}</b> · {fp(min(prices))} – {fp(max(prices))}")
+            lines.append(f"<b>{esc(name)}</b> · {fp(min(prices))} – {fp(max(prices))}")
 
     t = "\n".join(lines)
     page_info = f" · Hal {page+1}/{total_pages}" if total_pages > 1 else ""
@@ -245,21 +257,11 @@ def build_flash_text(groups, page, total_pages):
 # ── FLASH SALE ──
 @bot.message_handler(func=lambda m: m.text=="Flash Sale")
 def flash(m):
-    uid = str(m.chat.id)
     l = bot.send_message(m.chat.id, "<i>Memuat Flash Sale...</i>")
-    p = prods()
-    if not p: bot.edit_message_text("Gagal memuat produk", m.chat.id, l.message_id); return
-    promo = [x for x in p if x.get("category")=="Promo"]
-
-    # Group by product name
-    from collections import OrderedDict
-    groups = OrderedDict()
-    for x in promo:
-        name = x['name']
-        if name not in groups:
-            groups[name] = []
-        groups[name].append(x)
-
+    groups = get_promo_groups()
+    if not groups:
+        bot.edit_message_text("Gagal memuat produk", m.chat.id, l.message_id)
+        return
     total_pages = (len(groups) + FLASH_PAGE_SIZE - 1) // FLASH_PAGE_SIZE
     kb = build_flash_keyboard(groups, 0, total_pages)
     text = build_flash_text(groups, 0, total_pages)
@@ -267,19 +269,12 @@ def flash(m):
 
 @bot.callback_query_handler(func=lambda c: c.data.startswith("flashpage|"))
 def on_flashpage(call):
-    page = int(call.data.split("|")[1])
-    p = prods()
-    if not p: bot.answer_callback_query(call.id, "Gagal memuat"); return
-    promo = [x for x in p if x.get("category")=="Promo"]
-
-    from collections import OrderedDict
-    groups = OrderedDict()
-    for x in promo:
-        name = x['name']
-        if name not in groups:
-            groups[name] = []
-        groups[name].append(x)
-
+    try:
+        page = int(call.data.split("|")[1])
+    except:
+        page = 0
+    groups = get_promo_groups()
+    if not groups: bot.answer_callback_query(call.id, "Gagal memuat"); return
     total_pages = (len(groups) + FLASH_PAGE_SIZE - 1) // FLASH_PAGE_SIZE
     kb = build_flash_keyboard(groups, page, total_pages)
     text = build_flash_text(groups, page, total_pages)
@@ -345,8 +340,8 @@ def on_selgrp(call):
         price_text = f"{fp(min(prices))} – {fp(max(prices))}"
     
     bot.edit_message_text(
-        f"<b>{name}</b>\n"
-        f"<i>{tagline}</i>\n{'━'*20}\n"
+        f"<b>{esc(name)}</b>\n"
+        f"<i>{esc(tagline)}</i>\n{'━'*20}\n"
         f"Harga: {price_text}\n"
         f"<b>Pilih durasi:</b>",
         call.message.chat.id, call.message.message_id, reply_markup=kb)
@@ -375,8 +370,8 @@ def on_sel(call):
         prices = sorted(set(v['price'] for v in variants))
         price_text = fp(prices[0]) if len(prices)==1 else f"{fp(min(prices))} – {fp(max(prices))}"
         bot.edit_message_text(
-            f"<b>{name}</b>\n"
-            f"<i>{prod.get('tagline','')}</i>\n{'━'*20}\n"
+            f"<b>{esc(name)}</b>\n"
+            f"<i>{esc(prod.get('tagline',''))}</i>\n{'━'*20}\n"
             f"Harga: {price_text}\n"
             f"<b>Pilih durasi:</b>",
             call.message.chat.id, call.message.message_id, reply_markup=kb)
@@ -393,8 +388,8 @@ def on_sel(call):
         types.InlineKeyboardButton("Crypto", callback_data=f"pay|crypto|{prod['price']}"))
     kb.add(types.InlineKeyboardButton("« Kembali", callback_data="back_menu"))
     bot.edit_message_text(
-        f"<b>{prod['name']}</b>\n"
-        f"<i>{prod.get('tagline','')}</i>\n{'━'*20}\n"
+        f"<b>{esc(prod['name'])}</b>\n"
+        f"<i>{esc(prod.get('tagline',''))}</i>\n{'━'*20}\n"
         f"Harga: {fp(prod['price'])}\n"
         f"<i>Metode pembayaran:</i>",
         call.message.chat.id, call.message.message_id, reply_markup=kb)
@@ -410,8 +405,8 @@ def on_tier(call):
         types.InlineKeyboardButton(f"QRIS · {fp(price)}", callback_data=f"pay|qris|{price}"),
         types.InlineKeyboardButton("Crypto", callback_data=f"pay|crypto|{price}"))
     kb.add(types.InlineKeyboardButton("« Kembali", callback_data="back_menu"))
-    bot.edit_message_text(f"<b>{st.get('pname','')}</b>\n"
-        f"Paket: {label} · {fp(price)}\n{'━'*20}\n"
+    bot.edit_message_text(f"<b>{esc(st.get('pname',''))}</b>\n"
+        f"Paket: {esc(label)} · {fp(price)}\n{'━'*20}\n"
         f"<i>Metode pembayaran:</i>", call.message.chat.id, call.message.message_id, reply_markup=kb)
 
 # ── PAYMENT: QRIS / CRYPTO ──
@@ -498,7 +493,7 @@ def on_check(call):
         bot.send_message(call.message.chat.id,
             f"<b>Stok Habis</b>\n"
             f"━━━━━━━━━━━━━━━━━━\n"
-            f"Sayang sekali, stok <b>{st.get('pname','')}</b> baru saja habis.\n\n"
+            f"Sayang sekali, stok <b>{esc(st.get('pname',''))}</b> baru saja habis.\n\n"
             f"Saldo <b>{fp(price)}</b> masuk ke Saldo kamu.\n"
             f"Cek halaman Saldo untuk info refund.\n\n"
             f"<i>Min. transaksi {fp(MIN_WITHDRAW)} untuk tarik saldo.</i>",
@@ -510,7 +505,7 @@ def on_check(call):
             f"<b>Pesanan Dibuat</b>\n"
             f"━━━━━━━━━━━━━━━━━━\n"
             f"ID: <code>{oid}</code>\n"
-            f"Produk: {st.get('pname','')} · {fp(price)}\n"
+            f"Produk: {esc(st.get('pname',''))} · {fp(price)}\n"
             f"Status: <b>Diproses</b>\n\n"
             f"<i>Detail akses dikirim ke email setelah dikonfirmasi.</i>",
             reply_markup=main_kb())
