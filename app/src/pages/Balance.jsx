@@ -28,6 +28,7 @@ const FILTER_OPTIONS = [
 
 export default function Balance() {
   const { t, lang } = useLang()
+  const { user } = useAuth()
   const {
     balance, totalSpent, withdrawEligible, minWithdraw,
     history, loaded, fetchBalance, fetchHistory, withdraw,
