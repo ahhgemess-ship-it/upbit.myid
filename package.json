@@ -2,7 +2,7 @@
   "name": "upbit-store",
   "private": true,
   "version": "1.0.0",
-  "description": "Upbit Store — marketplace produk digital (frontend + backend dalam satu repo).",
+  "description": "EvolusiAI — marketplace produk digital (frontend + backend dalam satu repo).",
   "engines": {
     "node": ">=18"
   },

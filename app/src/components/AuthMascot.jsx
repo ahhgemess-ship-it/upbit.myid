@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 
-// Maskot robot Upbit (flat, warna brand, tanpa gradient). Bergerak: mengambang,
+// Maskot robot EvolusiAI (flat, warna brand, tanpa gradient). Bergerak: mengambang,
 // berkedip, melambai, antena berdenyut.
 // PENTING: elemen ber-posisi (.auth-mascot) harus div biasa — framer-motion
 // menulis `transform` inline yang akan menimpa translate centering CSS bila

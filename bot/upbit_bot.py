@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-UPBIT STORE BOT v4
+EVOLUSIAI BOT v4
 - Saldo per Telegram user ID (tanpa login) — data PERSISTEN di bot/data (bukan /tmp)
 - Check-in harian 7-hari sinkron dengan website (Rp 300/hari, bonus Rp 2.000 hari ke-7)
 - Flash Sale pagination + varian durasi (1 bln / 3 bln / 6 bln / 1 thn)
@@ -129,7 +129,7 @@ LANGS = {"id": "Indonesia", "en": "English", "zh": "中文", "ja": "日本語", 
 
 I18N = {
 "id": {
- "welcome":"<b>UPBIT STORE</b>\nMarketplace produk digital\n\n<i>Pilih bahasa / Choose language:</i>",
+ "welcome":"<b>EVOLUSIAI</b>\nMarketplace produk digital\n\n<i>Pilih bahasa / Choose language:</i>",
  "lang_set":"Bahasa disimpan: {lang}","menu_hint":"Pilih menu di bawah:","main_menu":"<b>Menu Utama</b>",
  "back":"« Kembali","next_page":"Lihat lainnya →","prev_page":"« Sebelumnya",
  "flash_loading":"<i>Memuat Flash Sale...</i>","flash_fail":"Gagal memuat produk. Coba lagi nanti ya.",
@@ -166,7 +166,7 @@ I18N = {
  "pick_lang":"<i>Pilih bahasa / Choose language:</i>",
 },
 "en": {
- "welcome":"<b>UPBIT STORE</b>\nDigital products marketplace\n\n<i>Choose your language:</i>",
+ "welcome":"<b>EVOLUSIAI</b>\nDigital products marketplace\n\n<i>Choose your language:</i>",
  "lang_set":"Language saved: {lang}","menu_hint":"Choose a menu below:","main_menu":"<b>Main Menu</b>",
  "back":"« Back","next_page":"See more →","prev_page":"« Previous",
  "flash_loading":"<i>Loading Flash Sale...</i>","flash_fail":"Failed to load products. Try again later.",
@@ -203,7 +203,7 @@ I18N = {
  "pick_lang":"<i>Choose your language:</i>",
 },
 "zh": {
- "welcome":"<b>UPBIT STORE</b>\n数字产品商城\n\n<i>选择语言:</i>",
+ "welcome":"<b>EVOLUSIAI</b>\n数字产品商城\n\n<i>选择语言:</i>",
  "lang_set":"语言已保存: {lang}","menu_hint":"请选择下方菜单:","main_menu":"<b>主菜单</b>",
  "back":"« 返回","next_page":"查看更多 →","prev_page":"« 上一页",
  "flash_loading":"<i>正在加载闪购...</i>","flash_fail":"加载商品失败，请稍后再试。",
@@ -240,7 +240,7 @@ I18N = {
  "pick_lang":"<i>选择语言:</i>",
 },
 "ja": {
- "welcome":"<b>UPBIT STORE</b>\nデジタル商品マーケットプレイス\n\n<i>言語を選択:</i>",
+ "welcome":"<b>EVOLUSIAI</b>\nデジタル商品マーケットプレイス\n\n<i>言語を選択:</i>",
  "lang_set":"言語を保存しました: {lang}","menu_hint":"下のメニューを選択:","main_menu":"<b>メインメニュー</b>",
  "back":"« 戻る","next_page":"もっと見る →","prev_page":"« 前へ",
  "flash_loading":"<i>フラッシュセール読み込み中...</i>","flash_fail":"商品の読み込みに失敗しました。後でもう一度お試しください。",
@@ -277,7 +277,7 @@ I18N = {
  "pick_lang":"<i>言語を選択:</i>",
 },
 "ru": {
- "welcome":"<b>UPBIT STORE</b>\nМаркетплейс цифровых товаров\n\n<i>Выберите язык:</i>",
+ "welcome":"<b>EVOLUSIAI</b>\nМаркетплейс цифровых товаров\n\n<i>Выберите язык:</i>",
  "lang_set":"Язык сохранён: {lang}","menu_hint":"Выберите пункт меню ниже:","main_menu":"<b>Главное меню</b>",
  "back":"« Назад","next_page":"Показать ещё →","prev_page":"« Назад",
  "flash_loading":"<i>Загрузка Flash Sale...</i>","flash_fail":"Не удалось загрузить товары. Попробуйте позже.",
@@ -314,7 +314,7 @@ I18N = {
  "pick_lang":"<i>Выберите язык:</i>",
 },
 "ms": {
- "welcome":"<b>UPBIT STORE</b>\nMarketplace produk digital\n\n<i>Pilih bahasa / Choose language:</i>",
+ "welcome":"<b>EVOLUSIAI</b>\nMarketplace produk digital\n\n<i>Pilih bahasa / Choose language:</i>",
  "lang_set":"Bahasa disimpan: {lang}","menu_hint":"Pilih menu di bawah:","main_menu":"<b>Menu Utama</b>",
  "back":"« Kembali","next_page":"Lihat lagi →","prev_page":"« Sebelumnya",
  "flash_loading":"<i>Memuat Flash Sale...</i>","flash_fail":"Gagal memuat produk. Cuba lagi nanti ya.",
@@ -351,7 +351,7 @@ I18N = {
  "pick_lang":"<i>Pilih bahasa / Choose language:</i>",
 },
 "hi": {
- "welcome":"<b>UPBIT STORE</b>\nडिजिटल उत्पाद मार्केटप्लेस\n\n<i>भाषा चुनें:</i>",
+ "welcome":"<b>EVOLUSIAI</b>\nडिजिटल उत्पाद मार्केटप्लेस\n\n<i>भाषा चुनें:</i>",
  "lang_set":"भाषा सेव हो गई: {lang}","menu_hint":"नीचे मेनू चुनें:","main_menu":"<b>मुख्य मेनू</b>",
  "back":"« वापस","next_page":"और देखें →","prev_page":"« पिछला",
  "flash_loading":"<i>फ्लैश सेल लोड हो रहा है...</i>","flash_fail":"उत्पाद लोड नहीं हो सके। बाद में फिर कोशिश करें।",
@@ -388,7 +388,7 @@ I18N = {
  "pick_lang":"<i>भाषा चुनें:</i>",
 },
 "de": {
- "welcome":"<b>UPBIT STORE</b>\nMarktplatz für digitale Produkte\n\n<i>Sprache wählen:</i>",
+ "welcome":"<b>EVOLUSIAI</b>\nMarktplatz für digitale Produkte\n\n<i>Sprache wählen:</i>",
  "lang_set":"Sprache gespeichert: {lang}","menu_hint":"Wähle unten ein Menü:","main_menu":"<b>Hauptmenü</b>",
  "back":"« Zurück","next_page":"Mehr anzeigen →","prev_page":"« Zurück",
  "flash_loading":"<i>Flash Sale wird geladen...</i>","flash_fail":"Produkte konnten nicht geladen werden. Versuche es später erneut.",
@@ -425,7 +425,7 @@ I18N = {
  "pick_lang":"<i>Sprache wählen:</i>",
 },
 "vi": {
- "welcome":"<b>UPBIT STORE</b>\nChợ sản phẩm số\n\n<i>Chọn ngôn ngữ:</i>",
+ "welcome":"<b>EVOLUSIAI</b>\nChợ sản phẩm số\n\n<i>Chọn ngôn ngữ:</i>",
  "lang_set":"Đã lưu ngôn ngữ: {lang}","menu_hint":"Chọn menu bên dưới:","main_menu":"<b>Menu chính</b>",
  "back":"« Quay lại","next_page":"Xem thêm →","prev_page":"« Trước",
  "flash_loading":"<i>Đang tải Flash Sale...</i>","flash_fail":"Không tải được sản phẩm. Vui lòng thử lại sau.",
@@ -728,7 +728,7 @@ def on_lang(call):
     update_st(uid, lambda _: {"lang": lang})
     bot.delete_message(call.message.chat.id, call.message.message_id)
     bot.send_message(call.message.chat.id,
-        f"<b>UPBIT STORE</b>\n{tr(uid, 'lang_set', lang=LANGS.get(lang, lang))}\n\n{tr(uid, 'menu_hint')}",
+        f"<b>EVOLUSIAI</b>\n{tr(uid, 'lang_set', lang=LANGS.get(lang, lang))}\n\n{tr(uid, 'menu_hint')}",
         reply_markup=main_kb(lang))
 
 @bot.callback_query_handler(func=lambda c: c.data == "back_menu")
@@ -1187,7 +1187,7 @@ def website(m):
     kb.add(types.InlineKeyboardButton(tr(uid, "open_web"), url=STORE_URL))
     kb.add(types.InlineKeyboardButton("💬 WhatsApp Admin", url="https://wa.me/6287797127865"))
     bot.send_message(m.chat.id,
-        f"<b>UPBIT STORE</b>\n"
+        f"<b>EVOLUSIAI</b>\n"
         f"{'━' * 20}\n"
         f"{tr(uid, 'website_about')}",
         reply_markup=kb)
@@ -1272,7 +1272,7 @@ if __name__ == "__main__":
         f.write(str(os.getpid()))
 
     log.info("=" * 50)
-    log.info("UPBIT BOT v4 — starting...")
+    log.info("EVOLUSIAI BOT v4 — starting...")
     log.info(f"API: {API_BASE} | Data: {DATA_DIR}")
 
     while True:

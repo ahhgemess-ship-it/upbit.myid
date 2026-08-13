@@ -1,4 +1,4 @@
-// Klien API Upbit Store. Token JWT disimpan di localStorage & dikirim sebagai Bearer.
+// Klien API EvolusiAI. Token JWT disimpan di localStorage & dikirim sebagai Bearer.
 // Saat backend tidak tersedia, otomatis fallback ke API lokal (data + localStorage).
 import { API_BASE } from './config.js'
 import { demoApi } from './api-demo.js'

@@ -1,4 +1,4 @@
-// Katalog produk digital Upbit Store — berdasarkan PRD (prdproduk.md).
+// Katalog produk digital EvolusiAI — berdasarkan PRD (prdproduk.md).
 // Harga dalam IDR. Kurs acuan 1 USD ≈ Rp 16.300 (estimasi, cek kurs terkini).
 // Logo putih monokrom disimpan lokal di /public/logos, ditaruh di atas kotak warna brand.
 

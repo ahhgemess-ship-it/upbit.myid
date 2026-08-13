@@ -1,4 +1,4 @@
-# Upbit Store
+# EvolusiAI
 
 Marketplace produk digital (akun & langganan AI premium) — React + Vite (frontend) & Express + Prisma + Postgres (backend) dalam satu repo, siap deploy ke Vercel.
 

@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer'
 
 const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM, CLIENT_ORIGIN } = process.env
-const FROM = MAIL_FROM || 'Upbit Store <no-reply@upbitstore.local>'
+const FROM = MAIL_FROM || 'EvolusiAI <no-reply@upbitstore.local>'
 const SITE = (CLIENT_ORIGIN || 'http://localhost:5173').split(',')[0]
 
 // Transport hanya dibuat bila SMTP dikonfigurasi. Tanpa itu → mode log (dev).
@@ -35,14 +35,14 @@ const shell = (title, bodyHtml) => `
 <div style="background:#efece6;padding:28px;font-family:Inter,Arial,sans-serif;color:#2b2b28">
   <div style="max-width:560px;margin:0 auto;background:#fff;border:1.5px solid #2b2b28;border-radius:18px;overflow:hidden">
     <div style="background:#2b2b28;padding:18px 24px">
-      <span style="font-family:'Space Grotesk',Arial,sans-serif;font-weight:700;font-size:18px;color:#fff;letter-spacing:.02em">UPBIT<span style="color:#c5f82a"> STORE</span></span>
+      <span style="font-family:'Space Grotesk',Arial,sans-serif;font-weight:700;font-size:18px;color:#fff;letter-spacing:.02em">EVOLUSI<span style="color:#c5f82a">AI</span></span>
     </div>
     <div style="padding:24px">
       <h1 style="font-size:19px;margin:0 0 12px">${title}</h1>
       ${bodyHtml}
     </div>
     <div style="padding:16px 24px;border-top:1px solid #e0ddd4;color:#8a887e;font-size:12px">
-      Email otomatis dari Upbit Store. Mohon jangan balas email ini.
+      Email otomatis dari EvolusiAI. Mohon jangan balas email ini.
     </div>
   </div>
 </div>`
@@ -64,7 +64,7 @@ export function sendOrderCreated(order) {
     </table>
     <a href="${SITE}/orders/${order.id}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:999px;font-size:14px">Lihat status pesanan</a>
   `)
-  send(order.deliveryEmail, `Pesanan ${order.id} diterima — Upbit Store`, html)
+  send(order.deliveryEmail, `Pesanan ${order.id} diterima — EvolusiAI`, html)
 }
 
 export function sendOrderCompleted(order) {

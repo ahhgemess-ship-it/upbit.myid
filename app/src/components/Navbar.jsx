@@ -50,8 +50,8 @@ export default function Navbar() {
         className="container site-nav-inner"
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
       >
-        <Link to="/" className="brand-link" onClick={() => setOpen(false)} aria-label="Upbit Store">
-          <img src="/logo.png" alt="Upbit Store" className="brand-logo" />
+        <Link to="/" className="brand-link" onClick={() => setOpen(false)} aria-label="EvolusiAI">
+          <img src="/logo.png" alt="EvolusiAI" className="brand-logo" />
         </Link>
 
         {/* desktop nav */}
