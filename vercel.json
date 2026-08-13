@@ -10,6 +10,8 @@
     { "src": "/assets/(.*)", "dest": "/app/assets/$1" },
     { "src": "/logo\\.png", "dest": "/app/logo.png" },
     { "src": "/logo-white\\.png", "dest": "/app/logo-white.png" },
+    { "src": "/favicon\\.png", "dest": "/app/favicon.png" },
+    { "src": "/favicon\\.ico", "dest": "/app/favicon.ico" },
     { "src": "/favicon\\.svg", "dest": "/app/favicon.svg" },
     { "src": "/logos/(.*)", "dest": "/app/logos/$1" },
     { "handle": "filesystem" },
