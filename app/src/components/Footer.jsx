@@ -13,7 +13,7 @@ export default function Footer() {
         >
           <div>
             <div style={{ marginBottom: 16 }}>
-              <img src="/logo.png" alt="EvolusiAI" className="brand-logo brand-logo-invert" style={{ height: 34 }} />
+              <img src="/logo-white.png" alt="EvolusiAI" className="brand-logo" style={{ height: 40 }} />
             </div>
             <p style={{ color: '#bdbbb1', fontSize: 15, maxWidth: 360, lineHeight: 1.6 }}>
               {t('footer.tagline')}

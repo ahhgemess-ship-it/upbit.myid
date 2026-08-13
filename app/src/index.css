@@ -256,11 +256,9 @@ ul { list-style: none; }
 
 /* ============ Brand logo ============ */
 .brand-link { display: inline-flex; align-items: center; }
-.brand-logo { height: 30px; width: auto; display: block; transition: height .25s ease; }
-.site-nav.is-scrolled .brand-logo { height: 27px; }
-/* versi putih untuk latar gelap (footer / panel auth) */
-.brand-logo-invert { filter: brightness(0) invert(1); }
-@media (max-width: 520px) { .brand-logo { height: 26px; } }
+.brand-logo { height: 42px; width: auto; display: block; transition: height .25s ease; }
+.site-nav.is-scrolled .brand-logo { height: 36px; }
+@media (max-width: 520px) { .brand-logo { height: 36px; } }
 
 /* ============ Mobile nav card dropdown ============ */
 .nav-overlay {

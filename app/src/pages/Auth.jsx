@@ -29,7 +29,7 @@ export default function Auth() {
         </div>
 
         <Link to="/" aria-label="EvolusiAI" style={{ position: 'relative', zIndex: 2 }}>
-          <img src="/logo.png" alt="EvolusiAI" className="brand-logo brand-logo-invert" style={{ height: 32 }} />
+          <img src="/logo-white.png" alt="EvolusiAI" className="brand-logo" style={{ height: 44 }} />
         </Link>
 
         <div style={{ position: 'relative', zIndex: 2 }}>
