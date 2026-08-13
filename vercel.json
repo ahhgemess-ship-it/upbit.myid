@@ -9,6 +9,7 @@
     { "src": "/api/(.*)", "dest": "/api/index.js" },
     { "src": "/assets/(.*)", "dest": "/app/assets/$1" },
     { "src": "/logo\\.png", "dest": "/app/logo.png" },
+    { "src": "/logo-white\\.png", "dest": "/app/logo-white.png" },
     { "src": "/favicon\\.svg", "dest": "/app/favicon.svg" },
     { "src": "/logos/(.*)", "dest": "/app/logos/$1" },
     { "handle": "filesystem" },
