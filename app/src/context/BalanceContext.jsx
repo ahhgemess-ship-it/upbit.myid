@@ -98,21 +98,6 @@ export function BalanceProvider({ children }) {
     fetchBalance()
   }, [fetchBalance])
 
-  // Kurangi saldo (sekarang dipotong ATOMIK server-side di createOrder — jangan deduksi ganda).
-  const useBalance = useCallback(async (amount) => {
-    // Fallback: bila backend tidak terjangkau, throw — tidak ada saldo palsu.
-    const res = await api.useBalance(amount)
-    setBalance(res.balance)
-    return res
-  }, [])
-
-  // Tambah saldo (refund/admin)
-  const addBalance = useCallback(async (amount, note) => {
-    const res = await api.addBalance(amount, note)
-    setBalance(res.balance)
-    return res
-  }, [])
-
   // Withdraw
   const withdraw = useCallback(async (amount, method) => {
     const res = await api.withdrawBalance(amount, method)
@@ -124,14 +109,14 @@ export function BalanceProvider({ children }) {
   const value = useMemo(() => ({
     balance, totalSpent, withdrawEligible, minWithdraw,
     history, loaded,
-    fetchBalance, fetchHistory, useBalance, addBalance, withdraw,
+    fetchBalance, fetchHistory, withdraw,
     // Check-in
     checkInStreak, canCheckIn, checkInReward, checkInBonus, checkInCycle,
     fetchCheckInStatus, doCheckIn,
   }), [
     balance, totalSpent, withdrawEligible, minWithdraw,
     history, loaded,
-    fetchBalance, fetchHistory, useBalance, addBalance, withdraw,
+    fetchBalance, fetchHistory, withdraw,
     checkInStreak, canCheckIn, checkInReward, checkInBonus, checkInCycle,
     fetchCheckInStatus, doCheckIn,
   ])

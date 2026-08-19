@@ -61,14 +61,25 @@ export default function Checkout() {
   const couponActive = coupon && !(currency !== 'IDR' && coupon.type === 'fixed')
   const discount = couponActive ? (coupon?.discount || 0) : 0
   const payable = Math.max(0, total - discount)
-  // Balance discount — harus setelah payable (fix TDZ crash)
-  const balanceDiscount = useSaldo ? Math.min(balance, payable) : 0
+  // Saldo disimpan dalam IDR di backend — konversi ke mata uang pesanan untuk tampil & hitung.
+  const toCur = (idr) =>
+    currency === 'USD' ? Math.round((idr * 100) / USD_TO_IDR)
+      : currency === 'CNY' ? Math.round((idr * USD_TO_CNY * 100) / USD_TO_IDR)
+        : idr
+  const balanceInCur = toCur(balance)
+  // Balance discount — harus setelah payable (fix TDZ crash), dalam mata uang pesanan.
+  const balanceDiscount = useSaldo ? Math.min(balanceInCur, payable) : 0
   const finalPayable = Math.max(0, payable - balanceDiscount)
   // Nominal crypto/QRIS: konversi ke ekuivalen IDR dulu (USD & CNY → IDR).
   const payableIdrEquiv =
     currency === 'USD' ? Math.round((finalPayable / 100) * USD_TO_IDR)
       : currency === 'CNY' ? Math.round((finalPayable / 100 / USD_TO_CNY) * USD_TO_IDR)
         : finalPayable
+  // Jumlah saldo sebenarnya yang dipakai (IDR) — dikirim ke server via useBalance.
+  const balanceDiscountIdr =
+    currency === 'USD' ? Math.round((balanceDiscount / 100) * USD_TO_IDR)
+      : currency === 'CNY' ? Math.round((balanceDiscount / 100 / USD_TO_CNY) * USD_TO_IDR)
+        : balanceDiscount
   const ref = useMemo(
     () => (items.map((i) => i.id.length).reduce((a, b) => a + b, 0) + items.length)
       .toString().padStart(4, '0'),
@@ -228,9 +239,9 @@ export default function Checkout() {
         form.append('amount', cryptoAmount)
         form.append('txHash', txHash.trim())
       }
-      // Saldo dipotong ATOMIK di server bersama pembuatan order (field useBalance).
+      // Saldo dipotong ATOMIK di server bersama pembuatan order (field useBalance, dalam IDR).
       if (useSaldo && balanceDiscount > 0) {
-        form.append('useBalance', String(balanceDiscount))
+        form.append('useBalance', String(balanceDiscountIdr))
       }
       const { order } = await api.createOrder(form)
       toast(t('co.paymentSent'), 'success', 3200)
@@ -511,7 +522,7 @@ export default function Checkout() {
                       <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 14 }}>
                         <input type="checkbox" checked={useSaldo} onChange={(e) => setUseSaldo(e.target.checked)}
                           style={{ width: 18, height: 18, accentColor: 'var(--indigo)' }} />
-                        <Wallet size={16} /> Pakai Saldo ({fmt(balance)})
+                        <Wallet size={16} /> Pakai Saldo ({fmt(balanceInCur)})
                       </label>
                       {useSaldo && balanceDiscount > 0 && (
                         <span style={{ fontWeight: 600, color: 'var(--indigo)' }}>- {fmt(balanceDiscount)}</span>

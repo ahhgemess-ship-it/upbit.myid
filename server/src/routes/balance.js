@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { prisma } from '../db.js'
 import { requireAuth, requireAdmin } from '../auth.js'
+import { toIDR } from '../money.js'
 
 const router = Router()
 
@@ -24,27 +25,29 @@ function isYesterdayUtc(d, now = new Date()) {
   return isSameUtcDay(d, yesterday)
 }
 
-// Cek apakah user eligible untuk withdraw (total transaksi >= 250k)
+// Cek apakah user eligible untuk withdraw (total transaksi >= 250k, dalam IDR)
 async function checkWithdrawEligible(userId) {
-  const result = await prisma.order.aggregate({
+  const orders = await prisma.order.findMany({
     where: { userId, status: 'COMPLETED' },
-    _sum: { total: true },
+    select: { total: true, currency: true },
   })
-  return (result._sum.total || 0) >= MIN_WITHDRAW_TOTAL
+  const totalIdr = orders.reduce((s, o) => s + toIDR(o.total, o.currency), 0)
+  return totalIdr >= MIN_WITHDRAW_TOTAL
 }
 
 // GET /api/balance — lihat saldo & total transaksi
 router.get('/', requireAuth, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({ where: { id: req.user.id } })
-    const totalSpent = await prisma.order.aggregate({
+    const orders = await prisma.order.findMany({
       where: { userId: req.user.id, status: 'COMPLETED' },
-      _sum: { total: true },
+      select: { total: true, currency: true },
     })
-    const eligible = (totalSpent._sum.total || 0) >= MIN_WITHDRAW_TOTAL
+    const totalSpent = orders.reduce((s, o) => s + toIDR(o.total, o.currency), 0)
+    const eligible = totalSpent >= MIN_WITHDRAW_TOTAL
     res.json({
       balance: user.balance,
-      totalSpent: totalSpent._sum.total || 0,
+      totalSpent,
       minWithdraw: MIN_WITHDRAW_TOTAL,
       withdrawEligible: eligible,
     })

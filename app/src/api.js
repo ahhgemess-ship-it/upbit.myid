@@ -7,7 +7,7 @@ const TOKEN_KEY = 'upbit_token'
 export const getToken = () => localStorage.getItem(TOKEN_KEY)
 export const setToken = (t) => (t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY))
 
-let demoFallback = false
+let fallbackUntil = 0 // timestamp sampai kapan pakai API lokal (auto-pulih setelah 15 detik)
 
 async function req(path, { method = 'GET', body, form, auth = true } = {}) {
   const headers = {}
@@ -38,15 +38,18 @@ async function req(path, { method = 'GET', body, form, auth = true } = {}) {
   return data
 }
 
-// Bungkus api call: coba real API, fallback ke API lokal saat NETWORK error
+// Bungkus api call: coba real API, fallback ke API lokal saat NETWORK error.
+// Tidak mengunci permanen — setelah 15 detik coba lagi real API agar backend bisa pulih.
 function withFallback(realFn, demoFn) {
   return async (...args) => {
-    if (demoFallback) return demoFn(...args)
+    if (Date.now() < fallbackUntil) return demoFn(...args)
     try {
-      return await realFn(...args)
+      const data = await realFn(...args)
+      fallbackUntil = 0 // backend pulih — reset latch
+      return data
     } catch (e) {
       if (e.message === 'NETWORK') {
-        demoFallback = true
+        fallbackUntil = Date.now() + 15000
         return demoFn(...args)
       }
       throw e
@@ -99,7 +102,6 @@ const _real = {
   // balance
   getBalance: () => req('/api/balance'),
   getBalanceHistory: () => req('/api/balance/history'),
-  useBalance: (amount) => req('/api/balance/use', { method: 'POST', body: { amount } }),
   withdrawBalance: (amount, method) => req('/api/balance/withdraw', { method: 'POST', body: { amount, method } }),
   checkInStatus: () => req('/api/balance/checkin/status'),
   checkIn: () => req('/api/balance/checkin', { method: 'POST' }),
@@ -147,7 +149,6 @@ export const api = {
   // balance
   getBalance: withFallback(_real.getBalance, demoApi.getBalance),
   getBalanceHistory: withFallback(_real.getBalanceHistory, demoApi.getBalanceHistory),
-  useBalance: withFallback(_real.useBalance, demoApi.useBalance),
   withdrawBalance: withFallback(_real.withdrawBalance, demoApi.withdrawBalance),
   checkInStatus: withFallback(_real.checkInStatus, demoApi.checkInStatus),
   checkIn: withFallback(_real.checkIn, demoApi.checkIn),

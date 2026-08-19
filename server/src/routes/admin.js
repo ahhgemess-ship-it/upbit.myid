@@ -12,6 +12,7 @@ import { encrypt } from '../crypto.js'
 import { sendOrderCompleted } from '../mailer.js'
 import { notify } from '../notify.js'
 import { saveUpload, readUpload } from '../storage.js'
+import { toIDR } from '../money.js'
 
 const router = Router()
 
@@ -71,10 +72,11 @@ router.get('/users/:id', async (req, res) => {
     })
     if (!user) return res.status(404).json({ error: 'User tidak ditemukan' })
 
-    const totalSpent = await prisma.order.aggregate({
+    const spentOrders = await prisma.order.findMany({
       where: { userId: user.id, status: 'COMPLETED' },
-      _sum: { total: true },
+      select: { total: true, currency: true },
     })
+    const totalSpent = spentOrders.reduce((s, o) => s + toIDR(o.total, o.currency), 0)
     const refundOrders = user.orders.filter(o => o.refundStatus !== 'NONE')
     const totalOrders = await prisma.order.count({ where: { userId: user.id } })
 
@@ -87,7 +89,7 @@ router.get('/users/:id', async (req, res) => {
       orders: user.orders,
       balanceTransactions: user.balanceTransactions,
       summary: {
-        totalSpent: totalSpent._sum.total || 0,
+        totalSpent,
         totalOrders,
         refundCount: refundOrders.length,
         refundApproved: refundOrders.filter(o => o.refundStatus === 'APPROVED').length,
@@ -357,11 +359,44 @@ router.get('/orders/:id', async (req, res) => {
 
 router.patch('/orders/:id', async (req, res) => {
   const { status, adminNote } = req.body
+  const current = await prisma.order.findUnique({ where: { id: req.params.id }, include: { items: true } })
+  if (!current) return res.status(404).json({ error: 'Pesanan tidak ditemukan' })
+
   const data = {}
   if (status && ['PROCESSING', 'COMPLETED', 'CANCELLED'].includes(status)) data.status = status
   if (adminNote !== undefined) data.adminNote = adminNote
-  const order = await prisma.order.update({ where: { id: req.params.id }, data, include: { items: true, user: true } })
-  if (status === 'CANCELLED') notify(order.userId, { type: 'order_cancelled', title: `Pesanan ${order.id} dibatalkan`, body: adminNote || 'Hubungi admin bila ada pertanyaan.', orderId: order.id })
+
+  let order
+  if (status === 'CANCELLED' && current.status !== 'CANCELLED') {
+    // Rollback: kembalikan saldo terpakai + sisa pembayaran, kuota kupon, dan stok.
+    const usedTx = await prisma.balanceTransaction.findFirst({ where: { orderId: current.id, type: 'purchase' } })
+    const balanceUsed = usedTx ? Math.abs(usedTx.amount) : 0
+    const refundAmount = balanceUsed + toIDR(current.total, current.currency)
+    order = await prisma.$transaction(async (tx) => {
+      const o = await tx.order.update({ where: { id: current.id }, data, include: { items: true, user: true } })
+      if (refundAmount > 0) {
+        await tx.user.update({ where: { id: current.userId }, data: { balance: { increment: refundAmount } } })
+        await tx.balanceTransaction.create({
+          data: { userId: current.userId, amount: refundAmount, type: 'refund', note: `Pesanan dibatalkan admin — ${current.id}`, orderId: current.id },
+        })
+      }
+      // Kembalikan stok hanya untuk produk dengan stok terbatas (>= 0).
+      for (const it of current.items || []) {
+        if (it.productId) {
+          await tx.product.updateMany({ where: { id: it.productId, stock: { gte: 0 } }, data: { stock: { increment: it.qty } } }).catch(() => {})
+        }
+      }
+      // Kembalikan kuota kupon bila order memakai kupon.
+      if (current.couponCode) {
+        await tx.coupon.updateMany({ where: { code: current.couponCode, usedCount: { gte: 1 } }, data: { usedCount: { decrement: 1 } } }).catch(() => {})
+      }
+      return o
+    })
+  } else {
+    order = await prisma.order.update({ where: { id: current.id }, data, include: { items: true, user: true } })
+  }
+
+  if (status === 'CANCELLED') notify(order.userId, { type: 'order_cancelled', title: `Pesanan ${order.id} dibatalkan`, body: adminNote || 'Dana sudah dikembalikan ke Saldo kamu.', orderId: order.id })
   res.json({ order: formatOrder(order, { admin: true }) })
 })
 
@@ -371,14 +406,40 @@ router.post('/orders/:id/refund', async (req, res) => {
   const note = (req.body.note || '').trim() || null
   const order = await prisma.order.findUnique({ where: { id: req.params.id } })
   if (!order) return res.status(404).json({ error: 'Pesanan tidak ditemukan' })
-  const data = action === 'approve'
-    ? { refundStatus: 'APPROVED', refundNote: note, status: 'CANCELLED', refundAt: new Date() }
-    : { refundStatus: 'REJECTED', refundNote: note, refundAt: new Date() }
-  const updated = await prisma.order.update({ where: { id: order.id }, data, include: { items: true, user: true } })
+
+  let updated
+  if (action === 'approve') {
+    // Kembalikan dana ke Saldo user (saldo terpakai + sisa pembayaran, dikonversi ke IDR).
+    const wasApproved = order.refundStatus === 'APPROVED'
+    const usedTx = await prisma.balanceTransaction.findFirst({ where: { orderId: order.id, type: 'purchase' } })
+    const balanceUsed = usedTx ? Math.abs(usedTx.amount) : 0
+    const refundAmount = balanceUsed + toIDR(order.total, order.currency)
+    updated = await prisma.$transaction(async (tx) => {
+      const o = await tx.order.update({
+        where: { id: order.id },
+        data: { refundStatus: 'APPROVED', refundNote: note, status: 'CANCELLED', refundAt: new Date() },
+        include: { items: true, user: true },
+      })
+      if (!wasApproved && refundAmount > 0) {
+        await tx.user.update({ where: { id: order.userId }, data: { balance: { increment: refundAmount } } })
+        await tx.balanceTransaction.create({
+          data: { userId: order.userId, amount: refundAmount, type: 'refund', note: `Refund disetujui admin — ${order.id}`, orderId: order.id },
+        })
+      }
+      return o
+    })
+  } else {
+    updated = await prisma.order.update({
+      where: { id: order.id },
+      data: { refundStatus: 'REJECTED', refundNote: note, refundAt: new Date() },
+      include: { items: true, user: true },
+    })
+  }
+
   notify(order.userId, {
     type: 'refund_done',
     title: action === 'approve' ? `Refund ${order.id} disetujui` : `Refund ${order.id} ditolak`,
-    body: note || (action === 'approve' ? 'Dana akan dikembalikan sesuai metode pembayaran.' : 'Pengajuan tidak memenuhi syarat.'),
+    body: note || (action === 'approve' ? 'Dana sudah dikembalikan ke Saldo kamu.' : 'Pengajuan tidak memenuhi syarat.'),
     orderId: order.id,
   })
   res.json({ order: formatOrder(updated, { admin: true }) })

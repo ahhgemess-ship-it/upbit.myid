@@ -10,6 +10,7 @@ import { sendOrderCreated } from '../mailer.js'
 import { effectiveDiscount, salePrice } from '../discount.js'
 import { notify, notifyAdmins } from '../notify.js'
 import { saveUpload } from '../storage.js'
+import { toIDR, fromIDR } from '../money.js'
 
 const router = Router()
 
@@ -72,7 +73,8 @@ export function formatOrder(order, { admin = false } = {}) {
 
 const STOCK_OUT_MIN = 30000
 const STOCK_OUT_MAX = 80000
-const isStockOutPrice = (tierPrice, currency) => currency === 'IDR' && tierPrice >= STOCK_OUT_MIN && tierPrice <= STOCK_OUT_MAX
+// Cek stock-out berdasarkan harga IDR produk (tier.price selalu IDR) — berlaku semua mata uang.
+const isStockOutPrice = (tierPriceIdr) => tierPriceIdr >= STOCK_OUT_MIN && tierPriceIdr <= STOCK_OUT_MAX
 
 // POST /api/orders (multipart) — buat pesanan baru
 router.post('/', requireAuth, upload.single('proof'), async (req, res) => {
@@ -112,7 +114,7 @@ router.post('/', requireAuth, upload.single('proof'), async (req, res) => {
       const tier = prod.tiers.find((t) => t.label === raw.tierLabel) || prod.tiers[0]
       const qty = Math.max(1, Math.min(99, parseInt(raw.qty, 10) || 1))
       // Cek stok (−1 = tak terbatas). Produk 30k-80k skip stok global karena auto-refund.
-      if (prod.stock !== -1 && !isStockOutPrice(tier.price, currency)) {
+      if (prod.stock !== -1 && !isStockOutPrice(tier.price)) {
         stockNeed[prod.id] = (stockNeed[prod.id] || 0) + qty
         if (stockNeed[prod.id] > prod.stock) {
           return res.status(409).json({ error: `Stok ${prod.name} tidak cukup (sisa ${prod.stock})` })
@@ -158,10 +160,12 @@ router.post('/', requireAuth, upload.single('proof'), async (req, res) => {
     const totalBeforeBalance = Math.max(0, subtotal - discount)
 
     // Pakai Saldo — potong saldo user ATOMIK bersama pembuatan order (bukan di frontend).
+    // useBalance dikirim dalam IDR (saldo selalu IDR); totalBeforeBalance dalam mata uang pesanan.
     const useBalanceAmount = Math.max(0, parseInt(b.useBalance || '0', 10) || 0)
     let balanceUsed = 0
     if (useBalanceAmount > 0) {
-      if (useBalanceAmount > totalBeforeBalance) {
+      const totalBeforeIdr = toIDR(totalBeforeBalance, currency)
+      if (useBalanceAmount > totalBeforeIdr) {
         return res.status(400).json({ error: 'Jumlah saldo melebihi total belanja' })
       }
       const balUser = await prisma.user.findUnique({ where: { id: req.user.id }, select: { balance: true } })
@@ -170,7 +174,7 @@ router.post('/', requireAuth, upload.single('proof'), async (req, res) => {
       }
       balanceUsed = useBalanceAmount
     }
-    const total = Math.max(0, totalBeforeBalance - balanceUsed)
+    const total = Math.max(0, totalBeforeBalance - fromIDR(balanceUsed, currency))
 
     // Simpan bukti pembayaran (disk lokal / Vercel Blob) → referensi disimpan di DB.
     const proofRef = req.file
@@ -238,7 +242,7 @@ router.post('/', requireAuth, upload.single('proof'), async (req, res) => {
       const prod = byId[it.productId]
       if (!prod) return false
       const tier = prod.tiers.find((t) => t.label === it.tierLabel) || prod.tiers[0]
-      return isStockOutPrice(tier.price, currency)
+      return isStockOutPrice(tier.price)
     })
 
     // Mark semua produk yang di-order sebagai dibeli (UserProductStock) — untuk stok habis per user
@@ -248,7 +252,7 @@ router.post('/', requireAuth, upload.single('proof'), async (req, res) => {
       const allStockOutIds = catalog
         .filter((p) => {
           const tiers = JSON.parse(p.tiers || '[]')
-          return tiers.some((t) => isStockOutPrice(t.price, currency))
+          return tiers.some((t) => isStockOutPrice(t.price))
         })
         .map((p) => p.id)
       const allIds = [...new Set([...orderedProductIds, ...allStockOutIds])]
@@ -266,7 +270,7 @@ router.post('/', requireAuth, upload.single('proof'), async (req, res) => {
     let stockOut = false
     if (hasStockOutItem) {
       try {
-        const refundAmount = balanceUsed + total // saldo yg sudah dipotong + sisa pembayaran
+        const refundAmount = balanceUsed + toIDR(total, currency) // saldo terpakai (IDR) + sisa pembayaran (dikonversi ke IDR)
         await prisma.$transaction(async (tx) => {
           await tx.order.update({
             where: { id: order.id },
