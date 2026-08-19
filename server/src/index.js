@@ -18,7 +18,17 @@ import { startRatingShuffler, shuffleSeedRatings } from './reviewShuffle.js'
 const app = express()
 app.set('trust proxy', 1) // di belakang proxy (Vite/Vercel) — agar rate-limit baca IP benar
 
-app.use(cors({ origin: (process.env.CLIENT_ORIGIN || '*').split(','), credentials: true }))
+// Header keamanan dasar (tanpa dependensi tambahan).
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN')
+  res.setHeader('X-XSS-Protection', '1; mode=block')
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  next()
+})
+// Auth memakai token Bearer (bukan cookie), jadi credentials tidak diperlukan.
+app.use(cors({ origin: (process.env.CLIENT_ORIGIN || '*').split(','), credentials: false }))
 app.use(express.json({ limit: '2mb' }))
 
 // Gambar produk dilayani PUBLIK (hanya subfolder products). Bukti pembayaran di
@@ -39,6 +49,10 @@ app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }))
 // mengacak rating. Dilindungi CRON_SECRET (Vercel mengirim header Authorization).
 app.get('/api/cron/shuffle-ratings', async (req, res) => {
   const secret = process.env.CRON_SECRET
+  const isProd = process.env.NODE_ENV === 'production' || !!process.env.VERCEL
+  // Prod: WAJIB dilindungi CRON_SECRET (Vercel mengirim Authorization otomatis).
+  // Tanpa secret → endpoint dinonaktifkan (lebih aman daripada terbuka).
+  if (isProd && !secret) return res.status(503).json({ error: 'cron disabled: CRON_SECRET not set' })
   if (secret && req.headers.authorization !== `Bearer ${secret}`) return res.status(401).json({ error: 'unauthorized' })
   try {
     const n = await shuffleSeedRatings()

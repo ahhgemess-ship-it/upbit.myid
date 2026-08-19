@@ -92,7 +92,7 @@ function reviewEligibility(productId) {
 export const demoApi = {
   // auth — decode credential JWT Google langsung di frontend
   googleLogin: async (credential) => {
-    let user = { name: 'User', email: 'user@upbitapps.my.id', role: 'USER', picture: null }
+    let user = { name: 'User', email: 'user@upbit.my.id', role: 'USER', picture: null }
     try {
       // Decode Google credential JWT (payload di tengah)
       const payload = JSON.parse(atob(credential.split('.')[1]))
@@ -112,7 +112,7 @@ export const demoApi = {
   },
   me: async () => {
     const cached = JSON.parse(localStorage.getItem('upbit_session') || 'null')
-    return { user: cached || { name: 'User', email: 'user@upbitapps.my.id', role: 'USER', picture: null } }
+    return { user: cached || { name: 'User', email: 'user@upbit.my.id', role: 'USER', picture: null } }
   },
 
   // products
@@ -259,7 +259,7 @@ export const demoApi = {
       if (session) {
         users.push({
           id: 'demo-uid-1',
-          email: session.email || 'user@upbitapps.my.id',
+          email: session.email || 'user@upbit.my.id',
           name: session.name || 'User',
           picture: session.picture || null,
           role: 'USER',
@@ -278,7 +278,7 @@ export const demoApi = {
     const session = JSON.parse(localStorage.getItem('upbit_session') || 'null')
     const user = {
       id: 'demo-uid-1',
-      email: session?.email || 'user@upbitapps.my.id',
+      email: session?.email || 'user@upbit.my.id',
       name: session?.name || 'User',
       picture: session?.picture || null,
       role: 'USER',
@@ -321,7 +321,7 @@ export const demoApi = {
     return {
       user: {
         id: 'demo-uid-1',
-        email: 'user@upbitapps.my.id',
+        email: 'user@upbit.my.id',
         name: data.name || 'User',
         role: data.role || 'USER',
         balance: parseInt(localStorage.getItem('demo_balance') || '0', 10),

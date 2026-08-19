@@ -31,7 +31,7 @@ model User {
 }
 
 model Order {
-  id            String   @id // nomor pesanan UPB-...
+  id            String   @id // nomor pesanan EVO-...
   userId        String
   user          User     @relation(fields: [userId], references: [id])
   deliveryEmail String

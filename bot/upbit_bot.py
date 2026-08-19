@@ -19,7 +19,25 @@ import requests
 import qrcode
 
 # ═══ CONFIG ═══
-BOT_TOKEN = "8525098720:AAGwM-Np2aRTIRhryP7fvvo-VChnf5_8GnE"
+def _load_env(path):
+    """Muat variabel env dari file .env (tanpa dependensi eksternal)."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+    except Exception:
+        pass
+
+_load_env(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+
+BOT_TOKEN = os.environ.get("BOT_TOKEN", "").strip()
+if not BOT_TOKEN:
+    raise SystemExit("BOT_TOKEN tidak diset. Buat bot/.env berisi BOT_TOKEN=...")
+
 API_BASE  = "https://www.upbit.my.id/api"
 STORE_URL = "https://www.upbit.my.id"
 
@@ -1099,7 +1117,7 @@ def on_check(call):
                 reply_markup=main_kb(lang_of(uid)))
         else:
             # Pesanan dibuat (lokal) — hanya order NON-stok-habis yang masuk total transaksi
-            oid = "UPB-TG-" + hashlib.sha1(f"{uid}:{pid}:{time.time()}".encode()).hexdigest()[:6].upper()
+            oid = "EVO-TG-" + hashlib.sha1(f"{uid}:{pid}:{time.time()}".encode()).hexdigest()[:6].upper()
             update_bal(uid, lambda b: {**b, "totalSpent": b.get("totalSpent", 0) + price})
             mark_purchased(uid, pid)
             bot.send_message(call.message.chat.id,

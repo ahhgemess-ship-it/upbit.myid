@@ -38,6 +38,7 @@ router.post('/', requireAuth, async (req, res) => {
   const { productId, rating, comment } = req.body
   const r = parseInt(rating, 10)
   if (!productId || !(r >= 1 && r <= 5)) return res.status(400).json({ error: 'Data ulasan tidak valid' })
+  if (comment && comment.length > 1000) return res.status(400).json({ error: 'Komentar terlalu panjang (maks. 1000 karakter)' })
 
   const purchased = await prisma.orderItem.findFirst({
     where: { productId, order: { userId: req.user.id } },

@@ -80,13 +80,7 @@ router.post('/withdraw', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Jumlah tidak valid' })
     }
 
-    // Cek saldo cukup
-    const user = await prisma.user.findUnique({ where: { id: req.user.id } })
-    if (user.balance < parsedAmount) {
-      return res.status(400).json({ error: 'Saldo tidak mencukupi' })
-    }
-
-    // Cek eligible (total transaksi >= 250k)
+    // Cek eligible (total transaksi >= MIN_WITHDRAW_TOTAL, dalam IDR)
     const eligible = await checkWithdrawEligible(req.user.id)
     if (!eligible) {
       return res.status(400).json({
@@ -96,27 +90,34 @@ router.post('/withdraw', requireAuth, async (req, res) => {
       })
     }
 
-    // Proses withdraw
-    const [updatedUser, txn] = await prisma.$transaction([
-      prisma.user.update({
-        where: { id: req.user.id },
+    // Deduksi saldo ATOMIK bersyarat — anti race condition (saldo tidak bisa minus).
+    const result = await prisma.$transaction(async (tx) => {
+      const deducted = await tx.user.updateMany({
+        where: { id: req.user.id, balance: { gte: parsedAmount } },
         data: { balance: { decrement: parsedAmount } },
-      }),
-      prisma.balanceTransaction.create({
+      })
+      if (deducted.count !== 1) return null
+      const updatedUser = await tx.user.findUnique({ where: { id: req.user.id } })
+      const txn = await tx.balanceTransaction.create({
         data: {
           userId: req.user.id,
           amount: -parsedAmount,
           type: 'withdraw',
           note: `Tarik saldo via ${method || 'manual'} — Rp ${parsedAmount.toLocaleString('id-ID')}`,
         },
-      }),
-    ])
+      })
+      return { updatedUser, txn }
+    })
+
+    if (!result) {
+      return res.status(400).json({ error: 'Saldo tidak mencukupi' })
+    }
 
     res.json({
       success: true,
-      balance: updatedUser.balance,
+      balance: result.updatedUser.balance,
       withdrawn: parsedAmount,
-      transaction: txn,
+      transaction: result.txn,
     })
   } catch (e) {
     res.status(500).json({ error: e.message })

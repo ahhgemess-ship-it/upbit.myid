@@ -15,7 +15,12 @@ router.post('/google', async (req, res) => {
     const profile = await verifyGoogleCredential(credential)
     if (!profile.email) return res.status(400).json({ error: 'Email Google tidak tersedia' })
 
-    const role = isAdminEmail(profile.email) ? 'ADMIN' : 'USER'
+    const computedRole = isAdminEmail(profile.email) ? 'ADMIN' : 'USER'
+    const existing = await prisma.user.findUnique({ where: { email: profile.email } })
+    // Jangan pernah menurunkan admin jadi USER saat login ulang:
+    // - admin dari ADMIN_EMAILS tetap ADMIN
+    // - admin yang dipromosikan manual di panel admin tetap ADMIN
+    const role = existing && existing.role === 'ADMIN' ? 'ADMIN' : computedRole
     const user = await prisma.user.upsert({
       where: { email: profile.email },
       update: { name: profile.name, picture: profile.picture, role },
