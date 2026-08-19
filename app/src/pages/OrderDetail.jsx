@@ -253,7 +253,7 @@ export default function OrderDetail() {
             <div style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--ink-soft)' }}>
               Kalau pesanan kamu direfund, dana akan masuk ke <strong>Saldo</strong>.
               Saldo bisa dipakai untuk belanja berikutnya.
-              Penarikan saldo tersedia setelah total transaksi mencapai <strong>Rp 250.000</strong>.
+              Penarikan saldo tersedia setelah total transaksi mencapai <strong>Rp 310.000</strong>.
             </div>
             <Link to="/balance" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600, color: 'var(--indigo)', marginTop: 8 }}>
               Lihat Saldo <ArrowUpRight size={13} />

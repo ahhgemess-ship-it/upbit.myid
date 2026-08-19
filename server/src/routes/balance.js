@@ -6,7 +6,7 @@ import { toIDR } from '../money.js'
 const router = Router()
 
 // Minimum total transaksi untuk bisa withdraw
-const MIN_WITHDRAW_TOTAL = 250000 // Rp 250.000
+const MIN_WITHDRAW_TOTAL = 310000 // Rp 310.000
 
 // Reward check-in harian: Rp 300/hari, bonus Rp 2.000 di hari ke-7
 const CHECKIN_REWARD = 300

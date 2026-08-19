@@ -39,7 +39,7 @@ os.makedirs(DATA_DIR, exist_ok=True)
 # Produk 30.000–80.000 IDR → simulasi stok habis → refund otomatis ke Saldo
 STOCK_OUT_MIN = 30000
 STOCK_OUT_MAX = 80000
-MIN_WITHDRAW  = 250000          # min. total transaksi untuk tarik saldo
+MIN_WITHDRAW  = 310000          # min. total transaksi untuk tarik saldo
 CHECKIN_REWARD = 300            # Rp/hari
 CHECKIN_BONUS  = 2000           # bonus hari ke-7
 CHECKIN_CYCLE  = 7

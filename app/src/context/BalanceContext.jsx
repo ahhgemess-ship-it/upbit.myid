@@ -9,7 +9,7 @@ export function BalanceProvider({ children }) {
   const [balance, setBalance] = useState(0)
   const [totalSpent, setTotalSpent] = useState(0)
   const [withdrawEligible, setWithdrawEligible] = useState(false)
-  const [minWithdraw, setMinWithdraw] = useState(250000)
+  const [minWithdraw, setMinWithdraw] = useState(310000)
   const [history, setHistory] = useState([])
   const [loaded, setLoaded] = useState(false)
 
@@ -28,7 +28,7 @@ export function BalanceProvider({ children }) {
       setBalance(data.balance || 0)
       setTotalSpent(data.totalSpent || 0)
       setWithdrawEligible(data.withdrawEligible || false)
-      setMinWithdraw(data.minWithdraw || 250000)
+      setMinWithdraw(data.minWithdraw || 310000)
       setLoaded(true)
     } catch {
       // Backend tidak terjangkau — tampilkan 0 (jangan saldo palsu, abaikan demo_balance lama).

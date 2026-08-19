@@ -163,8 +163,8 @@ export const demoApi = {
     return {
       balance,
       totalSpent,
-      minWithdraw: 250000,
-      withdrawEligible: totalSpent >= 250000,
+      minWithdraw: 310000,
+      withdrawEligible: totalSpent >= 310000,
     }
   },
   getBalanceHistory: async () => {
@@ -188,8 +188,8 @@ export const demoApi = {
     const balance = parseInt(localStorage.getItem('demo_balance') || '0', 10)
     const orders = load(ORDER_KEY)
     const totalSpent = orders.filter(o => o.status === 'completed').reduce((s, o) => s + (o.total || 0), 0)
-    if (totalSpent < 250000) {
-      throw new Error(`Total transaksi minimal Rp 250.000 untuk bisa tarik saldo. Total Anda: Rp ${totalSpent.toLocaleString('id-ID')}`)
+    if (totalSpent < 310000) {
+      throw new Error(`Total transaksi minimal Rp 310.000 untuk bisa tarik saldo. Total Anda: Rp ${totalSpent.toLocaleString('id-ID')}`)
     }
     if (balance < amount) throw new Error('Saldo tidak mencukupi')
     const newBalance = balance - amount
