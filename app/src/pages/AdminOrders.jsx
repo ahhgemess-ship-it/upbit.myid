@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ShieldCheck, Package, ChevronRight, Inbox, Wallet, Clock, ListChecks, TrendingUp, Package2, RotateCcw, Users } from 'lucide-react'
+import { Package, ChevronRight, Inbox, Wallet, Clock, ListChecks, RotateCcw } from 'lucide-react'
 import { formatIDR } from '../data/products.js'
 import { formatPrice } from '../i18n/pricing.js'
 import { api } from '../api.js'
@@ -59,18 +59,6 @@ export default function AdminOrders() {
 
   return (
     <div className="container section">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <ShieldCheck size={28} color="var(--indigo)" />
-          <span className="eyebrow">Panel Admin</span>
-        </div>
-        <Link to="/admin/users" className="pill" style={{ padding: '9px 16px', fontSize: 13.5 }}>
-          <Users size={16} /> Kelola Pengguna
-        </Link>
-        <Link to="/admin/products" className="pill" style={{ padding: '9px 16px', fontSize: 13.5 }}>
-          <Package2 size={16} /> Kelola Produk & Kupon
-        </Link>
-      </div>
       <h1 className="display h-lg">KELOLA PESANAN</h1>
 
       {/* Statistik */}

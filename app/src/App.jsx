@@ -3,6 +3,7 @@ import { Routes, Route, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import Navbar from './components/Navbar.jsx'
 import Footer from './components/Footer.jsx'
+import AdminLayout from './components/AdminLayout.jsx'
 import Home from './pages/Home.jsx'
 import Store from './pages/Store.jsx'
 import ProductDetail from './pages/ProductDetail.jsx'
@@ -16,6 +17,7 @@ import OrderDetail from './pages/OrderDetail.jsx'
 import Account from './pages/Account.jsx'
 import Balance from './pages/Balance.jsx'
 import AdminOrders from './pages/AdminOrders.jsx'
+import AdminDashboard from './pages/AdminDashboard.jsx'
 import AdminUsers from './pages/AdminUsers.jsx'
 import AdminOrderDetail from './pages/AdminOrderDetail.jsx'
 import AdminProducts from './pages/AdminProducts.jsx'
@@ -45,10 +47,11 @@ function Page({ children }) {
 
 export default function App() {
   const location = useLocation()
+  const isAdminRoute = location.pathname.startsWith('/admin')
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <ScrollToTop />
-      <Navbar />
+      {!isAdminRoute && <Navbar />}
       <div style={{ flex: 1 }}>
         <AnimatePresence mode="wait">
           <Routes location={location} key={location.pathname}>
@@ -62,18 +65,19 @@ export default function App() {
             <Route path="/orders/:id" element={<Page><OrderDetail /></Page>} />
             <Route path="/account" element={<Page><Account /></Page>} />
             <Route path="/balance" element={<Page><Balance /></Page>} />
-            <Route path="/admin" element={<Page><AdminOrders /></Page>} />
-            <Route path="/admin/users" element={<Page><AdminUsers /></Page>} />
-            <Route path="/admin/products" element={<Page><AdminProducts /></Page>} />
-            <Route path="/admin/coupons" element={<Page><AdminCoupons /></Page>} />
-            <Route path="/admin/:id" element={<Page><AdminOrderDetail /></Page>} />
+            <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
+            <Route path="/admin/orders" element={<AdminLayout><AdminOrders /></AdminLayout>} />
+            <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
+            <Route path="/admin/products" element={<AdminLayout><AdminProducts /></AdminLayout>} />
+            <Route path="/admin/coupons" element={<AdminLayout><AdminCoupons /></AdminLayout>} />
+            <Route path="/admin/:id" element={<AdminLayout><AdminOrderDetail /></AdminLayout>} />
             <Route path="/about" element={<Page><About /></Page>} />
             <Route path="/login" element={<Page><Auth /></Page>} />
             <Route path="*" element={<Page><NotFound /></Page>} />
           </Routes>
         </AnimatePresence>
       </div>
-      <Footer />
+      {!isAdminRoute && <Footer />}
     </div>
   )
 }

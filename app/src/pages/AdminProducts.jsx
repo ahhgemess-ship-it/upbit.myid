@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
-import { Package, ArrowLeft, Plus, Pencil, Trash2, X, Check, Tag, Upload, Image as ImageIcon } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, Upload, Image as ImageIcon } from 'lucide-react'
 import { formatIDR, applyDiscount } from '../data/products.js'
 import { api } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -49,22 +48,12 @@ export default function AdminProducts() {
 
   return (
     <div className="container section">
-      <Link to="/admin" className="btn-link" style={{ marginBottom: 20, border: 'none', display: 'inline-flex' }}>
-        <ArrowLeft size={18} /> Kembali ke pesanan
-      </Link>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Package size={26} color="var(--indigo)" />
-          <span className="eyebrow">Panel Admin</span>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Link to="/admin/coupons" className="pill" style={{ padding: '9px 16px', fontSize: 13.5 }}><Tag size={16} /> Kupon</Link>
-          <button className="pill pill-indigo" style={{ padding: '9px 16px', fontSize: 13.5 }} onClick={() => setEditing('new')}>
-            <Plus size={16} /> Tambah Produk
-          </button>
-        </div>
+        <h1 className="display h-lg">KELOLA PRODUK</h1>
+        <button className="pill pill-indigo" style={{ padding: '9px 16px', fontSize: 13.5 }} onClick={() => setEditing('new')}>
+          <Plus size={16} /> Tambah Produk
+        </button>
       </div>
-      <h1 className="display h-lg">KELOLA PRODUK</h1>
       <p className="text-muted" style={{ fontSize: 14, marginTop: 8, maxWidth: 600 }}>
         Tambah/ubah/hapus produk, atur stok, harga, diskon & jadwalnya. Perubahan langsung tampil di storefront.
       </p>

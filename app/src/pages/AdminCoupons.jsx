@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { Tag, ArrowLeft, Plus, Trash2, Power, Sparkles, Copy, Check } from 'lucide-react'
+import { Plus, Trash2, Power, Sparkles, Copy, Check } from 'lucide-react'
 import { formatIDR } from '../data/products.js'
 import { api } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -52,13 +51,6 @@ export default function AdminCoupons() {
 
   return (
     <div className="container section">
-      <Link to="/admin/products" className="btn-link" style={{ marginBottom: 20, border: 'none', display: 'inline-flex' }}>
-        <ArrowLeft size={18} /> Kelola produk
-      </Link>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-        <Tag size={26} color="var(--indigo)" />
-        <span className="eyebrow">Panel Admin</span>
-      </div>
       <h1 className="display h-lg">KELOLA KUPON</h1>
       <p className="text-muted" style={{ fontSize: 14, marginTop: 8, maxWidth: 600 }}>
         Buat kupon sendiri atau generate kode otomatis. Atur batas pemakaian, minimal belanja & kedaluwarsa.

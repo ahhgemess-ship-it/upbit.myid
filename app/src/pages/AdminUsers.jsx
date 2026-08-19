@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Users, Search, ChevronRight, ShieldCheck, Mail, Calendar, Coins,
+  Search, ChevronRight, Mail, Calendar, Coins,
   Gift, RefreshCw, ShoppingBag, Banknote, Clock, X, Wallet, Edit3,
   RotateCcw, Ban, Check, AlertCircle, TrendingUp, ArrowUpRight, ArrowDownLeft,
   User as UserIcon,
@@ -117,21 +117,6 @@ export default function AdminUsers() {
 
   return (
     <div className="container section">
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Users size={28} color="var(--indigo)" />
-          <span className="eyebrow">Panel Admin</span>
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <Link to="/admin/products" className="pill" style={{ padding: '9px 16px', fontSize: 13 }}>
-            <ShoppingBag size={15} /> Produk & Kupon
-          </Link>
-          <Link to="/admin/orders" className="pill" style={{ padding: '9px 16px', fontSize: 13 }}>
-            <ShieldCheck size={15} /> Pesanan
-          </Link>
-        </div>
-      </div>
       <h1 className="display h-lg">KELOLA PENGGUNA</h1>
 
       {/* Search */}
