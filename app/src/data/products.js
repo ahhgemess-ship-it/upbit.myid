@@ -533,8 +533,9 @@ export const categories = [...new Set(products.map((p) => p.category))]
 const flashOf = (p, i) => {
   const mult = 3 + ((i * 3) % 6) * 0.2 // 3.0–4.0 → diskon ~67–75%
   const originalPrice = Math.round((p.price * mult) / 5000) * 5000
-  const stock = 5 + ((i * 31) % 26) // 5–30 (acak stabil per produk)
   const sold = 300 + ((i * 53) % 501) // 300–800 (total terjual, acak stabil)
+  const left = 10 + ((i * 17) % 41) // 10–50 (sisa stok, acak stabil)
+  const stock = sold + left // total stok = terjual + sisa → "Sisa" selalu 10–50 (tidak pernah 0)
   return {
     ...p,
     discount: Math.round((1 - p.price / originalPrice) * 100),
