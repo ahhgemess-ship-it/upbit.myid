@@ -3,235 +3,288 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-// ── Persona reviewer: nama + bahasa + foto profil (randomuser.me) ──────────────
-// gender 'm'|'f' menentukan folder foto, idx = nomor foto (0-99) yang unik.
+// ── Persona reviewer: nama + bahasa + gender ──────────────────────────────────
+// 60% Indonesia (60 orang) + 40% luar negeri (40 orang: en/zh/vi/ja/ms/hi/de/ru)
+// gender 'm'|'f' menentukan folder foto randomuser.me (indeks unik).
 const PERSONAS = [
-  // Indonesia
+  // ── Indonesia (60) ──
   ['Budi Santoso', 'id', 'm'], ['Rizki Pratama', 'id', 'm'], ['Dewi Lestari', 'id', 'f'],
   ['Agus Setiawan', 'id', 'm'], ['Putri Maharani', 'id', 'f'], ['Andi Wijaya', 'id', 'm'],
-  ['Siti Rahayu', 'id', 'f'], ['Bayu Saputra', 'id', 'm'], ['Nabila Az-zahra', 'id', 'f'],
+  ['Siti Rahayu', 'id', 'f'], ['Bayu Saputra', 'id', 'm'], ['Nabila Azzahra', 'id', 'f'],
   ['Fajar Ramadhan', 'id', 'm'], ['Indah Permata', 'id', 'f'], ['Doni Kurniawan', 'id', 'm'],
-  ['Rina Wati', 'id', 'f'], ['Eko Prasetyo', 'id', 'm'], ['Maya Sari', 'id', 'f'], ['Hendra Gunawan', 'id', 'm'],
-  // English
+  ['Rina Wati', 'id', 'f'], ['Eko Prasetyo', 'id', 'm'], ['Maya Sari', 'id', 'f'],
+  ['Hendra Gunawan', 'id', 'm'], ['Tika Andini', 'id', 'f'], ['Yoga Firmansyah', 'id', 'm'],
+  ['Lia Kartika', 'id', 'f'], ['Dimas Aditya', 'id', 'm'], ['Ratna Dewi', 'id', 'f'],
+  ['Gilang Ramadhan', 'id', 'm'], ['Ayu Lestari', 'id', 'f'], ['Farhan Maulana', 'id', 'm'],
+  ['Sinta Wulandari', 'id', 'f'], ['Rangga Saputra', 'id', 'm'], ['Nurul Hidayah', 'id', 'f'],
+  ['Adit Nugroho', 'id', 'm'], ['Citra Ayu', 'id', 'f'], ['Ilham Fauzi', 'id', 'm'],
+  ['Kartika Sari', 'id', 'f'], ['Rizky Hidayat', 'id', 'm'], ['Mega Puspita', 'id', 'f'],
+  ['Bagus Setiawan', 'id', 'm'], ['Vina Meliana', 'id', 'f'], ['Joko Susilo', 'id', 'm'],
+  ['Wulan Dwi', 'id', 'f'], ['Arif Hidayat', 'id', 'm'], ['Salsa Nabila', 'id', 'f'],
+  ['Bima Arya', 'id', 'm'], ['Nadia Safitri', 'id', 'f'], ['Raka Aditya', 'id', 'm'],
+  ['Zahra Aulia', 'id', 'f'], ['Dimas Prayoga', 'id', 'm'], ['Rani Maharani', 'id', 'f'],
+  ['Fikri Ramadhan', 'id', 'm'], ['Intan Permatasari', 'id', 'f'], ['Galih Pratama', 'id', 'm'],
+  ['Dinda Ayu', 'id', 'f'], ['Rizky Ananda', 'id', 'm'], ['Tiara Maharani', 'id', 'f'],
+  ['Andre Firmansyah', 'id', 'm'], ['Nadia Ayu', 'id', 'f'], ['Yusuf Maulana', 'id', 'm'],
+  ['Syifa Aulia', 'id', 'f'], ['Rahmat Hidayat', 'id', 'm'], ['Diah Ayu', 'id', 'f'],
+  ['Fadhil Ramadhan', 'id', 'm'], ['Melati Putri', 'id', 'f'], ['Rizwan Hakim', 'id', 'm'],
+  // ── English (10) ──
   ['Jake Miller', 'en', 'm'], ['Emily Carter', 'en', 'f'], ['Liam Walker', 'en', 'm'],
   ['Sophia Bennett', 'en', 'f'], ['Noah Reed', 'en', 'm'], ['Olivia Brooks', 'en', 'f'],
   ['Ethan Hayes', 'en', 'm'], ['Ava Morgan', 'en', 'f'], ['Mason Cooper', 'en', 'm'],
-  ['Mia Foster', 'en', 'f'], ['Lucas Gray', 'en', 'm'], ['Chloe Turner', 'en', 'f'],
-  ['Daniel Price', 'en', 'm'], ['Grace Sullivan', 'en', 'f'], ['Ryan Cole', 'en', 'm'], ['Hannah Ross', 'en', 'f'],
-  // China
+  ['Chloe Turner', 'en', 'f'],
+  // ── China (10) ──
   ['王伟', 'zh', 'm'], ['李娜', 'zh', 'f'], ['张敏', 'zh', 'f'], ['刘洋', 'zh', 'm'],
   ['陈静', 'zh', 'f'], ['杨帆', 'zh', 'm'], ['黄磊', 'zh', 'm'], ['周婷', 'zh', 'f'],
-  ['吴俊', 'zh', 'm'], ['徐丽', 'zh', 'f'], ['孙浩', 'zh', 'm'], ['朱琳', 'zh', 'f'],
-  ['马涛', 'zh', 'm'], ['胡燕', 'zh', 'f'], ['郭鹏', 'zh', 'm'], ['林夏', 'zh', 'f'],
-  // Vietnam
+  ['吴俊', 'zh', 'm'], ['徐丽', 'zh', 'f'],
+  // ── Vietnam (8) ──
   ['Nguyễn Văn An', 'vi', 'm'], ['Trần Thị Hương', 'vi', 'f'], ['Lê Minh Tuấn', 'vi', 'm'],
   ['Phạm Thu Hà', 'vi', 'f'], ['Hoàng Văn Nam', 'vi', 'm'], ['Vũ Thị Lan', 'vi', 'f'],
-  ['Đặng Quốc Bảo', 'vi', 'm'], ['Bùi Thị Mai', 'vi', 'f'], ['Đỗ Văn Hùng', 'vi', 'm'],
-  ['Ngô Thị Thảo', 'vi', 'f'], ['Dương Minh Khoa', 'vi', 'm'], ['Lý Thị Ngọc', 'vi', 'f'],
-  ['Phan Văn Đức', 'vi', 'm'], ['Võ Thị Linh', 'vi', 'f'], ['Đinh Quang Huy', 'vi', 'm'], ['Trịnh Thu Trang', 'vi', 'f'],
-  // Japan
+  ['Đặng Quốc Bảo', 'vi', 'm'], ['Bùi Thị Mai', 'vi', 'f'],
+  // ── Japan (6) ──
   ['田中翔太', 'ja', 'm'], ['佐藤美咲', 'ja', 'f'], ['鈴木大輔', 'ja', 'm'], ['高橋愛', 'ja', 'f'],
-  ['伊藤健一', 'ja', 'm'], ['渡辺さくら', 'ja', 'f'], ['山本拓也', 'ja', 'm'], ['中村優子', 'ja', 'f'],
-  ['小林直樹', 'ja', 'm'], ['加藤陽菜', 'ja', 'f'], ['吉田亮', 'ja', 'm'], ['山田真央', 'ja', 'f'],
-  ['佐々木涼', 'ja', 'm'], ['松本ゆい', 'ja', 'f'], ['井上和也', 'ja', 'm'], ['木村彩', 'ja', 'f'],
+  ['伊藤健一', 'ja', 'm'], ['渡辺さくら', 'ja', 'f'],
+  // ── Malay (2) ──
+  ['Ahmad Faiz', 'ms', 'm'], ['Nur Aisyah', 'ms', 'f'],
+  // ── Hindi (2) ──
+  ['Arjun Sharma', 'hi', 'm'], ['Priya Patel', 'hi', 'f'],
+  // ── German (1) ──
+  ['Jonas Weber', 'de', 'm'],
+  // ── Russian (1) ──
+  ['Алексей Соколов', 'ru', 'm'],
 ]
 
-// Komentar gaya manusia biasa (santai, bukan baku, kadang typo/lowercase).
-// Fokus pengalaman beli akun digital: cepat, legit, murah, garansi, respon.
+// ── Komentar detail ala manusia asli ──────────────────────────────────────────
+// Multi-kalimat, bahasa santai, kadang typo/singkatan, pakai emoji ganda/tripel.
+// {product} diganti nama produk saat seed.
 const COMMENTS = {
   id: [
-    'mantap sih ini, prosesnya cepet bgt ga sampe 10 menit udah masuk',
-    'awalnya ragu takut kena tipu, ternyata legit. makasih bang',
-    'udah langganan 3 bulan aman2 aja, lanjut terus dah',
-    'harga miring kualitas oke, recommended pokoknya',
-    'fast respon, adminnya ramah juga. bintang 5 deh',
-    'akun normal ga ada masalah, login lancar jaya',
-    'telat dikit tadi tp akhirnya masuk juga, overall puas',
-    'murah meriah, dibanding beli langsung jauh lebih hemat',
-    'garansinya kepake kemaren akun bermasalah langsung diganti, top',
-    'ga nyangka semurah ini bisa dapet akun ori, gokil',
-    'pelayanan cepat barang sesuai deskripsi, thanks gan',
-    'transaksi ke sekian kali tetep aman, langganan disini terus',
-    'respon agak lama tp hasilnya memuaskan kok',
-    'baru pertama beli disini dan ga kecewa, bakal balik lagi',
-    'akun aktif sesuai durasi, ga ada drama. mantul',
-    'cuss langsung aktif ga ribet, recommended seller',
-    'worth it bgt harganya, premium beneran bukan abal2',
-    'sempet error pas login tp dibantu sampe beres, makasih adminnya',
-    'lebih murah dari official fungsi sama persis, puas',
-    'pengiriman kilat ga sampe 5 menit udh dpt akunnya',
-    'udah 2x order disini lancar terus, trusted lah',
-    'akunnya private bukan sharing, aman dipake kerja',
-    'ngebantu bgt buat kerjaan, harganya bersahabat',
-    'oke punya sesuai ekspektasi, lanjutkan bos',
-    'csnya responsif bgt, pertanyaan dijawab cepet',
+    'langganan {product} udah 3 bulan jalan, aman terus ga pernah kena masalah. pengirimannya juga cepet banget, ga nyangka bisa semudah ini 😂😂',
+    'awalnya ragu takut ketipu, ternyata asli beneran. {product} langsung aktif, login lancar jaya. mantap pokoknya 👍👍',
+    'akunnya ori bukan abal-abal, udah gw pake buat kerja tiap hari. worth it banget buat harga segini, ga nyesel 🔥🔥',
+    'prosesnya cepet bgt, bayar langsung dikirim ga pake lama. {product} sesuai deskripsi, makasih gan 😄',
+    'csnya ramah & fast respon, pas akun sempet bermasalah langsung diganti tanpa ribet. recommended seller sih ini ❤️❤️',
+    'murah meriah tapi kualitas premium, {product} jalan mulus. udah order 2x disini dan selalu puas 😍',
+    'ga nyangka beli {product} di harga segini bisa dapet kualitas sebagus ini. gokil lah pokoknya 😂🔥',
+    'baru pertama beli disini, tadinya mikir lama mau cobain. ternyata aman, {product} langsung nyala. bakal repeat order 😁👍',
+    'pengiriman kilat ga sampe 5 menit akun udah masuk email. {product} private, aman dipake pribadi 🥰',
+    'langganan 2 bulan ini, {product} stabil terus. garansi juga bagus, pernah kena error langsung dibantu sampe beres 👍',
+    'harga jauh lebih murah dari official, fungsi 100% sama. {product} recommended buat yang mau hemat 😎🔥',
+    'sempet telat dikit tadi, tapi dikasih info terus sama adminnya. hasilnya memuaskan, {product} normal semua 😊',
+    'udah 3x order disini, selalu aman & cepet. {product} bikin kerjaan gw lebih gampang, thanks admin 🙏🙏',
+    'dibanding beli langsung di official, ini jauh lebih hemat. {product} ga ada bedanya, mantul 👍👍',
+    'adminnya sabar bgt jelasin step by step, cocok buat yang baru pertama kali kayak gw. akhirnya beres juga 😊🙏',
+    'akun {product} langsung bisa dipake, ga ada ribet aktivasi. recommended pokoknya buat yang mau cepet 🔥',
+    'udah langganan 4 bulan, ga pernah zonk. {product} selalu sesuai sama yang dijanjikan 😁',
+    'tempat beli akun langganan gw sekarang, {product} selalu keisi on time. trusted seller 100% 👍',
+    'murah, cepet, aman. tiga-tiganya dapet disini. {product} recommended banget 😂😂',
+    'pas checkout ragu, pas nerima akun langsung senyum sendiri. {product} mulus, thanks bang 🙏🔥',
+    'kualitas {product} nya premium beneran, ga kayak yang murahan. worth every rupiah 😍😍',
+    'sempet takut kena scam, tapi ternyata legit. udah 2 minggu pake {product} aman terus 😅😂',
+    'fast respon & fast delivery, adminnya juga baik. {product} recommended buat kalian semua 👍',
+    'bukan yang paling murah, tapi paling worth it menurut gw. {product} nya awet & aman 😎',
+    'gw butuh {product} buat kerjaan, untung nemu toko ini. hemat banyak, kualitas oke 😁🔥',
+    'pengalaman beli paling mulus sejauh ini. {product} langsung aktif, ga pake drama 😂👍',
+    'sudah repeat order 3x, semuanya lancar. {product} emang paling oke di sini ❤️',
+    'awalnya cuma coba-coba, ternyata jadi langganan. {product} bagus & adminnya fast respon 😊',
+    'garansi beneran dipake, akun {product} bermasalah langsung diganti baru. mantap pokoknya 🙏',
+    'harga bersahabat buat kantong mahasiswa, {product} jalan normal. makasih banyak 🙏🙏',
+    'dari semua toko yang pernah gw coba, ini paling fast & reliable. {product} recommended 🔥🔥',
+    'lucu banget pas checkout sempet bingung, tapi dibantu admin sampe beres. {product} nya mantap 😂🙏',
+    'akun {product} udah gw pake buat streaming & kerja, lancar jaya. ga ada komplain 👍',
+    'langganan 6 bulan, {product} stabil terus. ini toko langganan gw sekarang 😁',
+    'kadang telat dikit sih, tapi kualitas {product} nya ga pernah mengecewakan 😊',
+    'beli {product} buat hadiah adek gw, dia puas banget. makasih toko 👍😊',
+    'transaksi aman, {product} sesuai pesanan. ga ada yang perlu dikeluhin 😄',
+    'cuma modal coba, eh ternyata {product} nya bagus banget. bakal balik lagi 😂🔥',
+    'admin fast respon 24 jam, pernah tanya jam 2 pagi masih dibales. top lah 👍🙏',
+    'akun {product} private, ga sharing. aman buat dipake kerjaan serius 🔥',
+    'murah tapi bukan berarti murahan, {product} kualitasnya premium. puas 😍',
+    'prosesnya simple banget, ga ribet. {product} langsung bisa dipake, makasih 🙏',
+    'udah 5x order disini, ga pernah kecewa. {product} emang juara 👍🔥',
+    'tempat beli {product} paling oke, harga miring kualitas juara. recommended 😎',
+    'biasanya gw gampang ragu, tapi toko ini bikin percaya. {product} aman & cepet 😁',
+    'akunnya langsung aktif, ga perlu nunggu lama. {product} sesuai ekspektasi 👍',
+    'sangat membantu buat kerjaan gw, {product} nya lancar terus. makasih banyak 🙏😊',
+    'dari harga segini dapet {product} sekualitas ini, gila sih. mantap 🔥🔥',
+    'repeat order lagi, karena emang puas sama pelayanan & kualitas {product} ❤️',
+    'pelayanan oke, {product} oke, harga oke. lengkap semua disini 😂👍',
   ],
   en: [
-    'works perfectly, got my account in like 5 mins. legit seller',
-    'was a bit skeptical at first but its 100% legit, thanks!',
-    'been using it for 2 months now, no issues at all',
-    'way cheaper than official and works the same, no complaints',
-    'fast delivery and friendly support, easy 5 stars',
-    'account works fine, login was smooth no problems',
-    'took a little while but worth the wait, happy customer',
-    'honestly didnt expect it to be this smooth, recommended',
-    'great price for premium quality, will buy again',
-    'had a small issue and support fixed it right away, top notch',
-    'super fast, the account was ready almost instantly',
-    'ordered a few times now and its always reliable',
-    'support was a bit slow to reply but sorted it out in the end',
-    'first time buying here and not disappointed at all',
-    'private account not shared, safe to use for work',
-    'cant believe how cheap this is for an original account',
-    'smooth transaction, item exactly as described. cheers',
-    'saved me a lot of money compared to paying full price',
-    'legit, fast and cheap, what more can you ask for',
-    'account stayed active the whole duration, no drama',
-    'delivery was basically instant, didnt even have to wait',
-    'really helpful for my work and great value too',
-    'everything as promised, solid seller 👍',
-    'no issues so far, already a month in',
-    'quick reply and super easy process, thanks a lot',
+    "got my {product} within 5 minutes, super smooth. legit seller, would recommend 🙌",
+    "was skeptical at first but it's 100% legit. {product} works perfectly, no issues at all 👍",
+    "been using {product} for 2 months now and everything is flawless. great value for money 💯",
+    "way cheaper than official and works exactly the same. no complaints whatsoever 😄",
+    "fast delivery, friendly support, and the {product} works great. easy 5 stars ⭐⭐⭐",
+    "account is private and secure, been using it daily for work. totally worth it 🔥",
+    "had a tiny hiccup but support fixed it right away. {product} is solid, thanks team 🙏",
+    "honestly didn't expect it to be this smooth. {product} delivered as promised 😎",
+    "super fast, the {product} was ready almost instantly. great experience overall 👍",
+    "ordered a few times now and it's always reliable. this is my go-to store now 🔥",
+    "support was a bit slow to reply but they sorted it out in the end. {product} works fine 😊",
+    "first time buying here and definitely not disappointed. {product} is legit 👍",
+    "saved a ton compared to paying full price. {product} works just like the official one 💯",
+    "legit, fast and cheap — what more can you ask for. {product} recommended 🙌",
+    "delivery was basically instant and the {product} account is in perfect condition 😄",
+    "really helped with my work, {product} runs smoothly every day. thanks a lot 🙏",
+    "everything as promised, solid seller. {product} is worth every cent ⭐⭐⭐",
+    "no issues so far, already a month into using {product}. highly recommend 👍",
+    "quick replies and super easy process. the {product} works like a charm 😎",
+    "came across this store by chance and glad I did. {product} is amazing value 🔥",
+    "the support team is super responsive, answered all my questions fast. {product} is great 🙌",
+    "used the warranty once and they replaced the {product} account without any hassle 👍",
+    "honestly the best deal I've found for {product}. smooth transaction all the way 💯",
+    "bought {product} for my brother and he loves it. thanks for the great service 😊",
+    "very reliable store, {product} still going strong after 3 months. would buy again 🔥",
   ],
   zh: [
-    '很快就到账了，五分钟不到，靠谱',
-    '一开始有点担心怕被骗，结果是真的，谢谢老板',
-    '已经用了两个月了一点问题都没有',
-    '比官方便宜太多了功能一样，满意',
-    '发货快客服态度也好，五星好评',
-    '账号正常登录很顺畅，没毛病',
-    '等了一小会儿不过值了，挺满意的',
-    '没想到这么顺利，推荐给大家',
-    '价格实惠质量也不错，下次还来',
-    '之前有点小问题客服马上就解决了，赞一个',
-    '基本秒到账，几乎不用等',
-    '买过好几次了一直都很稳',
-    '客服回复稍微慢了点不过最后还是解决了',
-    '第一次买没有失望，会回购的',
-    '是独享号不是共享的，工作用很安全',
-    '这个价格能买到正版真是没想到',
-    '交易很顺利和描述一样，谢谢',
-    '比原价省了不少钱',
-    '又便宜又快又靠谱，没得挑',
-    '账号整个周期都正常，没有幺蛾子',
-    '物超所值，强烈推荐',
-    '客服很耐心，问什么都很快回',
+    '五分钟就到账了，{product}直接能用，靠谱 👍',
+    '一开始担心被骗，结果是真货，{product}用得很顺 😄',
+    '用了两个月一点问题都没有，性价比超高 💯',
+    '比官方便宜太多了，功能一模一样，满意 😊',
+    '发货快客服态度也好，{product}没毛病，五星好评 ⭐⭐⭐',
+    '账号是独享的，工作用很放心，推荐 🔥',
+    '客服回复很快，问题一下就解决了，赞 👍',
+    '基本秒到账，{product}质量没得说 😎',
+    '买过好几次了，一直很稳定，老顾客了 🙌',
+    '这个价格能买到正版真是没想到，太值了 😂',
+    '交易很顺利和描述一样，{product}好用，谢谢老板 🙏',
+    '客服很耐心，问什么都会快速回复，体验很好 😊',
+    '物超所值，用了快一个月很满意，会回购 💯',
+    '比原价省了不少钱，{product}完全够用，推荐 👍',
+    '刚开始有点担心，现在完全放心了，{product}很好用 🔥',
   ],
   vi: [
-    'nhanh thật chưa tới 5 phút đã có tài khoản, uy tín',
-    'lúc đầu hơi lo bị lừa nhưng đúng là thật, cảm ơn shop',
-    'dùng 2 tháng rồi mà không lỗi gì cả',
-    'rẻ hơn official nhiều mà xài y chang, ưng',
-    'giao nhanh hỗ trợ nhiệt tình, 5 sao',
-    'tài khoản đăng nhập mượt không vấn đề gì',
-    'chờ chút xíu nhưng đáng, hài lòng nha',
-    'không ngờ mượt vậy luôn, recommend',
-    'giá ổn chất lượng tốt, lần sau ghé tiếp',
-    'bị lỗi nhẹ shop fix liền, quá ok',
-    'vào tài khoản gần như tức thì',
-    'mua mấy lần rồi lần nào cũng ổn',
-    'shop rep hơi chậm tí nhưng cuối cùng cũng xong',
-    'lần đầu mua mà không thất vọng, sẽ quay lại',
-    'tài khoản riêng không phải dùng chung, yên tâm làm việc',
-    'giá này mà có acc xịn thì hết nước chấm',
-    'giao dịch suôn sẻ đúng như mô tả, cảm ơn',
-    'tiết kiệm được khối tiền so với mua thẳng',
-    'rẻ nhanh uy tín, còn gì bằng',
-    'tài khoản dùng đủ hạn không drama gì hết',
-    'đáng đồng tiền, sẽ giới thiệu bạn bè',
-    'cskh tư vấn nhiệt tình trả lời nhanh',
+    'chưa tới 5 phút đã có {product}, giao nhanh dễ sợ luôn 👍',
+    'lúc đầu hơi lo bị lừa nhưng đúng là thật, {product} xài mượt lắm 😄',
+    'dùng 2 tháng rồi không lỗi gì cả, giá này quá ổn 💯',
+    'rẻ hơn official nhiều mà xài y chang, ưng ghê 😊',
+    'giao nhanh hỗ trợ nhiệt tình, {product} 5 sao ⭐⭐⭐',
+    'tài khoản riêng không dùng chung, yên tâm làm việc 🔥',
+    'bị lỗi nhẹ shop fix liền, quá ok, cảm ơn shop 🙏',
+    'vào tài khoản gần như tức thì, {product} đúng như mô tả 👍',
+    'mua mấy lần rồi lần nào cũng ổn, tin tưởng lắm 🙌',
+    'giá này mà có {product} xịn thì hết nước chấm 😂',
+    'tiết kiệm được khối tiền so với mua thẳng, đáng lắm 💯',
+    'cskh tư vấn nhiệt tình trả lời nhanh, {product} dùng ngon 😊',
   ],
   ja: [
-    '5分くらいで届きました、ちゃんとしてます',
-    '最初は不安でしたが本物でした、ありがとうございます',
-    '2ヶ月使ってますが全く問題ないです',
-    '公式よりかなり安いのに同じように使えて満足',
-    '発送早いしサポートも丁寧、星5つ',
-    'アカウント普通にログインできて問題なしでした',
-    '少し待ちましたが待つ価値ありでした',
-    'こんなにスムーズだと思わなかった、おすすめ',
-    '安いのに品質もいい、また買います',
-    'ちょっとトラブったけどすぐ対応してくれた、最高',
-    'ほぼ即時に届きました',
-    '何回か買ってるけど毎回安定してます',
-    '返信は少し遅めでしたが最終的に解決しました',
-    '初めて買いましたが全然問題なかったです',
-    '共有じゃなく専用アカウントなので仕事でも安心',
-    'この値段で正規が手に入るとは思わなかった',
-    '取引スムーズで説明通りでした、感謝',
-    '正規で買うよりかなり節約できました',
-    '安い早い安心、文句なしです',
-    '期間中ずっと使えてトラブルなしでした',
-    'コスパ最高、リピートします',
-    'サポートの対応が早くて助かりました',
+    '5分くらいで届きました、{product}ちゃんと使えます 👍',
+    '最初は不安でしたが本物でした、満足してます 😄',
+    '2ヶ月使ってますが全く問題ないです、コスパ最高 💯',
+    '公式よりかなり安いのに同じように使えて満足 😊',
+    '発送早いしサポートも丁寧、{product}星5つ ⭐⭐⭐',
+    '専用アカウントなので仕事でも安心、おすすめ 🔥',
+    'ちょっとトラブったけどすぐ対応してくれた、最高 👍',
+    'ほぼ即時に届きました、{product}説明通りでした 🙏',
+    '何回か買ってるけど毎回安定してます、リピート確定 😎',
+    'この値段で正規が手に入るとは思わなかった、感激 😂',
+  ],
+  ms: [
+    'proses laju, {product} terus boleh guna. memang berbaloi 👍',
+    'awal tu risau kena tipu, rupanya betul. {product} elok je 😄',
+    'dah langgan 2 bulan, takde masalah langsung. mantap 💯',
+    'murah dari official, fungsi sama je. puas hati 😊',
+    'support cepat layan, {product} memang recommended 🔥',
+    'beli beberapa kali dah, semuanya lancar. trusted 🙌',
+  ],
+  hi: [
+    '5 minute me account mil gaya, {product} bilkul kaam kar raha hai 👍',
+    'pehle dar raha tha fraud ka, par bilkul original hai. badhiya 😄',
+    '2 mahine se use kar raha hoon, koi dikkat nahi. value for money 💯',
+    'official se bahut sasta aur same kaam, kya baat hai 😊',
+    'fast delivery aur support bhi accha, {product} top hai 🔥',
+    'kayi baar order kiya, hamesha reliable. recommended 🙌',
+  ],
+  de: [
+    'Konto kam in 5 Minuten, {product} funktioniert einwandfrei 👍',
+    'war erst skeptisch, aber alles ist echt. {product} läuft super 😄',
+    'viel günstiger als offiziell und gleiche Qualität, top 💯',
+    'schnelle Lieferung und freundlicher Support, {product} empfehlenswert 🔥',
+  ],
+  ru: [
+    'аккаунт пришёл за 5 минут, {product} работает отлично 👍',
+    'сначала боялся обмана, но всё честно. {product} супер 😄',
+    'гораздо дешевле оригинала, качество то же, топ 💯',
+    'быстрая доставка и хорошая поддержка, рекомендую 🔥',
   ],
 }
+
+// Emoji ekstra buat variasi (ganda/tripel) — nempel di sebagian komentar.
+const EMOJI_EXTRA = [
+  '😂😂', '😂😂😂', '😭😭', '😭😭😭', '🔥🔥', '🔥🔥🔥', '👍👍', '❤️❤️',
+  '😍😍', '😁😁', '🙏🙏', '🤣🤣', '😅😅', '🥰🥰', '💯💯', '😎😎',
+]
 
 const rnd = (n) => Math.floor(Math.random() * n)
 const pick = (arr) => arr[rnd(arr.length)]
 const shuffle = (arr) => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1);[a[i], a[j]] = [a[j], a[i]] } return a }
 
-// Bobot bahasa: mayoritas Indonesia, China, English; Vietnam & Jepang lebih sedikit.
-const LANG_WEIGHT = { id: 3, zh: 3, en: 3, vi: 1, ja: 1 }
-// Ambil n reviewer berbeda dengan bias bahasa (sampling tanpa pengembalian).
-function pickReviewers(all, n) {
-  const pool = [...all]
-  const out = []
-  while (out.length < n && pool.length) {
-    const totalW = pool.reduce((s, u) => s + (LANG_WEIGHT[u.lang] || 1), 0)
-    let r = Math.random() * totalW
-    let idx = 0
-    for (; idx < pool.length - 1; idx++) { r -= (LANG_WEIGHT[pool[idx].lang] || 1); if (r <= 0) break }
-    out.push(pool.splice(idx, 1)[0])
-  }
-  return out
-}
 // Rating realistis: mayoritas 5, sebagian 4, sedikit 3.
 const weightedRating = () => { const r = Math.random(); return r < 0.62 ? 5 : r < 0.9 ? 4 : 3 }
 const pastDate = () => new Date(Date.now() - rnd(160) * 86400_000 - rnd(86400_000))
 
+// Bangun komentar: isi {product} + sesekali emoji ekstra di akhir.
+function buildComment(pool, productName) {
+  let c = pick(pool)
+  if (c.includes('{product}')) c = c.replaceAll('{product}', productName || 'produk ini')
+  if (Math.random() < 0.35) c = c + ' ' + pick(EMOJI_EXTRA)
+  return c
+}
+
 async function main() {
-  // 1) Upsert persona sebagai user (idempoten), simpan id + foto.
+  // 1) Upsert persona sebagai user (idempoten), kelompokkan ID vs luar negeri.
   const portraitIdx = { m: 1, f: 1 }
-  const users = []
+  const indonesian = []
+  const foreign = []
   for (let i = 0; i < PERSONAS.length; i++) {
     const [name, lang, gender] = PERSONAS[i]
     const idx = portraitIdx[gender]++
     const avatar = `https://randomuser.me/api/portraits/${gender === 'f' ? 'women' : 'men'}/${idx}.jpg`
     const email = `reviewer-${i}@reviews.local`
     const u = await prisma.user.upsert({
-      where: { email }, update: { name, picture: avatar },
+      where: { email },
+      update: { name, picture: avatar },
       create: { email, name, picture: avatar, role: 'USER' },
     })
-    users.push({ ...u, lang, avatar })
+    const p = { ...u, lang, avatar }
+    if (lang === 'id') indonesian.push(p)
+    else foreign.push(p)
   }
 
   // 2) Hapus ulasan seed lama (dari persona ini) agar idempoten.
-  await prisma.review.deleteMany({ where: { userId: { in: users.map((u) => u.id) } } })
+  await prisma.review.deleteMany({ where: { userId: { in: [...indonesian, ...foreign].map((u) => u.id) } } })
 
-  // 3) Untuk tiap produk → 8-13 ulasan dari persona acak (bahasa campur).
-  const productList = await prisma.product.findMany({ select: { id: true } })
+  // 3) Untuk tiap produk → 15–50 ulasan (dalam rentang 10–100), 60% ID / 40% luar.
+  //    Pakai createMany per produk (batch) biar cepat di DB remote.
+  const productList = await prisma.product.findMany({ select: { id: true, name: true } })
   let total = 0
   for (const p of productList) {
-    const n = 8 + rnd(6) // 8..13
-    const reviewers = pickReviewers(users, n)
-    const usedComments = new Set()
+    const n = 15 + rnd(36) // 15..50
+    const nId = Math.round(n * 0.6)
+    const reviewers = [
+      ...shuffle(indonesian).slice(0, nId),
+      ...shuffle(foreign).slice(0, n - nId),
+    ]
+    const used = new Set()
+    const rows = []
     for (const u of reviewers) {
-      const poolLang = COMMENTS[u.lang] ? u.lang : 'en'
-      let comment = pick(COMMENTS[poolLang])
+      const pool = COMMENTS[u.lang] || COMMENTS.en
+      let comment = buildComment(pool, p.name)
       let guard = 0
-      while (usedComments.has(comment) && guard++ < 8) comment = pick(COMMENTS[poolLang])
-      usedComments.add(comment)
-      await prisma.review.create({
-        data: {
-          productId: p.id, userId: u.id, name: u.name, avatar: u.avatar,
-          rating: weightedRating(), comment, createdAt: pastDate(),
-        },
+      while (used.has(comment) && guard++ < 10) comment = buildComment(pool, p.name)
+      used.add(comment)
+      rows.push({
+        productId: p.id, userId: u.id, name: u.name, avatar: u.avatar,
+        rating: weightedRating(), comment, createdAt: pastDate(),
       })
-      total++
+    }
+    if (rows.length) {
+      await prisma.review.createMany({ data: rows, skipDuplicates: true })
+      total += rows.length
     }
   }
-  console.log(`Seed ulasan selesai: ${total} ulasan untuk ${productList.length} produk (${users.length} persona, 5 bahasa).`)
+  console.log(`Seed ulasan selesai: ${total} ulasan untuk ${productList.length} produk (${indonesian.length} persona ID + ${foreign.length} luar negeri).`)
 }
 
 main().catch((e) => { console.error(e); process.exit(1) }).finally(() => prisma.$disconnect())
