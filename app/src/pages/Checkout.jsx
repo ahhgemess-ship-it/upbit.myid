@@ -17,7 +17,7 @@ import { useBalance } from '../context/BalanceContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 import { localizeTier } from '../i18n/productContent.js'
-import { usePricing, amountFor, USD_TO_IDR, USD_TO_CNY } from '../i18n/pricing.js'
+import { usePricing, amountFor, USD_TO_IDR, USD_TO_CNY, MYR_RATE } from '../i18n/pricing.js'
 
 const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((v || '').trim())
 
@@ -65,21 +65,24 @@ export default function Checkout() {
   const toCur = (idr) =>
     currency === 'USD' ? Math.round((idr * 100) / USD_TO_IDR)
       : currency === 'CNY' ? Math.round((idr * USD_TO_CNY * 100) / USD_TO_IDR)
-        : idr
+        : currency === 'MYR' ? Math.round((idr * 100) / MYR_RATE)
+          : idr
   const balanceInCur = toCur(balance)
   // Balance discount — harus setelah payable (fix TDZ crash), dalam mata uang pesanan.
   const balanceDiscount = useSaldo ? Math.min(balanceInCur, payable) : 0
   const finalPayable = Math.max(0, payable - balanceDiscount)
-  // Nominal crypto/QRIS: konversi ke ekuivalen IDR dulu (USD & CNY → IDR).
+  // Nominal crypto/QRIS: konversi ke ekuivalen IDR dulu (USD, CNY, MYR → IDR).
   const payableIdrEquiv =
     currency === 'USD' ? Math.round((finalPayable / 100) * USD_TO_IDR)
       : currency === 'CNY' ? Math.round((finalPayable / 100 / USD_TO_CNY) * USD_TO_IDR)
-        : finalPayable
+        : currency === 'MYR' ? Math.round((finalPayable / 100) * MYR_RATE)
+          : finalPayable
   // Jumlah saldo sebenarnya yang dipakai (IDR) — dikirim ke server via useBalance.
   const balanceDiscountIdr =
     currency === 'USD' ? Math.round((balanceDiscount / 100) * USD_TO_IDR)
       : currency === 'CNY' ? Math.round((balanceDiscount / 100 / USD_TO_CNY) * USD_TO_IDR)
-        : balanceDiscount
+        : currency === 'MYR' ? Math.round((balanceDiscount / 100) * MYR_RATE)
+          : balanceDiscount
   const ref = useMemo(
     () => (items.map((i) => i.id.length).reduce((a, b) => a + b, 0) + items.length)
       .toString().padStart(4, '0'),
@@ -371,10 +374,10 @@ export default function Checkout() {
                   <StepHead icon={QrCode} title={t('co.payTitle')} sub={t('co.paySub')} />
                   <div className="pay-tabs" style={{ marginTop: 18 }}>
                     <button className={`pay-tab ${method === 'qris' ? 'is-active' : ''}`} onClick={() => setMethod('qris')}>
-                      <QrCode size={19} /> Alipay/Qris
+                      <QrCode size={19} /> {t('co.payQrisTab')}
                     </button>
                     <button className={`pay-tab ${method === 'crypto' ? 'is-active' : ''}`} onClick={() => setMethod('crypto')}>
-                      <Coins size={19} /> Crypto (BNB / USDT)
+                      <Coins size={19} /> {t('co.payCrypto')}
                     </button>
                   </div>
 
@@ -385,7 +388,7 @@ export default function Checkout() {
                         <div className="qris-box">
                           <div className="qris-head">
                             <span className="display" style={{ fontSize: 15 }}>{QRIS.merchant}</span>
-                            <span className="chip chip-lime" style={{ fontSize: 10.5 }}>Alipay/Qris</span>
+                            <span className="chip chip-lime" style={{ fontSize: 10.5 }}>{t('co.payQrisChip')}</span>
                           </div>
                           <div className="qris-qr">
                             <QRCodeSVG value={QRIS.buildPayload(payableIdrEquiv)} size={188} level="M" bgColor="#ffffff" fgColor="#2b2b28" />
@@ -501,7 +504,7 @@ export default function Checkout() {
                     <MetaRow icon={UserCog} label={t('co.metaActivation')}
                       value={useOwn ? `${t('co.metaOwn')} (${own.email})` : t('co.metaNew')} />
                     <MetaRow icon={method === 'qris' ? QrCode : Coins} label={t('co.metaPayment')}
-                      value={method === 'qris' ? `Alipay/Qris · ${proof?.name || ''}` : `Crypto ${asset.symbol} · ${cryptoAmount}`} />
+                      value={method === 'qris' ? `${t('co.payQrisChip')} · ${proof?.name || ''}` : `Crypto ${asset.symbol} · ${cryptoAmount}`} />
                   </div>
 
                   {estimate && (

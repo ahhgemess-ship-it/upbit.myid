@@ -8,7 +8,7 @@ export const LANGS = [
   { code: 'ja', name: '日本語', tag: 'JA', country: 'Jepang' },
   { code: 'id', name: 'Bahasa Indonesia', tag: 'ID', country: 'Indonesia' },
   { code: 'ru', name: 'Русский', tag: 'RU', country: 'Russia' },
-  { code: 'ms', name: 'Bahasa Melayu', tag: 'SG', country: 'Singapura' },
+  { code: 'ms', name: 'Bahasa Melayu', tag: 'MY', country: 'Malaysia' },
   { code: 'hi', name: 'हिन्दी', tag: 'HI', country: 'India' },
   { code: 'de', name: 'Deutsch', tag: 'DE', country: 'German' },
   { code: 'vi', name: 'Tiếng Việt', tag: 'VI', country: 'Vietnam' },
@@ -21,7 +21,7 @@ export const DEFAULT_LANG = 'id'
 const USD_RATE = 16300 // 1 USD = Rp 16.300
 export const CURRENCY = {
   id: { symbol: 'Rp',   rate: 1,       dec: 0, locale: 'id-ID', name: 'IDR' },
-  ms: { symbol: 'Rp',   rate: 1,       dec: 0, locale: 'id-ID', name: 'IDR' },
+  ms: { symbol: 'RM',   rate: 3500,    dec: 2, locale: 'ms-MY', name: 'MYR' },
   en: { symbol: '$',    rate: USD_RATE, dec: 2, locale: 'en-US', name: 'USD' },
   zh: { symbol: '¥',    rate: USD_RATE / 7.2, dec: 2, locale: 'zh-CN', name: 'CNY' },
   ja: { symbol: '¥',    rate: USD_RATE / 150, dec: 0, locale: 'ja-JP', name: 'JPY' },
@@ -49,6 +49,9 @@ export const formatCurrencyCompact = (idrAmount, lang) => {
   if (c.rate === 1 && converted >= 1000) {
     // IDR compact: Rp 12rb
     return 'Rp ' + (converted / 1000).toFixed(converted % 1000 === 0 ? 0 : 1) + 'rb'
+  }
+  if (c.name === 'MYR' && converted >= 1000) {
+    return 'RM ' + (converted / 1000).toFixed(converted % 1000 === 0 ? 0 : 1) + 'k'
   }
   // Non-IDR: full symbol + number
   return c.symbol + ' ' + converted.toLocaleString(c.locale, {
@@ -276,6 +279,9 @@ export const T = {
   'co.ownSecure': { en: 'Your data is sent over an encrypted connection to a secure system, not stored in the browser.', zh: '您的数据通过加密连接发送到安全系统，不会存储在浏览器中。', ja: 'データは暗号化接続で安全なシステムへ送信され、ブラウザには保存されません。', id: 'Data kamu dikirim lewat koneksi terenkripsi ke sistem aman, bukan disimpan di browser.', ru: 'Ваши данные передаются по зашифрованному каналу в защищённую систему, а не хранятся в браузере.', ms: 'Data anda dihantar melalui sambungan disulitkan ke sistem selamat, bukan disimpan di pelayar.', hi: 'आपका डेटा एन्क्रिप्टेड कनेक्शन से सुरक्षित सिस्टम को भेजा जाता है, ब्राउज़र में संग्रहीत नहीं।', de: 'Ihre Daten werden verschlüsselt an ein sicheres System gesendet, nicht im Browser gespeichert.', vi: 'Dữ liệu của bạn được gửi qua kết nối mã hóa đến hệ thống an toàn, không lưu trên trình duyệt.' },
   'co.payTitle': { en: 'PAYMENT', zh: '支付', ja: '支払い', id: 'PEMBAYARAN', ru: 'ОПЛАТА', ms: 'PEMBAYARAN', hi: 'भुगतान', de: 'ZAHLUNG', vi: 'THANH TOÁN' },
   'co.paySub': { en: 'Choose a payment method, then attach proof / Tx Hash.', zh: '选择支付方式，然后附上凭证 / Tx Hash。', ja: '支払い方法を選択し、証明 / Tx Hash を添付してください。', id: 'Pilih metode pembayaran, lalu lampirkan bukti / Tx Hash.', ru: 'Выберите способ оплаты, затем приложите чек / Tx Hash.', ms: 'Pilih kaedah bayaran, kemudian lampirkan bukti / Tx Hash.', hi: 'भुगतान विधि चुनें, फिर प्रमाण / Tx Hash संलग्न करें।', de: 'Zahlungsmethode wählen, dann Nachweis / Tx Hash anhängen.', vi: 'Chọn phương thức thanh toán, rồi đính kèm bằng chứng / Tx Hash.' },
+  'co.payQrisTab': { en: 'QRIS / Touch \'n Go / Alipay', zh: 'QRIS / Touch \'n Go / 支付宝', ja: 'QRIS / Touch \'n Go / Alipay', id: 'QRIS / Touch \'n Go / Alipay', ru: 'QRIS / Touch \'n Go / Alipay', ms: 'QRIS / Touch \'n Go / Alipay', hi: 'QRIS / Touch \'n Go / Alipay', de: 'QRIS / Touch \'n Go / Alipay', vi: 'QRIS / Touch \'n Go / Alipay' },
+  'co.payQrisChip': { en: 'QRIS / TnG / Alipay', zh: 'QRIS / TnG / 支付宝', ja: 'QRIS / TnG / Alipay', id: 'QRIS / TnG / Alipay', ru: 'QRIS / TnG / Alipay', ms: 'QRIS / TnG / Alipay', hi: 'QRIS / TnG / Alipay', de: 'QRIS / TnG / Alipay', vi: 'QRIS / TnG / Alipay' },
+  'co.payCrypto': { en: 'Crypto (BNB / USDT)', zh: '加密货币 (BNB / USDT)', ja: '暗号通貨 (BNB / USDT)', id: 'Crypto (BNB / USDT)', ru: 'Крипто (BNB / USDT)', ms: 'Krypto (BNB / USDT)', hi: 'क्रिप्टो (BNB / USDT)', de: 'Krypto (BNB / USDT)', vi: 'Crypto (BNB / USDT)' },
   'co.qrisScan': { en: 'Scan the code with an e-wallet / m-banking, then upload the transaction proof.', zh: '使用电子钱包 / 手机银行扫描二维码，然后上传交易凭证。', ja: 'e-ウォレット/モバイルバンキングでコードをスキャンし、取引証明をアップロードしてください。', id: 'Scan kode lewat e-wallet / m-banking, lalu unggah bukti transaksi.', ru: 'Отсканируйте код в e-кошельке / банке, затем загрузите чек.', ms: 'Imbas kod melalui e-dompet / m-banking, kemudian muat naik bukti transaksi.', hi: 'ई-वॉलेट / एम-बैंकिंग से कोड स्कैन करें, फिर लेन-देन प्रमाण अपलोड करें।', de: 'Code mit E-Wallet / M-Banking scannen, dann Zahlungsnachweis hochladen.', vi: 'Quét mã bằng ví điện tử / m-banking, rồi tải lên bằng chứng giao dịch.' },
   'co.totalPay': { en: 'Total to pay', zh: '应付总额', ja: 'お支払い総額', id: 'Total bayar', ru: 'К оплате', ms: 'Jumlah bayar', hi: 'कुल भुगतान', de: 'Zu zahlen', vi: 'Tổng thanh toán' },
   'co.uploadProof': { en: 'Upload transaction proof', zh: '上传交易凭证', ja: '取引証明をアップロード', id: 'Unggah bukti transaksi', ru: 'Загрузить чек', ms: 'Muat naik bukti transaksi', hi: 'लेन-देन प्रमाण अपलोड करें', de: 'Zahlungsnachweis hochladen', vi: 'Tải lên bằng chứng giao dịch' },
