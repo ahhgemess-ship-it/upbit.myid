@@ -130,9 +130,13 @@ router.get('/checkin/status', requireAuth, async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: req.user.id } })
     const now = new Date()
     const alreadyToday = user.lastCheckInAt && isSameUtcDay(user.lastCheckInAt, now)
-    const nextStreak = (user.checkInStreak || 0) + 1
+    // Hitung nextStreak: lanjut kalau terakhir kemarin, reset ke 1 kalau skip/pertama
+    let nextStreak = 1
+    if (user.lastCheckInAt && isYesterdayUtc(user.lastCheckInAt, now)) {
+      nextStreak = (user.checkInStreak || 0) + 1
+    }
     res.json({
-      streak: user.checkInStreak || 0,
+      streak: alreadyToday ? user.checkInStreak : (nextStreak > 1 ? user.checkInStreak : 0),
       canCheckIn: !alreadyToday,
       lastCheckInAt: user.lastCheckInAt,
       cycle: CHECKIN_CYCLE,
