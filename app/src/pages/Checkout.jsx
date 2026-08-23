@@ -92,9 +92,13 @@ export default function Checkout() {
   const estimate = manualItems.length ? (getProduct(manualItems[0].id)?.estimate || '10–20 menit') : null
   const eligibleOwn = useMemo(() => items.some((i) => getProduct(i.id)?.category !== 'API'), [items])
 
-  // Guard
+  // Guard: keranjang kosong
   if (items.length === 0) {
     return <Gate title={t('co.gateEmptyTitle')} text={t('co.gateEmptyText')} to="/store" cta={t('footer.startShopping')} />
+  }
+  // Guard: belum login — server wajib auth untuk buat pesanan
+  if (!user) {
+    return <Gate title={t('co.gateLoginTitle')} text={t('co.gateLoginText')} to="/login" cta={t('nav.login')} />
   }
 
   const useOwn = activation === 'own' && eligibleOwn

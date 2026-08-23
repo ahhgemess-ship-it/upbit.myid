@@ -13,7 +13,8 @@ async function req(path, { method = 'GET', body, form, auth = true } = {}) {
   const headers = {}
   if (auth) {
     const t = getToken()
-    if (t) headers.Authorization = `Bearer ${t}`
+    if (!t) throw new Error('Tidak ada token — silakan login ulang')
+    headers.Authorization = `Bearer ${t}`
   }
   let payload
   if (form) {
@@ -95,7 +96,8 @@ const _real = {
   adminProcessRefund: (id, action, note) => req(`/api/admin/orders/${id}/refund`, { method: 'POST', body: { action, note } }),
   adminProofBlob: async (id) => {
     const t = getToken()
-    const res = await fetch(`${API_BASE}/api/admin/orders/${id}/proof`, { headers: t ? { Authorization: `Bearer ${t}` } : {} })
+    if (!t) throw new Error('Tidak ada token — silakan login ulang')
+    const res = await fetch(`${API_BASE}/api/admin/orders/${id}/proof`, { headers: { Authorization: `Bearer ${t}` } })
     if (!res.ok) throw new Error('Gagal memuat bukti')
     return res.blob()
   },
