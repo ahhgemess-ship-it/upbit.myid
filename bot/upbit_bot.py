@@ -628,7 +628,7 @@ def prods():
 USD_RATE = 16300  # 1 USD = Rp 16.300
 CURRENCY = {
     "id": {"symbol": "Rp",   "rate": 1,             "dec": 0},
-    "ms": {"symbol": "Rp",   "rate": 1,             "dec": 0},
+    "ms": {"symbol": "RM",   "rate": 3500,          "dec": 2},
     "en": {"symbol": "$",    "rate": USD_RATE,       "dec": 2},
     "zh": {"symbol": "¥",    "rate": USD_RATE / 7.2, "dec": 2},
     "ja": {"symbol": "¥",    "rate": USD_RATE / 150, "dec": 0},

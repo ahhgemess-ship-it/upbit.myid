@@ -95,9 +95,10 @@ router.post('/', requireAuth, upload.single('proof'), async (req, res) => {
       if (dupe) return res.status(409).json({ error: 'Tx Hash ini sudah pernah dipakai untuk pesanan lain' })
     }
 
-    // Mata uang: IDR (lokal), USD (internasional), atau CNY (Yuan). Server otoritatif.
+    // Mata uang: IDR (lokal), USD (internasional), CNY (Yuan), atau MYR (Ringgit). Server otoritatif.
     const USD_TO_CNY = 7.2
-    const currency = b.currency === 'USD' ? 'USD' : b.currency === 'CNY' ? 'CNY' : 'IDR'
+    const MYR_RATE = 3500
+    const currency = b.currency === 'USD' ? 'USD' : b.currency === 'CNY' ? 'CNY' : b.currency === 'MYR' ? 'MYR' : 'IDR'
 
     // Validasi harga + stok sisi-server dari katalog DB
     const catalog = await prisma.product.findMany()
@@ -121,11 +122,12 @@ router.post('/', requireAuth, upload.single('proof'), async (req, res) => {
         }
       }
       // Harga dasar sesuai mata uang + diskon efektif (server otoritatif).
-      // Yuan diturunkan dari USD (sen) × kurs.
+      // Yuan diturunkan dari USD (sen) × kurs, MYR dari IDR / kurs.
       const base =
         currency === 'USD' ? (tier.priceIntl || 0)
           : currency === 'CNY' ? Math.round((tier.priceIntl || 0) * USD_TO_CNY)
-            : tier.price
+            : currency === 'MYR' ? Math.round(((tier.price || 0) / MYR_RATE) * 100)
+              : tier.price
       const pct = effectiveDiscount(prod)
       const unitPrice = salePrice(base, pct)
       subtotal += unitPrice * qty
