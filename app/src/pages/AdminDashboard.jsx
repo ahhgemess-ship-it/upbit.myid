@@ -9,6 +9,7 @@ import { formatIDR } from '../data/products.js'
 import { formatPrice } from '../i18n/pricing.js'
 import { api } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useLang } from '../context/LanguageContext.jsx'
 import AdminGate from '../components/AdminGate.jsx'
 
 const fmtUSD = (c) => '$' + ((c || 0) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -22,6 +23,7 @@ const STATUS = {
 
 export default function AdminDashboard() {
   const { isAdmin, ready, user } = useAuth()
+  const { t } = useLang()
   const [stats, setStats] = useState(null)
   const [recent, setRecent] = useState(null)
   const [userTotal, setUserTotal] = useState(null)
@@ -169,7 +171,7 @@ export default function AdminDashboard() {
                         {o.refundStatus === 'REQUESTED' && <span className="chip" style={{ fontSize: 10, background: 'var(--lime)', borderColor: 'var(--ink)' }}>refund?</span>}
                       </div>
                       <div className="text-muted admin-recent-sub">
-                        {o.user?.email || '—'} · {o.items.length} item · {o.payment?.method === 'crypto' ? `Crypto ${o.payment.asset}` : 'Alipay/Qris'}
+                        {o.user?.email || '—'} · {o.items.length} item · {o.payment?.method === 'crypto' ? `Crypto ${o.payment.asset}` : t('co.payQrisChip')}
                       </div>
                     </div>
                     <div className="admin-recent-right">

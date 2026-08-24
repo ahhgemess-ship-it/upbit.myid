@@ -11,6 +11,7 @@ import { formatPrice } from '../i18n/pricing.js'
 import { CRYPTO } from '../data/payment.js'
 import { api } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useLang } from '../context/LanguageContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 
 const STATUS = {
@@ -22,6 +23,7 @@ const STATUS = {
 export default function AdminOrderDetail() {
   const { id } = useParams()
   const { isAdmin, ready } = useAuth()
+  const { t } = useLang()
   const { toast } = useToast()
   const [order, setOrder] = useState(null)
   const [state, setState] = useState('loading')
@@ -177,7 +179,7 @@ export default function AdminOrderDetail() {
           <div className="card" style={{ padding: 20 }}>
             <h3 className="display" style={{ fontSize: 15, marginBottom: 12 }}>PEMBAYARAN</h3>
             <Row label="Email kirim" value={order.deliveryEmail} />
-            <Row label="Metode" value={order.payment?.method === 'crypto' ? `Crypto ${order.payment.asset}` : 'Alipay/Qris'} />
+            <Row label="Metode" value={order.payment?.method === 'crypto' ? `Crypto ${order.payment.asset}` : t('co.payQrisChip')} />
             {order.payment?.method === 'crypto' && <Row label="Jumlah" value={`${order.payment.amount} ${order.payment.asset}`} />}
             {order.payment?.txHash && (
               <a href={(CRYPTO.assets.find((a) => a.symbol === order.payment.asset)?.explorer || '') + order.payment.txHash}

@@ -305,7 +305,7 @@ export default function OrderDetail() {
             </div>
           )}
           <div className="co-divider" />
-          <SumRow label={t('od.method')} value={order.payment?.method === 'crypto' ? `Crypto · ${order.payment.asset}` : 'Alipay/Qris'} />
+          <SumRow label={t('od.method')} value={order.payment?.method === 'crypto' ? `Crypto · ${order.payment.asset}` : t('co.payQrisChip')} />
           {order.payment?.method === 'crypto' && (
             <>
               <SumRow label={t('od.network')} value={CRYPTO.networkShort} />

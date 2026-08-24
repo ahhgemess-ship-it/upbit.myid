@@ -6,6 +6,7 @@ import { formatIDR } from '../data/products.js'
 import { formatPrice } from '../i18n/pricing.js'
 import { api } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useLang } from '../context/LanguageContext.jsx'
 import AdminGate from '../components/AdminGate.jsx'
 import Pager from '../components/Pager.jsx'
 
@@ -24,6 +25,7 @@ const STATUS = {
 
 export default function AdminOrders() {
   const { isAdmin, ready } = useAuth()
+  const { t } = useLang()
   const [filter, setFilter] = useState('')
   const [page, setPage] = useState(1)
   const [data, setData] = useState(null)
@@ -127,7 +129,7 @@ export default function AdminOrders() {
                       {o.estimate && <span className="chip" style={{ fontSize: 10 }}>manual</span>}
                     </div>
                     <div className="text-muted" style={{ fontSize: 13, marginTop: 4 }}>
-                      {o.user?.email} · {o.items.length} item · {o.payment?.method === 'crypto' ? `Crypto ${o.payment.asset}` : 'Alipay/Qris'} · {o.activation === 'own' ? 'akun sendiri' : 'akun baru'}
+                      {o.user?.email} · {o.items.length} item · {o.payment?.method === 'crypto' ? `Crypto ${o.payment.asset}` : t('co.payQrisChip')} · {o.activation === 'own' ? 'akun sendiri' : 'akun baru'}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
