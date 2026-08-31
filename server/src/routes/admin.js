@@ -102,35 +102,54 @@ router.get('/users/:id', async (req, res) => {
   }
 })
 
-// PATCH /api/admin/users/:id — admin edit user (name, role, saldo adjustment)
+// PATCH /api/admin/users/:id — admin edit user (name, role, saldo absolut)
 router.patch('/users/:id', async (req, res) => {
   try {
-    const { name, role, balanceAdjust, adjustNote } = req.body
+    const { name, role, balance, balanceAdjust, adjustNote } = req.body || {}
     const data = {}
     if (name !== undefined) data.name = String(name).trim()
     if (role && ['USER', 'ADMIN'].includes(role)) data.role = role
 
-    // Saldo adjustment: positif = tambah, negatif = kurangi
-    const adjust = parseInt(balanceAdjust, 10)
-    if (adjust && !isNaN(adjust)) {
-      data.balance = { increment: adjust }
-      // Catat di balance transaction
-      await prisma.balanceTransaction.create({
-        data: {
-          userId: req.params.id,
-          amount: adjust,
-          type: adjust > 0 ? 'refund' : 'purchase',
-          note: adjustNote || `Admin ${adjust > 0 ? 'menambah' : 'mengurangi'} saldo Rp ${Math.abs(adjust).toLocaleString('id-ID')}`,
-        },
-      })
+    // Saldo harus berupa nilai akhir absolut, bukan nominal yang ditambahkan.
+    // balanceAdjust dipertahankan hanya untuk kompatibilitas client lama dan tidak dipakai lagi.
+    const hasBalance = Object.prototype.hasOwnProperty.call(req.body || {}, 'balance')
+    let targetBalance = null
+    if (hasBalance) {
+      if (balance === '' || balance === null || balance === undefined || !/^\d+$/.test(String(balance))) {
+        return res.status(400).json({ error: 'Saldo harus berupa angka bulat 0 atau lebih' })
+      }
+      targetBalance = Number(balance)
+      if (!Number.isSafeInteger(targetBalance) || targetBalance < 0 || targetBalance > 2_000_000_000) {
+        return res.status(400).json({ error: 'Nilai saldo di luar batas yang diizinkan' })
+      }
     }
 
-    const user = await prisma.user.update({
-      where: { id: req.params.id },
-      data,
-      select: { id: true, email: true, name: true, role: true, balance: true, checkInStreak: true },
+    const result = await prisma.$transaction(async (tx) => {
+      const current = await tx.user.findUnique({ where: { id: req.params.id }, select: { balance: true } })
+      if (!current) return null
+
+      const delta = targetBalance === null ? 0 : targetBalance - current.balance
+      const user = await tx.user.update({
+        where: { id: req.params.id },
+        data: { ...data, ...(targetBalance === null ? {} : { balance: targetBalance }) },
+        select: { id: true, email: true, name: true, role: true, balance: true, checkInStreak: true },
+      })
+
+      if (targetBalance !== null && delta !== 0) {
+        await tx.balanceTransaction.create({
+          data: {
+            userId: req.params.id,
+            amount: delta,
+            type: delta > 0 ? 'refund' : 'purchase',
+            note: adjustNote || `Admin mengedit saldo menjadi Rp ${targetBalance.toLocaleString('id-ID')}`,
+          },
+        })
+      }
+      return { user, delta }
     })
-    res.json({ user })
+
+    if (!result) return res.status(404).json({ error: 'User tidak ditemukan' })
+    res.json({ user: result.user, balanceDelta: result.delta })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }

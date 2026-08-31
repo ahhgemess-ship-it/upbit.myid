@@ -111,6 +111,7 @@ const _real = {
   adminUsers: (params = '') => req(`/api/admin/users${params ? `?${params}` : ''}`),
   adminGetUser: (id) => req(`/api/admin/users/${id}`),
   adminUpdateUser: (id, data) => req(`/api/admin/users/${id}`, { method: 'PATCH', body: data }),
+  adminSetBalance: (id, balance, note) => req(`/api/admin/users/${id}`, { method: 'PATCH', body: { balance, adjustNote: note } }),
   // purchased products (per-user stock)
   purchasedProducts: () => req('/api/products/purchased'),
 }
@@ -157,5 +158,6 @@ export const api = {
   adminUsers: withFallback(_real.adminUsers, demoApi.adminUsers),
   adminGetUser: withFallback(_real.adminGetUser, demoApi.adminGetUser),
   adminUpdateUser: withFallback(_real.adminUpdateUser, demoApi.adminUpdateUser),
+  adminSetBalance: withFallback(_real.adminSetBalance, demoApi.adminSetBalance),
   purchasedProducts: withFallback(_real.purchasedProducts, demoApi.purchasedProducts),
 }

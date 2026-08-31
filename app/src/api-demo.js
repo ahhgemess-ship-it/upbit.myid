@@ -306,17 +306,21 @@ export const demoApi = {
     }
   },
   adminUpdateUser: async (id, data) => {
-    if (data.balanceAdjust) {
-      const adjust = parseInt(data.balanceAdjust, 10)
-      const balance = parseInt(localStorage.getItem('demo_balance') || '0', 10) + adjust
-      localStorage.setItem('demo_balance', String(balance))
-      const history = JSON.parse(localStorage.getItem('demo_balance_history') || '[]')
-      history.unshift({
-        id: uid(), amount: adjust, type: adjust > 0 ? 'refund' : 'purchase',
-        note: data.adjustNote || `Admin ${adjust > 0 ? 'menambah' : 'mengurangi'} saldo Rp ${Math.abs(adjust).toLocaleString('id-ID')}`,
-        createdAt: new Date().toISOString(),
-      })
-      localStorage.setItem('demo_balance_history', JSON.stringify(history.slice(0, 50)))
+    if (Object.prototype.hasOwnProperty.call(data, 'balance')) {
+      const current = parseInt(localStorage.getItem('demo_balance') || '0', 10)
+      const target = parseInt(data.balance, 10)
+      if (!Number.isSafeInteger(target) || target < 0) throw new Error('Saldo harus berupa angka 0 atau lebih')
+      const delta = target - current
+      localStorage.setItem('demo_balance', String(target))
+      if (delta !== 0) {
+        const history = JSON.parse(localStorage.getItem('demo_balance_history') || '[]')
+        history.unshift({
+          id: uid(), amount: delta, type: delta > 0 ? 'refund' : 'purchase',
+          note: data.adjustNote || `Admin mengedit saldo menjadi Rp ${target.toLocaleString('id-ID')}`,
+          createdAt: new Date().toISOString(),
+        })
+        localStorage.setItem('demo_balance_history', JSON.stringify(history.slice(0, 50)))
+      }
     }
     return {
       user: {

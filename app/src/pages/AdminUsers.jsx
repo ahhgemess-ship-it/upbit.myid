@@ -30,7 +30,7 @@ export default function AdminUsers() {
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState('')
   const [editRole, setEditRole] = useState('')
-  const [balanceAdjust, setBalanceAdjust] = useState('')
+  const [balanceValue, setBalanceValue] = useState('')
   const [adjustNote, setAdjustNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState(null)
@@ -63,7 +63,7 @@ export default function AdminUsers() {
       setDetail(d)
       setEditName(d.user.name)
       setEditRole(d.user.role)
-      setBalanceAdjust('')
+      setBalanceValue(String(d.user.balance ?? 0))
       setAdjustNote('')
       setDetailLoading(false)
     }).catch((e) => {
@@ -87,20 +87,21 @@ export default function AdminUsers() {
       const payload = {}
       if (editName !== detail.user.name) payload.name = editName
       if (editRole !== detail.user.role) payload.role = editRole
-      const adj = parseInt(balanceAdjust, 10)
-      if (adj && !isNaN(adj)) {
-        payload.balanceAdjust = adj
+      const parsedBalance = Number(balanceValue)
+      if (balanceValue.trim() === '' || !Number.isSafeInteger(parsedBalance) || parsedBalance < 0) {
+        throw new Error('Saldo harus berupa angka bulat 0 atau lebih')
+      }
+      if (parsedBalance !== Number(detail.user.balance)) {
+        payload.balance = parsedBalance
         payload.adjustNote = adjustNote || null
       }
       const res = await api.adminUpdateUser(selectedId, payload)
       setDetail(prev => ({ ...prev, user: { ...prev.user, ...res.user } }))
       setSaveMsg({ type: 'success', text: 'Perubahan disimpan ✓' })
       setEditing(false)
-      if (adj) {
-        // Refresh list setelah adjustment saldo
-        const params = `q=${encodeURIComponent(q)}&page=${page}`
-        api.adminUsers(params).then(setData).catch(() => {})
-      }
+      // Refresh list agar saldo baru langsung terlihat tanpa reload halaman.
+      const params = `q=${encodeURIComponent(q)}&page=${page}`
+      api.adminUsers(params).then(setData).catch(() => {})
     } catch (e) {
       setSaveMsg({ type: 'error', text: e.message })
     } finally {
@@ -293,18 +294,18 @@ export default function AdminUsers() {
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} style={{ marginBottom: 16, overflow: 'hidden' }}>
                       <div className="card" style={{ padding: 16, background: 'var(--surface-2)', borderColor: 'var(--indigo)' }}>
                         <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <Coins size={15} /> Adjustment Saldo
+                          <Coins size={15} /> Edit Saldo (nilai akhir)
                         </div>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                           <div className="input-ic" style={{ flex: 1, minWidth: 120 }}>
                             <span style={{ paddingLeft: 10, fontWeight: 700, fontSize: 13 }}>Rp</span>
-                            <input className="input" type="number" placeholder="+50000 atau -20000" value={balanceAdjust} onChange={(e) => setBalanceAdjust(e.target.value)} style={{ paddingLeft: 4 }} />
+                            <input className="input" type="number" min="0" step="1" placeholder="contoh: 50000" value={balanceValue} onChange={(e) => setBalanceValue(e.target.value)} style={{ paddingLeft: 4 }} />
                           </div>
                           <input className="input" placeholder="Catatan (opsional)" value={adjustNote} onChange={(e) => setAdjustNote(e.target.value)}
                             style={{ flex: 2, minWidth: 150, padding: '6px 12px' }} />
                         </div>
                         <div className="text-muted" style={{ fontSize: 11.5, marginTop: 6 }}>
-                          Positif = tambah saldo, negatif = kurangi. Otomatis tercatat di riwayat transaksi.
+                          Masukkan saldo akhir user, bukan nominal penambahan. Nilai dapat dibuat 0 dan perubahan otomatis tercatat di riwayat.
                         </div>
                       </div>
                     </motion.div>
@@ -317,7 +318,7 @@ export default function AdminUsers() {
                         <button onClick={handleSave} disabled={saving} className="pill pill-indigo" style={{ padding: '9px 20px', fontSize: 13.5 }}>
                           <Check size={15} /> {saving ? 'Menyimpan...' : 'Simpan'}
                         </button>
-                        <button onClick={() => { setEditing(false); setBalanceAdjust(''); setSaveMsg(null) }} className="pill" style={{ padding: '9px 20px', fontSize: 13.5 }}>
+                        <button onClick={() => { setEditing(false); setBalanceValue(String(detail.user.balance ?? 0)); setAdjustNote(''); setSaveMsg(null) }} className="pill" style={{ padding: '9px 20px', fontSize: 13.5 }}>
                           <X size={15} /> Batal
                         </button>
                       </>
