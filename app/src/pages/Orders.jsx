@@ -63,7 +63,7 @@ export default function Orders() {
                     <span className={`order-status ${st.cls}`}>{t(st.key)}</span>
                   </div>
                   <div className="text-muted" style={{ fontSize: 13, marginTop: 4 }}>
-                    {o.items.length} {t('orders.products')} · {o.payment?.method === 'crypto' ? `Crypto ${o.payment.asset}` : 'Alipay/Qris'} · {fmtDate(o.createdAt)}
+                    {o.items.length} {t('orders.products')} · {o.payment?.method === 'crypto' ? `Crypto ${o.payment.asset}` : t('co.payQrisChip')} · {fmtDate(o.createdAt)}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
