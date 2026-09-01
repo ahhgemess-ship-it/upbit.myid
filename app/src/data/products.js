@@ -548,7 +548,11 @@ const flashOf = (p, i) => {
   }
 }
 
-export const flashSale = products.filter((p) => p.category === 'Promo').map(flashOf)
+// Terapkan transformasi flash sale ke daftar produk apa pun (statis ATAU dari DB),
+// supaya edit produk Promo di admin panel langsung tampil di halaman flash sale.
+export const flashFrom = (list) => (list || []).filter((p) => p.category === 'Promo').map(flashOf)
+
+export const flashSale = flashFrom(products)
 
 // Target berakhirnya flash sale: blok 6 jam berikutnya — selalu di masa depan & stabil.
 export const getSaleEndTime = () => {

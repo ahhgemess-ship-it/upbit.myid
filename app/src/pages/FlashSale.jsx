@@ -5,13 +5,18 @@ import { Zap, ArrowUpRight, Clock, Flame, Tag } from 'lucide-react'
 import Countdown from '../components/Countdown.jsx'
 import FlashSaleCard from '../components/FlashSaleCard.jsx'
 import Asterisk from '../components/Asterisk.jsx'
-import { flashSale, getSaleEndTime } from '../data/products.js'
+import { flashFrom, getSaleEndTime } from '../data/products.js'
+import { useCatalog } from '../context/CatalogContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 
 export default function FlashSale() {
   const { t } = useLang()
+  const { products } = useCatalog()
+  // Baca dari katalog DB (via CatalogContext) supaya edit harga/nama/deskripsi
+  // produk Promo di admin panel langsung tampil. Fallback awal = statis.
+  const flashSale = useMemo(() => flashFrom(products), [products])
   const end = useMemo(() => getSaleEndTime(), [])
-  const maxDiscount = Math.max(...flashSale.map((p) => p.discount))
+  const maxDiscount = flashSale.length ? Math.max(...flashSale.map((p) => p.discount)) : 0
 
   return (
     <div>

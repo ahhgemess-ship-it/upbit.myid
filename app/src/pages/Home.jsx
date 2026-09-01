@@ -9,14 +9,17 @@ import Countdown from '../components/Countdown.jsx'
 import Asterisk from '../components/Asterisk.jsx'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
-import { flashSale, getSaleEndTime } from '../data/products.js'
+import { flashFrom, getSaleEndTime } from '../data/products.js'
 
 export default function Home() {
   const { products } = useCatalog()
   const { t } = useLang()
   const saleEnd = getSaleEndTime()
-  const flashItems = flashSale.slice(0, 6)
-  const maxDiscount = Math.max(...flashSale.map((p) => p.discount))
+  // Flash sale baca dari katalog DB (via CatalogContext) — edit produk Promo
+  // di admin panel langsung tampil. Fallback awal = katalog statis.
+  const flashList = flashFrom(products)
+  const flashItems = flashList.slice(0, 6)
+  const maxDiscount = flashList.length ? Math.max(...flashList.map((p) => p.discount)) : 0
   const benefits = [
     { icon: Zap, title: t('home.benefit1Title'), desc: t('home.benefit1Desc') },
     { icon: ShieldCheck, title: t('home.benefit2Title'), desc: t('home.benefit2Desc') },
@@ -88,7 +91,7 @@ export default function Home() {
           {/* Stats mini */}
           <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 26 }}>
             <span style={{ color: '#c9c7bd', fontSize: 13, fontWeight: 600 }}>
-              <span style={{ color: 'var(--lime)', fontSize: 18, fontWeight: 800 }}>{flashSale.length}</span> {t('flash.statProducts')}
+              <span style={{ color: 'var(--lime)', fontSize: 18, fontWeight: 800 }}>{flashList.length}</span> {t('flash.statProducts')}
             </span>
             <span style={{ color: '#c9c7bd', fontSize: 13, fontWeight: 600 }}>
               <span style={{ color: 'var(--lime)', fontSize: 18, fontWeight: 800 }}>{maxDiscount}%</span> {t('flash.statMaxDisc')}
