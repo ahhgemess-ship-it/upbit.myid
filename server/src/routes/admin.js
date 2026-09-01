@@ -198,6 +198,7 @@ function parseProductBody(b, { partial = false } = {}) {
   }
   if (b.stock !== undefined) d.stock = parseInt(b.stock, 10)
   if (b.active !== undefined) d.active = Boolean(b.active)
+  if (b.flashSale !== undefined) d.flashSale = Boolean(b.flashSale)
   if (b.discountPercent !== undefined) d.discountPercent = Math.max(0, Math.min(90, parseInt(b.discountPercent, 10) || 0))
   if (b.discountStart !== undefined) d.discountStart = toDate(b.discountStart)
   if (b.discountEnd !== undefined) d.discountEnd = toDate(b.discountEnd)

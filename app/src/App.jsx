@@ -21,6 +21,7 @@ import AdminDashboard from './pages/AdminDashboard.jsx'
 import AdminUsers from './pages/AdminUsers.jsx'
 import AdminOrderDetail from './pages/AdminOrderDetail.jsx'
 import AdminProducts from './pages/AdminProducts.jsx'
+import AdminFlashSale from './pages/AdminFlashSale.jsx'
 import AdminCoupons from './pages/AdminCoupons.jsx'
 import NotFound from './pages/NotFound.jsx'
 
@@ -69,6 +70,7 @@ export default function App() {
             <Route path="/admin/orders" element={<AdminLayout><AdminOrders /></AdminLayout>} />
             <Route path="/admin/users" element={<AdminLayout><AdminUsers /></AdminLayout>} />
             <Route path="/admin/products" element={<AdminLayout><AdminProducts /></AdminLayout>} />
+            <Route path="/admin/flash-sale" element={<AdminLayout><AdminFlashSale /></AdminLayout>} />
             <Route path="/admin/coupons" element={<AdminLayout><AdminCoupons /></AdminLayout>} />
             <Route path="/admin/:id" element={<AdminLayout><AdminOrderDetail /></AdminLayout>} />
             <Route path="/about" element={<Page><About /></Page>} />

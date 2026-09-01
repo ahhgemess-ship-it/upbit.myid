@@ -26,6 +26,7 @@ export function formatProduct(p, { admin = false } = {}) {
     estimate: p.estimate,
     tiers: JSON.parse(p.tiers || '[]'),
     stock: p.stock, // -1 = tak terbatas
+    flashSale: p.flashSale,
     discountPercent: pct,
     ...(admin
       ? {

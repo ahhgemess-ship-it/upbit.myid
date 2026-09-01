@@ -178,7 +178,7 @@ I18N = {
  "help_steps":"1. Pilih produk dari Flash Sale / Katalog\n2. Pilih paket & metode bayar (QRIS / Crypto)\n3. Bayar & klik Cek Pembayaran\n4. Akses dikirim ke email",
  "help_refund":"<b>Refund:</b> otomatis jika stok habis","help_withdraw":"<b>Tarik Saldo:</b> min. transaksi {min}",
  "help_checkin":"<b>Check-in:</b> {reward}/hari di menu Saldo",
- "help_contact":"<b>Kontak:</b>\nWA: 087797127865\nEmail: support@upbit.my.id",
+ "help_contact":"<b>Kontak:</b>\nWA: 083849870242\nTelegram: @evolusi_store\nEmail: support@upbit.my.id",
  "use_menu":"Gunakan menu di bawah untuk navigasi.","open_web":"Buka Website","stock_out_tag":"Stok Habis",
  "flash_footer":"{items} produk · {groups} grup · Hal {cur}/{total}",
  "pick_lang":"<i>Pilih bahasa / Choose language:</i>",
@@ -215,7 +215,7 @@ I18N = {
  "help_steps":"1. Pick a product from Flash Sale / Catalog\n2. Choose package & payment (QRIS / Crypto)\n3. Pay & tap Check Payment\n4. Access is sent to your email",
  "help_refund":"<b>Refund:</b> automatic if out of stock","help_withdraw":"<b>Withdraw:</b> min. {min} transactions",
  "help_checkin":"<b>Check-in:</b> {reward}/day in Balance menu",
- "help_contact":"<b>Contact:</b>\nWA: 087797127865\nEmail: support@upbit.my.id",
+ "help_contact":"<b>Contact:</b>\nWA: 083849870242\nTelegram: @evolusi_store\nEmail: support@upbit.my.id",
  "use_menu":"Use the menu below to navigate.","open_web":"Open Website","stock_out_tag":"Out of Stock",
  "flash_footer":"{items} products · {groups} groups · Page {cur}/{total}",
  "pick_lang":"<i>Choose your language:</i>",
@@ -252,7 +252,7 @@ I18N = {
  "help_steps":"1. 从闪购/目录选择商品\n2. 选择套餐与支付方式（QRIS / Crypto）\n3. 支付并点击检查付款\n4. 访问详情发送至邮箱",
  "help_refund":"<b>退款：</b>售罄时自动退款","help_withdraw":"<b>提现：</b>累计消费满 {min}",
  "help_checkin":"<b>签到：</b>每天 {reward}，在余额菜单",
- "help_contact":"<b>联系：</b>\nWA: 087797127865\nEmail: support@upbit.my.id",
+ "help_contact":"<b>联系：</b>\nWA: 083849870242\nTelegram: @evolusi_store\nEmail: support@upbit.my.id",
  "use_menu":"请使用下方菜单导航。","open_web":"打开网站","stock_out_tag":"已售罄",
  "flash_footer":"共 {items} 商品 · {groups} 组 · 第{cur}/{total}页",
  "pick_lang":"<i>选择语言:</i>",
@@ -289,7 +289,7 @@ I18N = {
  "help_steps":"1. フラッシュセール/カタログから商品を選択\n2. パッケージと支払い方法を選択（QRIS / Crypto）\n3. 支払い後、支払い確認をタップ\n4. アクセス詳細をメールで送信",
  "help_refund":"<b>返金：</b>在庫切れ時は自動","help_withdraw":"<b>出金：</b>累計取引 {min} 以上",
  "help_checkin":"<b>チェックイン：</b>毎日 {reward}（残高メニュー）",
- "help_contact":"<b>連絡先：</b>\nWA: 087797127865\nEmail: support@upbit.my.id",
+ "help_contact":"<b>連絡先：</b>\nWA: 083849870242\nTelegram: @evolusi_store\nEmail: support@upbit.my.id",
  "use_menu":"下のメニューを使用して移動してください。","open_web":"ウェブサイトを開く","stock_out_tag":"在庫切れ",
  "flash_footer":"{items} 商品 · {groups} グループ · {cur}/{total}ページ",
  "pick_lang":"<i>言語を選択:</i>",
@@ -326,7 +326,7 @@ I18N = {
  "help_steps":"1. Выберите товар в Flash Sale / Каталоге\n2. Выберите пакет и способ оплаты (QRIS / Crypto)\n3. Оплатите и нажмите Проверить оплату\n4. Доступ отправлен на email",
  "help_refund":"<b>Возврат:</b> автоматически при отсутствии стока","help_withdraw":"<b>Вывод:</b> покупки от {min}",
  "help_checkin":"<b>Чек-ин:</b> {reward}/день в меню Баланс",
- "help_contact":"<b>Контакты:</b>\nWA: 087797127865\nEmail: support@upbit.my.id",
+ "help_contact":"<b>Контакты:</b>\nWA: 083849870242\nTelegram: @evolusi_store\nEmail: support@upbit.my.id",
  "use_menu":"Используйте меню ниже для навигации.","open_web":"Открыть сайт","stock_out_tag":"Нет в наличии",
  "flash_footer":"{items} товаров · {groups} групп · Стр. {cur}/{total}",
  "pick_lang":"<i>Выберите язык:</i>",
@@ -363,7 +363,7 @@ I18N = {
  "help_steps":"1. Pilih produk dari Flash Sale / Katalog\n2. Pilih pakej & kaedah bayar (QRIS / Crypto)\n3. Bayar & klik Semak Pembayaran\n4. Akses dihantar ke email",
  "help_refund":"<b>Refund:</b> automatik jika stok habis","help_withdraw":"<b>Tarik Saldo:</b> min. transaksi {min}",
  "help_checkin":"<b>Check-in:</b> {reward}/hari di menu Saldo",
- "help_contact":"<b>Kontak:</b>\nWA: 087797127865\nEmail: support@upbit.my.id",
+ "help_contact":"<b>Kontak:</b>\nWA: 083849870242\nTelegram: @evolusi_store\nEmail: support@upbit.my.id",
  "use_menu":"Guna menu di bawah untuk navigasi.","open_web":"Buka Laman Web","stock_out_tag":"Stok Habis",
  "flash_footer":"{items} produk · {groups} kumpulan · Hal {cur}/{total}",
  "pick_lang":"<i>Pilih bahasa / Choose language:</i>",
@@ -400,7 +400,7 @@ I18N = {
  "help_steps":"1. फ्लैश सेल / कैटलॉग से उत्पाद चुनें\n2. पैकेज और भुगतान विधि चुनें (QRIS / Crypto)\n3. भुगतान करें और भुगतान जांचें दबाएँ\n4. एक्सेस विवरण ईमेल पर भेजा जाता है",
  "help_refund":"<b>रिफंड:</b> स्टॉक खत्म होने पर स्वतः","help_withdraw":"<b>निकासी:</b> न्यूनतम {min} खरीदारी",
  "help_checkin":"<b>चेक-इन:</b> {reward}/दिन बैलेंस मेनू में",
- "help_contact":"<b>संपर्क:</b>\nWA: 087797127865\nEmail: support@upbit.my.id",
+ "help_contact":"<b>संपर्क:</b>\nWA: 083849870242\nTelegram: @evolusi_store\nEmail: support@upbit.my.id",
  "use_menu":"नेविगेशन के लिए नीचे मेनू का उपयोग करें।","open_web":"वेबसाइट खोलें","stock_out_tag":"स्टॉक खत्म",
  "flash_footer":"{items} उत्पाद · {groups} समूह · पेज {cur}/{total}",
  "pick_lang":"<i>भाषा चुनें:</i>",
@@ -437,7 +437,7 @@ I18N = {
  "help_steps":"1. Produkt im Flash Sale / Katalog wählen\n2. Paket & Zahlungsmethode wählen (QRIS / Crypto)\n3. Bezahlen & Zahlung prüfen\n4. Zugang per E-Mail",
  "help_refund":"<b>Erstattung:</b> automatisch bei Ausverkauf","help_withdraw":"<b>Auszahlung:</b> mind. {min} Käufe",
  "help_checkin":"<b>Check-in:</b> {reward}/Tag im Guthaben-Menü",
- "help_contact":"<b>Kontakt:</b>\nWA: 087797127865\nEmail: support@upbit.my.id",
+ "help_contact":"<b>Kontakt:</b>\nWA: 083849870242\nTelegram: @evolusi_store\nEmail: support@upbit.my.id",
  "use_menu":"Nutze das Menü unten zur Navigation.","open_web":"Website öffnen","stock_out_tag":"Ausverkauft",
  "flash_footer":"{items} Produkte · {groups} Gruppen · Seite {cur}/{total}",
  "pick_lang":"<i>Sprache wählen:</i>",
@@ -474,7 +474,7 @@ I18N = {
  "help_steps":"1. Chọn sản phẩm từ Flash Sale / Danh mục\n2. Chọn gói & phương thức thanh toán (QRIS / Crypto)\n3. Thanh toán & nhấn Kiểm tra thanh toán\n4. Quyền truy cập gửi qua email",
  "help_refund":"<b>Hoàn tiền:</b> tự động nếu hết hàng","help_withdraw":"<b>Rút tiền:</b> tối thiểu {min} giao dịch",
  "help_checkin":"<b>Check-in:</b> {reward}/ngày trong menu Số dư",
- "help_contact":"<b>Liên hệ:</b>\nWA: 087797127865\nEmail: support@upbit.my.id",
+ "help_contact":"<b>Liên hệ:</b>\nWA: 083849870242\nTelegram: @evolusi_store\nEmail: support@upbit.my.id",
  "use_menu":"Sử dụng menu bên dưới để điều hướng.","open_web":"Mở website","stock_out_tag":"Hết hàng",
  "flash_footer":"{items} sản phẩm · {groups} nhóm · Trang {cur}/{total}",
  "pick_lang":"<i>Chọn ngôn ngữ:</i>",
@@ -695,6 +695,13 @@ def get_period_label(p):
         return '18 Bulan'
     return '1 Bulan'
 
+def in_flash_sale(x):
+    """Produk masuk flash sale kalau flag flashSale aktif (fallback kategori Promo)."""
+    fs = x.get("flashSale")
+    if fs is None:
+        return x.get("category") == "Promo"
+    return bool(fs)
+
 def get_promo_groups():
     """Produk Flash Sale di-group per nama (urutan stabil)."""
     from collections import OrderedDict
@@ -703,7 +710,7 @@ def get_promo_groups():
         return None
     groups = OrderedDict()
     for x in p:
-        if x.get("category") != "Promo":
+        if not in_flash_sale(x):
             continue
         name = x['name']
         groups.setdefault(name, []).append(x)
@@ -891,7 +898,7 @@ def on_selgrp(call):
     name = call.data.split("|")[1]
     uid = str(call.message.chat.id)
     p = prods()
-    variants = [x for x in (p or []) if x.get("name") == name and x.get("category") == "Promo"]
+    variants = [x for x in (p or []) if x.get("name") == name and in_flash_sale(x)]
     variants.sort(key=lambda x: x['price'])
 
     if not variants:
@@ -1203,7 +1210,8 @@ def website(m):
     uid = str(m.chat.id)
     kb = types.InlineKeyboardMarkup(row_width=1)
     kb.add(types.InlineKeyboardButton(tr(uid, "open_web"), url=STORE_URL))
-    kb.add(types.InlineKeyboardButton("💬 WhatsApp Admin", url="https://wa.me/6287797127865"))
+    kb.add(types.InlineKeyboardButton("💬 WhatsApp Admin", url="https://wa.me/6283849870242"))
+    kb.add(types.InlineKeyboardButton("✈️ Telegram Admin", url="https://t.me/evolusi_store"))
     bot.send_message(m.chat.id,
         f"<b>EVOLUSIAI</b>\n"
         f"{'━' * 20}\n"
@@ -1217,7 +1225,8 @@ def help_cmd(m):
     kb = types.InlineKeyboardMarkup(row_width=2)
     kb.add(
         types.InlineKeyboardButton(tr(uid, "open_web"), url=STORE_URL),
-        types.InlineKeyboardButton("💬 WhatsApp", url="https://wa.me/6287797127865"))
+        types.InlineKeyboardButton("💬 WhatsApp", url="https://wa.me/6283849870242"),
+        types.InlineKeyboardButton("✈️ Telegram", url="https://t.me/evolusi_store"))
     bot.send_message(m.chat.id,
         f"{tr(uid, 'help_title')}\n"
         f"{'━' * 20}\n"

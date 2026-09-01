@@ -117,6 +117,7 @@ model Product {
   tiers           String // JSON: [{ "label", "price"(IDR), "priceIntl"(USD sen), "note" }]
   stock           Int     @default(-1) // -1 = tak terbatas
   active          Boolean @default(true)
+  flashSale       Boolean @default(false) // tampil di halaman flash sale (idc, tanpa ubah kategori)
   discountPercent Int     @default(0) // 0–90%
   discountStart   DateTime?
   discountEnd     DateTime?

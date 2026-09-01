@@ -40,11 +40,13 @@ async function main() {
       estimate: p.estimate || null,
       tiers: JSON.stringify(p.tiers || []),
     }
+    // Jangan timpa stock/active/flashSale/diskon/sold yang sudah diatur (sold dipertahankan).
+    // Produk BARU default masuk flash sale bila kategori 'Promo' (perilaku lama),
+    // tapi admin bisa ubah via panel Flash Sale tanpa perlu ubah kategori.
     await prisma.product.upsert({
       where: { id: p.id },
-      // Jangan timpa stock/active/diskon/sold yang sudah diatur (sold dipertahankan)
-      update: data,
-      create: { id: p.id, stock: -1, active: true, sold, ...data },
+      update: data, // data tidak memuat flashSale/stock/active/sold → nilai admin dipertahankan
+      create: { id: p.id, stock: -1, active: true, sold, flashSale: p.category === 'Promo', ...data },
     })
   }
   // Kupon TIDAK di-seed — dibuat oleh admin lewat panel.

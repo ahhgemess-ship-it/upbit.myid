@@ -123,22 +123,38 @@ export default function About() {
           <h2 className="display" style={{ fontSize: 20 }}>Pusat Bantuan</h2>
         </div>
         <p className="text-muted" style={{ fontSize: 14.5, maxWidth: 480, margin: '0 auto 22px', lineHeight: 1.6 }}>
-          Butuh bantuan? Hubungi CS kami lewat WhatsApp. Tim kami siap membantu kamu!
+          Butuh bantuan? Hubungi CS kami lewat WhatsApp atau Telegram. Tim kami siap membantu kamu!
         </p>
-        <a
-          href="https://wa.me/6287797127865"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="pill"
-          style={{
-            background: '#25D366', borderColor: '#25D366', color: '#fff',
-            fontSize: 16, padding: '12px 28px', fontWeight: 600,
-            display: 'inline-flex', alignItems: 'center', gap: 10,
-          }}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-          0877-9712-7865
-        </a>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <a
+            href="https://wa.me/6283849870242"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="pill"
+            style={{
+              background: '#25D366', borderColor: '#25D366', color: '#fff',
+              fontSize: 16, padding: '12px 28px', fontWeight: 600,
+              display: 'inline-flex', alignItems: 'center', gap: 10,
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+            0838-4998-70242
+          </a>
+          <a
+            href="https://t.me/evolusi_store"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="pill"
+            style={{
+              background: '#1d93d2', borderColor: '#1d93d2', color: '#fff',
+              fontSize: 16, padding: '12px 28px', fontWeight: 600,
+              display: 'inline-flex', alignItems: 'center', gap: 10,
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+            @evolusi_store
+          </a>
+        </div>
       </div>
 
       {/* cta */}

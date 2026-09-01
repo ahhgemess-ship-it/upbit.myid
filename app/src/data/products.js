@@ -548,9 +548,12 @@ const flashOf = (p, i) => {
   }
 }
 
-// Terapkan transformasi flash sale ke daftar produk apa pun (statis ATAU dari DB),
-// supaya edit produk Promo di admin panel langsung tampil di halaman flash sale.
-export const flashFrom = (list) => (list || []).filter((p) => p.category === 'Promo').map(flashOf)
+// Terapkan transformasi flash sale ke daftar produk apa pun (statis ATAU dari DB).
+// Produk masuk flash sale jika flag flashSale aktif; untuk katalog statis/DB lama
+// yang belum punya flag, fallback ke kategori 'Promo' (perilaku lama).
+const inFlashSale = (p) =>
+  p.flashSale === true || (p.flashSale == null && p.category === 'Promo')
+export const flashFrom = (list) => (list || []).filter(inFlashSale).map(flashOf)
 
 export const flashSale = flashFrom(products)
 
