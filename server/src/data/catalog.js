@@ -24,6 +24,8 @@ export const products = [
     tiers: [{ label: '1.000 request', price: 45000 }, { label: '5.000 request', price: 200000 }, { label: '10.000 request', price: 380000 }] },
   { id: 'leonardo-ai-pro', name: 'Leonardo AI Pro', vendor: 'Leonardo', category: 'AI Image', price: 489000, estimate: null,
     tiers: [{ label: 'Artisan — 1 Bulan', price: 489000 }, { label: 'Artisan — Tahunan', price: 391000 }, { label: 'Maestro — 1 Bulan', price: 978000 }] },
+  { id: 'higgsfield-ai-plus', name: 'Higgsfield AI', vendor: 'Higgsfield', category: 'Promo', price: 650000, priceIntl: 3900, flashPrice: 130000, flashPriceIntl: 780, estimate: '10–20 menit',
+    tiers: [{ label: 'Plus — 1 Bulan', price: 130000, priceIntl: 780 }] },
 ]
 
 export const coupons = [

@@ -509,6 +509,16 @@ const FAMILIES = [
       { label: '1 Tahun', price: 1000000, priceIntl: promoCents(1000000), note: 'Paling hemat' },
     ],
   },
+  // ===== HIGGSFIELD AI (flash sale, akun private, diskon 80%) =====
+  {
+    id: 'higgsfield-ai-plus', name: 'Higgsfield AI', vendor: 'Higgsfield', category: 'Promo',
+    tagline: 'Promo spesial Higgsfield AI Plus — akun private, diskon 80%.',
+    description: 'Platform AI video & gambar generatif — bikin video sinematik, animasi karakter, dan iklan produk dengan kontrol penuh. Termasuk paket Plus dengan ±1.000 kredit per bulan, semua model video & gambar, dan akses prioritas saat trafik tinggi. Akun private, tanpa sharing.',
+    logo: '/logos/higgsfield-white.png', brand: '#0f0f0f',
+    price: 650000, priceIntl: 3900, flashPrice: 130000, flashPriceIntl: 780, period: 'bln', rating: 4.8, sold: 0, estimate: '10–20 menit',
+    features: ['Higgsfield AI Plus penuh', '±1.000 kredit/bulan', 'Semua model video & gambar', 'Akun private no sharing'],
+    tiers: [{ label: 'Plus — 1 Bulan', price: 130000, priceIntl: 780, note: 'Diskon 80%' }],
+  },
 ]
 
 // Katalog final: harga internasional terisi, lalu dipecah per tier jadi produk terpisah.
@@ -534,7 +544,9 @@ const flashOf = (p, i) => {
   const mult = 3 + ((i * 3) % 6) * 0.2 // 3.0–4.0 → diskon ~67–75%
   const salePrice = Number.isFinite(Number(p.flashPrice)) && Number(p.flashPrice) > 0 ? Number(p.flashPrice) : p.price
   const salePriceIntl = Number.isFinite(Number(p.flashPriceIntl)) && Number(p.flashPriceIntl) > 0 ? Number(p.flashPriceIntl) : p.priceIntl
-  const originalPrice = Math.round((salePrice * mult) / 5000) * 5000
+  // Jika ada harga asli eksplisit (price > harga flash sale), pakai itu sebagai harga coret
+  // supaya diskon akurat (mis. harga asli Rp650.000, flash Rp130.000 → diskon 80%).
+  const originalPrice = p.price > salePrice ? p.price : Math.round((salePrice * mult) / 5000) * 5000
   const fallbackSold = 300 + ((i * 53) % 501) // 300–800 (total terjual, acak stabil)
   const fallbackLeft = 10 + ((i * 17) % 41) // 10–50 (sisa stok, acak stabil)
   const hasManagedStock = Number.isFinite(p.stock) && p.stock >= -1

@@ -37,6 +37,8 @@ async function main() {
       rating: p.rating ?? 5,
       price: p.price,
       priceIntl: p.priceIntl ?? 0,
+      flashPrice: p.flashPrice ?? null,
+      flashPriceIntl: p.flashPriceIntl ?? null,
       estimate: p.estimate || null,
       tiers: JSON.stringify(p.tiers || []),
     }
