@@ -17,8 +17,11 @@ export default function FlashSaleCard({ product, index = 0 }) {
   const { isPurchased } = usePurchased()
   const purchased = isPurchased(product.id)
 
-  const pct = Math.min(100, Math.round((product.sold / product.stock) * 100))
-  const left = Math.max(0, product.stock - product.sold)
+  const stock = Number.isFinite(product.stock) ? product.stock : -1
+  const sold = Math.max(0, Number(product.sold) || 0)
+  const hasLimitedStock = stock >= 0
+  const pct = hasLimitedStock ? Math.min(100, Math.round((sold / Math.max(1, stock)) * 100)) : 0
+  const left = hasLimitedStock ? Math.max(0, stock - sold) : null
   const almostGone = pct >= 80
 
   const sale = amountFor({ price: product.salePrice, priceIntl: product.salePriceIntl }, region)
@@ -103,9 +106,9 @@ export default function FlashSaleCard({ product, index = 0 }) {
           </div>
           <div className="sale-stock-label">
             <span className={almostGone ? 'sale-hot' : ''}>
-              {almostGone ? t('flash.almostGone') : t('flash.soldLabel')} {product.sold}
+              {almostGone ? t('flash.almostGone') : t('flash.soldLabel')} {sold}
             </span>
-            <span className="text-muted">{t('flash.left')} {left}</span>
+            <span className="text-muted">{hasLimitedStock ? `${t('flash.left')} ${left}` : 'Stok ∞'}</span>
           </div>
         </div>
 

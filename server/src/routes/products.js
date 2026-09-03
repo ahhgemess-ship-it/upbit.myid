@@ -5,9 +5,24 @@ import { effectiveDiscount } from '../discount.js'
 
 const router = Router()
 
+const parseJsonArray = (value) => {
+  try {
+    const parsed = JSON.parse(value || '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
 // Bentuk produk untuk klien. `discountPercent` = diskon EFEKTIF (sudah cek jadwal).
 export function formatProduct(p, { admin = false } = {}) {
   const pct = effectiveDiscount(p)
+  const tiers = parseJsonArray(p.tiers)
+  // Beberapa produk lama tersimpan tanpa tier. Tetap kirim satu tier valid agar
+  // kartu flash sale dan editor admin tidak crash saat stok diubah.
+  const safeTiers = tiers.length
+    ? tiers
+    : [{ label: p.period || 'Produk', price: p.price, priceIntl: p.priceIntl || 0 }]
   return {
     id: p.id,
     name: p.name,
@@ -15,7 +30,7 @@ export function formatProduct(p, { admin = false } = {}) {
     category: p.category,
     tagline: p.tagline,
     description: p.description,
-    features: JSON.parse(p.features || '[]'),
+    features: parseJsonArray(p.features),
     logo: p.logo,
     brand: p.brand,
     period: p.period,
@@ -24,7 +39,7 @@ export function formatProduct(p, { admin = false } = {}) {
     price: p.price,
     priceIntl: p.priceIntl,
     estimate: p.estimate,
-    tiers: JSON.parse(p.tiers || '[]'),
+    tiers: safeTiers,
     stock: p.stock, // -1 = tak terbatas
     flashSale: p.flashSale,
     discountPercent: pct,

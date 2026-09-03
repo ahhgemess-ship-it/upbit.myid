@@ -110,7 +110,9 @@ function normalize(p) {
     priceIntl: fromCents(p.priceIntl),
     discountPercent: p.discountRaw ?? p.discountPercent ?? 0,
     discountStart: toLocalInput(p.discountStart), discountEnd: toLocalInput(p.discountEnd),
-    tiers: p.tiers?.length ? p.tiers.map((t) => ({ _uid: uid(), label: t.label, price: t.price, priceIntl: fromCents(t.priceIntl), note: t.note || '' })) : [newTier()],
+    tiers: p.tiers?.length
+      ? p.tiers.map((t) => ({ _uid: uid(), label: t.label, price: t.price, priceIntl: fromCents(t.priceIntl), note: t.note || '' }))
+      : [{ _uid: uid(), label: p.period || 'Produk', price: p.price || 0, priceIntl: fromCents(p.priceIntl), note: '' }],
     features: p.features?.length ? p.features : [''],
   }
 }

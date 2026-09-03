@@ -533,11 +533,17 @@ export const categories = [...new Set(products.map((p) => p.category))]
 const flashOf = (p, i) => {
   const mult = 3 + ((i * 3) % 6) * 0.2 // 3.0–4.0 → diskon ~67–75%
   const originalPrice = Math.round((p.price * mult) / 5000) * 5000
-  const sold = 300 + ((i * 53) % 501) // 300–800 (total terjual, acak stabil)
-  const left = 10 + ((i * 17) % 41) // 10–50 (sisa stok, acak stabil)
-  const stock = sold + left // total stok = terjual + sisa → "Sisa" selalu 10–50 (tidak pernah 0)
+  const fallbackSold = 300 + ((i * 53) % 501) // 300–800 (total terjual, acak stabil)
+  const fallbackLeft = 10 + ((i * 17) % 41) // 10–50 (sisa stok, acak stabil)
+  const hasManagedStock = Number.isFinite(p.stock) && p.stock >= -1
+  const stock = hasManagedStock ? p.stock : fallbackSold + fallbackLeft
+  const sold = hasManagedStock ? Math.max(0, Number(p.sold) || 0) : fallbackSold
+  const safeTiers = Array.isArray(p.tiers) && p.tiers.length
+    ? p.tiers
+    : [{ label: p.period || 'Produk', price: p.price, priceIntl: p.priceIntl }]
   return {
     ...p,
+    tiers: safeTiers,
     discount: Math.round((1 - p.price / originalPrice) * 100),
     stock,
     sold,
