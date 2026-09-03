@@ -25,7 +25,7 @@ export default function BrandLogo({ src, name, brand = '#4f46e5', size = 56, rad
         overflow: 'hidden',
       }}
     >
-      {failed ? (
+      {failed || !src ? (
         <span
           style={{
             fontFamily: 'var(--font-display)',
