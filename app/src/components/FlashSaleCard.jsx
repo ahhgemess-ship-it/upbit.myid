@@ -16,6 +16,8 @@ export default function FlashSaleCard({ product, index = 0 }) {
   const [added, setAdded] = useState(false)
   const { isPurchased } = usePurchased()
   const purchased = isPurchased(product.id)
+  const stockOut = !!product.stockOut
+  const unavailable = purchased || stockOut
 
   const stock = Number.isFinite(product.stock) ? product.stock : -1
   const sold = Math.max(0, Number(product.sold) || 0)
@@ -37,7 +39,7 @@ export default function FlashSaleCard({ product, index = 0 }) {
   const handleAdd = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    if (purchased) return
+    if (unavailable) return
     addItem(product, saleTier)
     setAdded(true)
     setTimeout(() => setAdded(false), 1400)
@@ -46,7 +48,7 @@ export default function FlashSaleCard({ product, index = 0 }) {
   const handleBuy = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    if (purchased) return
+    if (unavailable) return
     addItem(product, saleTier)
     navigate('/cart')
   }
@@ -57,23 +59,23 @@ export default function FlashSaleCard({ product, index = 0 }) {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-60px' }}
       transition={{ duration: 0.45, delay: (index % 4) * 0.06 }}
-      whileHover={purchased ? {} : { y: -6 }}
-      style={{ opacity: purchased ? 0.45 : 1, filter: purchased ? 'grayscale(0.85)' : 'none', position: 'relative' }}
+      whileHover={unavailable ? {} : { y: -6 }}
+      style={{ opacity: unavailable ? 0.45 : 1, filter: unavailable ? 'grayscale(0.85)' : 'none', position: 'relative' }}
     >
       <Link
-        to={purchased ? '#' : `/product/${product.id}`}
+        to={unavailable ? '#' : `/product/${product.id}`}
         className="card sale-card"
-        onClick={(e) => purchased && e.preventDefault()}
-        style={{ pointerEvents: purchased ? 'none' : 'auto', position: 'relative', overflow: 'hidden' }}
+        onClick={(e) => unavailable && e.preventDefault()}
+        style={{ pointerEvents: unavailable ? 'none' : 'auto', position: 'relative', overflow: 'hidden' }}
       >
-        {purchased && (
+        {unavailable && (
           <div style={{
             position: 'absolute', inset: 0, display: 'grid', placeItems: 'center',
             background: 'rgba(255,255,255,.55)', zIndex: 2, borderRadius: 18,
           }}>
             <div style={{ textAlign: 'center' }}>
               <Ban size={36} style={{ color: 'var(--muted)', margin: '0 auto 8px' }} />
-              <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--muted)', display: 'block' }}>Stok Habis</span>
+              <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--muted)', display: 'block' }}>{stockOut ? 'Stok Habis' : 'Sudah Dibeli'}</span>
             </div>
           </div>
         )}

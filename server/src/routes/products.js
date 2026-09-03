@@ -42,6 +42,9 @@ export function formatProduct(p, { admin = false } = {}) {
     tiers: safeTiers,
     stock: p.stock, // -1 = tak terbatas
     flashSale: p.flashSale,
+    stockOut: p.stockOut,
+    flashPrice: p.flashPrice,
+    flashPriceIntl: p.flashPriceIntl,
     discountPercent: pct,
     ...(admin
       ? {

@@ -45,8 +45,12 @@ export default function ProductDetail() {
   }
 
   const tier = product.tiers[tierIdx]
-  const percent = discountFor(product.id)
-  const tierBase = amountOf(tier)
+  const isFlashSale = product.flashSale === true && Number(product.flashPrice) > 0
+  const effectiveTier = isFlashSale
+    ? { ...tier, price: product.flashPrice, priceIntl: product.flashPriceIntl ?? tier.priceIntl }
+    : tier
+  const percent = isFlashSale ? 0 : discountFor(product.id)
+  const tierBase = amountOf(effectiveTier)
   const salePrice = applyDiscount(tierBase, percent)
   const related = products.filter((p) => p.id !== product.id && p.category === product.category).slice(0, 3)
   const fallbackRelated = products.filter((p) => p.id !== product.id).slice(0, 3)
@@ -54,11 +58,12 @@ export default function ProductDetail() {
 
   // Tier terpilih dgn diskon (kedua mata uang).
   const chosenTier = () => ({
-    ...tier,
-    price: applyDiscount(tier.price, percent),
-    original: tier.price,
-    priceIntl: applyDiscount(tier.priceIntl, percent),
-    originalIntl: tier.priceIntl,
+    ...effectiveTier,
+    ...(isFlashSale ? { label: `${effectiveTier.label} (Flash Sale)` } : {}),
+    price: applyDiscount(effectiveTier.price, percent),
+    original: effectiveTier.price,
+    priceIntl: applyDiscount(effectiveTier.priceIntl, percent),
+    originalIntl: effectiveTier.priceIntl,
   })
 
   const handleAdd = () => {
@@ -213,6 +218,9 @@ export default function ProductDetail() {
           </div>
 
           {/* price + add */}
+          {isFlashSale && product.stockOut && (
+            <p className="text-muted" style={{ color: '#dc2626', fontWeight: 700, margin: '18px 0 -4px' }}>Stok Flash Sale sedang habis.</p>
+          )}
           <div className="card pd-buy-card">
             <div className="pd-price-block">
               <span className="text-muted" style={{ fontSize: 13 }}>{t('pd.total')}</span>
@@ -227,7 +235,7 @@ export default function ProductDetail() {
               </div>
             </div>
             <div className="pd-actions">
-              <motion.button whileTap={{ scale: 0.97 }} onClick={handleBuy} className="pill pill-indigo pd-buy">
+              <motion.button whileTap={{ scale: 0.97 }} onClick={handleBuy} disabled={isFlashSale && product.stockOut} className="pill pill-indigo pd-buy">
                 {t('product.buyNow')}
                 <span className="pill-ic"><ArrowUpRight size={16} strokeWidth={2.6} /></span>
               </motion.button>
@@ -235,6 +243,7 @@ export default function ProductDetail() {
                 whileTap={{ scale: 0.88 }}
                 onClick={handleAdd}
                 className="pd-cart-btn"
+                disabled={isFlashSale && product.stockOut}
                 aria-label={t('pd.addToCart')}
                 animate={added ? { scale: [1, 1.18, 1] } : {}}
                 transition={{ duration: 0.4 }}

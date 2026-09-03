@@ -118,6 +118,9 @@ model Product {
   stock           Int     @default(-1) // -1 = tak terbatas
   active          Boolean @default(true)
   flashSale       Boolean @default(false) // tampil di halaman flash sale (idc, tanpa ubah kategori)
+  stockOut        Boolean @default(false) // admin dapat menandai stok habis tanpa menghapus stok tersimpan
+  flashPrice      Int?    // harga khusus Flash Sale (IDR), null = gunakan price
+  flashPriceIntl  Int?    // harga khusus Flash Sale (USD sen), null = gunakan priceIntl
   discountPercent Int     @default(0) // 0–90%
   discountStart   DateTime?
   discountEnd     DateTime?

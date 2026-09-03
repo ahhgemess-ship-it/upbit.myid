@@ -112,10 +112,15 @@ router.post('/', requireAuth, upload.single('proof'), async (req, res) => {
       const prod = byId[raw.id]
       if (!prod) return res.status(400).json({ error: `Produk tidak dikenal: ${raw.id}` })
       if (!prod.active) return res.status(400).json({ error: `Produk tidak tersedia: ${prod.name}` })
+      if (prod.stockOut) return res.status(409).json({ error: `Stok ${prod.name} sedang habis` })
+      const flashTier = typeof raw.tierLabel === 'string' && raw.tierLabel.endsWith(' (Flash Sale)')
       const tier = prod.tiers.find((t) => t.label === raw.tierLabel) || prod.tiers[0]
+      const selectedTier = flashTier && prod.flashSale
+        ? { ...tier, price: prod.flashPrice ?? prod.price, priceIntl: prod.flashPriceIntl ?? prod.priceIntl }
+        : tier
       const qty = Math.max(1, Math.min(99, parseInt(raw.qty, 10) || 1))
       // Cek stok (−1 = tak terbatas). Produk 30k-80k skip stok global karena auto-refund.
-      if (prod.stock !== -1 && !isStockOutPrice(tier.price)) {
+      if (prod.stock !== -1 && !isStockOutPrice(selectedTier.price)) {
         stockNeed[prod.id] = (stockNeed[prod.id] || 0) + qty
         if (stockNeed[prod.id] > prod.stock) {
           return res.status(409).json({ error: `Stok ${prod.name} tidak cukup (sisa ${prod.stock})` })
@@ -124,11 +129,11 @@ router.post('/', requireAuth, upload.single('proof'), async (req, res) => {
       // Harga dasar sesuai mata uang + diskon efektif (server otoritatif).
       // Yuan diturunkan dari USD (sen) × kurs, MYR dari IDR / kurs.
       const base =
-        currency === 'USD' ? (tier.priceIntl || 0)
-          : currency === 'CNY' ? Math.round((tier.priceIntl || 0) * USD_TO_CNY)
-            : currency === 'MYR' ? Math.round(((tier.price || 0) / MYR_RATE) * 100)
-              : tier.price
-      const pct = effectiveDiscount(prod)
+        currency === 'USD' ? (selectedTier.priceIntl || 0)
+          : currency === 'CNY' ? Math.round((selectedTier.priceIntl || 0) * USD_TO_CNY)
+            : currency === 'MYR' ? Math.round(((selectedTier.price || 0) / MYR_RATE) * 100)
+              : selectedTier.price
+      const pct = flashTier && prod.flashSale ? 0 : effectiveDiscount(prod)
       const unitPrice = salePrice(base, pct)
       subtotal += unitPrice * qty
       if (prod.estimate) estimate = prod.estimate

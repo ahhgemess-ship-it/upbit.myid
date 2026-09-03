@@ -532,7 +532,9 @@ export const categories = [...new Set(products.map((p) => p.category))]
 // supaya terlihat diskon besar; harga jual sebenarnya = harga promo.
 const flashOf = (p, i) => {
   const mult = 3 + ((i * 3) % 6) * 0.2 // 3.0–4.0 → diskon ~67–75%
-  const originalPrice = Math.round((p.price * mult) / 5000) * 5000
+  const salePrice = Number.isFinite(Number(p.flashPrice)) && Number(p.flashPrice) > 0 ? Number(p.flashPrice) : p.price
+  const salePriceIntl = Number.isFinite(Number(p.flashPriceIntl)) && Number(p.flashPriceIntl) > 0 ? Number(p.flashPriceIntl) : p.priceIntl
+  const originalPrice = Math.round((salePrice * mult) / 5000) * 5000
   const fallbackSold = 300 + ((i * 53) % 501) // 300–800 (total terjual, acak stabil)
   const fallbackLeft = 10 + ((i * 17) % 41) // 10–50 (sisa stok, acak stabil)
   const hasManagedStock = Number.isFinite(p.stock) && p.stock >= -1
@@ -544,13 +546,14 @@ const flashOf = (p, i) => {
   return {
     ...p,
     tiers: safeTiers,
-    discount: Math.round((1 - p.price / originalPrice) * 100),
+    discount: Math.max(0, Math.round((1 - salePrice / originalPrice) * 100)),
     stock,
+    stockOut: !!p.stockOut,
     sold,
     originalPrice,
     originalPriceIntl: promoCents(originalPrice),
-    salePrice: p.price,
-    salePriceIntl: p.priceIntl,
+    salePrice,
+    salePriceIntl,
   }
 }
 
