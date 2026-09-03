@@ -181,6 +181,8 @@ function parseProductBody(b, { partial = false } = {}) {
   if (b.features !== undefined) d.features = JSON.stringify(Array.isArray(b.features) ? b.features : [])
   set('logo', b.logo ?? undefined)
   set('brand', b.brand ?? undefined)
+  set('badge', b.badge ?? undefined)
+  set('badgeColor', b.badgeColor ?? undefined)
   set('period', b.period ?? undefined)
   if (b.rating !== undefined) d.rating = Number(b.rating) || 0
   if (b.sold !== undefined) d.sold = parseInt(b.sold, 10) || 0

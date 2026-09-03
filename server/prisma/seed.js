@@ -33,6 +33,8 @@ async function main() {
       features: JSON.stringify(p.features || []),
       logo: p.logo || null,
       brand: p.brand || null,
+      badge: p.badge || null,
+      badgeColor: p.badgeColor || null,
       period: p.period || null,
       rating: p.rating ?? 5,
       price: p.price,

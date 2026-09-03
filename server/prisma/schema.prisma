@@ -108,6 +108,8 @@ model Product {
   features        String  @default("[]") // JSON array string
   logo            String?
   brand           String?
+  badge           String? // label pill kecil di kartu (mis. "STARTER"), opsional
+  badgeColor      String? // warna latar badge (hex), opsional
   period          String? // "bln", "12 bln", "paket"
   rating          Float   @default(5)
   sold            Int     @default(0)

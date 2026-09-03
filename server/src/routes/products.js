@@ -33,6 +33,8 @@ export function formatProduct(p, { admin = false } = {}) {
     features: parseJsonArray(p.features),
     logo: p.logo,
     brand: p.brand,
+    badge: p.badge ?? null,
+    badgeColor: p.badgeColor ?? null,
     period: p.period,
     rating: p.rating,
     sold: p.sold,

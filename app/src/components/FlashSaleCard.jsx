@@ -86,7 +86,17 @@ export default function FlashSaleCard({ product, index = 0 }) {
 
         <div className="sale-card-top">
           <BrandLogo src={product.logo} name={product.name} brand={product.brand} size={52} />
-          <span className="chip" style={{ fontSize: 11 }}>{t('cat.' + product.category)}</span>
+          {product.badge && product.badgeColor ? (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', alignSelf: 'flex-start', marginTop: 2,
+              background: product.badgeColor, color: '#fff',
+              fontSize: 10, fontWeight: 800, letterSpacing: '.07em', lineHeight: 1,
+              padding: '5px 9px', borderRadius: 999, border: '1px solid rgba(255,255,255,.25)',
+              boxShadow: '0 1px 0 rgba(0,0,0,.25)',
+            }}>{product.badge}</span>
+          ) : (
+            <span className="chip" style={{ fontSize: 11 }}>{t('cat.' + product.category)}</span>
+          )}
         </div>
 
         <h3 className="display sale-name">{product.name}</h3>
