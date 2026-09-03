@@ -17,14 +17,16 @@ export default function FlashSaleCard({ product, index = 0 }) {
   const { isPurchased } = usePurchased()
   const purchased = isPurchased(product.id)
   const stockOut = !!product.stockOut
-  const unavailable = purchased || stockOut
 
   const stock = Number.isFinite(product.stock) ? product.stock : -1
   const sold = Math.max(0, Number(product.sold) || 0)
   const hasLimitedStock = stock >= 0
-  const pct = hasLimitedStock ? Math.min(100, Math.round((sold / Math.max(1, stock)) * 100)) : 0
-  const left = hasLimitedStock ? Math.max(0, stock - sold) : null
-  const almostGone = pct >= 80
+  // `stock` dari DB adalah stok tersisa, bukan kuota awal. Jangan dikurangi `sold` lagi.
+  const left = hasLimitedStock ? Math.max(0, stock) : null
+  const pct = hasLimitedStock ? (left === 0 ? 100 : Math.min(95, Math.max(5, Math.round(100 - (left / Math.max(left + sold, 1)) * 100)))) : 0
+  const soldOutByStock = hasLimitedStock && left === 0
+  const unavailable = purchased || stockOut || soldOutByStock
+  const almostGone = hasLimitedStock && left > 0 && left <= Math.max(3, Math.ceil((left + sold) * 0.2))
 
   const sale = amountFor({ price: product.salePrice, priceIntl: product.salePriceIntl }, region)
   const orig = amountFor({ price: product.originalPrice, priceIntl: product.originalPriceIntl }, region)
@@ -75,7 +77,7 @@ export default function FlashSaleCard({ product, index = 0 }) {
           }}>
             <div style={{ textAlign: 'center' }}>
               <Ban size={36} style={{ color: 'var(--muted)', margin: '0 auto 8px' }} />
-              <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--muted)', display: 'block' }}>{stockOut ? 'Stok Habis' : 'Sudah Dibeli'}</span>
+              <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--muted)', display: 'block' }}>{stockOut || soldOutByStock ? 'Stok Habis' : 'Sudah Dibeli'}</span>
             </div>
           </div>
         )}

@@ -46,6 +46,7 @@ export default function ProductDetail() {
 
   const tier = product.tiers[tierIdx]
   const isFlashSale = product.flashSale === true && Number(product.flashPrice) > 0
+  const flashSoldOut = isFlashSale && (product.stockOut || product.stock === 0)
   const effectiveTier = isFlashSale
     ? { ...tier, price: product.flashPrice, priceIntl: product.flashPriceIntl ?? tier.priceIntl }
     : tier
@@ -218,7 +219,7 @@ export default function ProductDetail() {
           </div>
 
           {/* price + add */}
-          {isFlashSale && product.stockOut && (
+          {flashSoldOut && (
             <p className="text-muted" style={{ color: '#dc2626', fontWeight: 700, margin: '18px 0 -4px' }}>Stok Flash Sale sedang habis.</p>
           )}
           <div className="card pd-buy-card">
@@ -235,7 +236,7 @@ export default function ProductDetail() {
               </div>
             </div>
             <div className="pd-actions">
-              <motion.button whileTap={{ scale: 0.97 }} onClick={handleBuy} disabled={isFlashSale && product.stockOut} className="pill pill-indigo pd-buy">
+              <motion.button whileTap={{ scale: 0.97 }} onClick={handleBuy} disabled={flashSoldOut} className="pill pill-indigo pd-buy">
                 {t('product.buyNow')}
                 <span className="pill-ic"><ArrowUpRight size={16} strokeWidth={2.6} /></span>
               </motion.button>
@@ -243,7 +244,7 @@ export default function ProductDetail() {
                 whileTap={{ scale: 0.88 }}
                 onClick={handleAdd}
                 className="pd-cart-btn"
-                disabled={isFlashSale && product.stockOut}
+                disabled={flashSoldOut}
                 aria-label={t('pd.addToCart')}
                 animate={added ? { scale: [1, 1.18, 1] } : {}}
                 transition={{ duration: 0.4 }}
