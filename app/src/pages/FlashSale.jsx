@@ -1,20 +1,35 @@
-import { useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Zap, ArrowUpRight, Clock, Flame, Tag } from 'lucide-react'
+import { Zap, ArrowUpRight, Clock, Flame, Tag, Sparkles, ArrowDownWideNarrow, ArrowUpWideNarrow } from 'lucide-react'
 import Countdown from '../components/Countdown.jsx'
 import FlashSaleCard from '../components/FlashSaleCard.jsx'
 import Asterisk from '../components/Asterisk.jsx'
+import SortDropdown from '../components/SortDropdown.jsx'
 import { flashFrom, getSaleEndTime } from '../data/products.js'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 
+// Opsi sortir khusus flash sale: harga = harga FLASH (yang dibayar pembeli),
+// bukan harga normal. Label tetap pakai key i18n `sort.*` yang sudah ada di
+// 9 bahasa → konsisten dengan halaman Store.
+const FLASH_SORT_OPTIONS = [
+  { key: 'relevan', label: 'sort.relevan', icon: Sparkles, fn: null },
+  { key: 'termurah', label: 'sort.termurah', icon: ArrowDownWideNarrow, fn: (a, b) => a.salePrice - b.salePrice },
+  { key: 'termahal', label: 'sort.termahal', icon: ArrowUpWideNarrow, fn: (a, b) => b.salePrice - a.salePrice },
+]
+
 export default function FlashSale() {
   const { t } = useLang()
   const { products } = useCatalog()
+  const [sort, setSort] = useState('relevan')
   // Baca dari katalog DB (via CatalogContext) supaya edit harga/nama/deskripsi
   // produk Promo di admin panel langsung tampil. Fallback awal = statis.
-  const flashSale = useMemo(() => flashFrom(products), [products])
+  const flashSale = useMemo(() => {
+    const list = flashFrom(products)
+    const fn = FLASH_SORT_OPTIONS.find((o) => o.key === sort)?.fn
+    return fn ? [...list].sort(fn) : list
+  }, [products, sort])
   const end = useMemo(() => getSaleEndTime(), [])
   const maxDiscount = flashSale.length ? Math.max(...flashSale.map((p) => p.discount)) : 0
 
@@ -64,9 +79,14 @@ export default function FlashSale() {
           <Flame size={26} color="var(--indigo)" />
           <span className="eyebrow">{t('flash.hotEyebrow')}</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap', marginBottom: 30 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap', marginBottom: 14 }}>
           <h2 className="display h-lg" style={{ maxWidth: 520 }}>{t('flash.gridTitle')}</h2>
           <Link to="/store" className="btn-link">{t('flash.viewAll')} <ArrowUpRight size={18} /></Link>
+        </div>
+
+        {/* filter urutan: termurah / termahal (harga flash) — label i18n 9 bahasa */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 22 }}>
+          <SortDropdown value={sort} onChange={setSort} options={FLASH_SORT_OPTIONS} />
         </div>
 
         <div className="product-grid">

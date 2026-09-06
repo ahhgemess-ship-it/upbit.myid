@@ -14,11 +14,14 @@ export const SORT_OPTIONS = [
   { key: 'terlaris', label: 'sort.terlaris', icon: Flame, fn: (a, b) => b.sold - a.sold },
 ]
 
-export default function SortDropdown({ value, onChange }) {
+// `options` opsional: halaman lain bisa menyediakan varian sortir sendiri
+// (mis. flash sale mengurutkan berdasar harga flash, bukan harga normal)
+// sambil tetap memakai label i18n yang sudah diterjemahkan.
+export default function SortDropdown({ value, onChange, options = SORT_OPTIONS }) {
   const { t } = useLang()
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
-  const active = SORT_OPTIONS.find((o) => o.key === value) || SORT_OPTIONS[0]
+  const active = options.find((o) => o.key === value) || options[0]
 
   useEffect(() => {
     if (!open) return
@@ -65,7 +68,7 @@ export default function SortDropdown({ value, onChange }) {
             exit={{ opacity: 0, y: -8, scale: 0.97 }}
             transition={{ duration: 0.16, ease: 'easeOut' }}
           >
-            {SORT_OPTIONS.map((o) => {
+            {options.map((o) => {
               const Ic = o.icon
               const isActive = o.key === value
               return (
