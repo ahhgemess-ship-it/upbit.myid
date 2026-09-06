@@ -12,8 +12,10 @@ async function main() {
 
   // "Total terjual": angka acak UNIK 100–500. Nilai yang sudah ada DIPERTAHANKAN
   // (tidak ke-reset saat re-seed); hanya produk baru yang diberi angka baru.
-  const existing = await prisma.product.findMany({ select: { id: true, sold: true } })
+  // flashPrice lama juga diambil untuk deteksi edit admin (lihat adminPriced di bawah).
+  const existing = await prisma.product.findMany({ select: { id: true, sold: true, flashPrice: true } })
   const soldById = Object.fromEntries(existing.map((e) => [e.id, e.sold]))
+  const flashById = Object.fromEntries(existing.map((e) => [e.id, e.flashPrice]))
   const used = new Set(Object.values(soldById).filter((s) => s >= 100 && s <= 500))
   const pool = []
   for (let n = 100; n <= 500; n++) if (!used.has(n)) pool.push(n)
@@ -39,19 +41,28 @@ async function main() {
       rating: p.rating ?? 5,
       price: p.price,
       priceIntl: p.priceIntl ?? 0,
-      flashPrice: p.flashPrice ?? null,
-      // USD mengikuti harga Rp flash (kalau produk flash punya harga khusus).
-      flashPriceIntl: p.flashPrice != null ? (p.flashPriceIntl ?? Math.max(1, Math.round((p.flashPrice * 100) / 17650))) : null,
       estimate: p.estimate || null,
       tiers: JSON.stringify(p.tiers || []),
     }
+    // Harga flash dipisah dari data konten agar bisa dikondisikan saat update.
+    const flashData = {
+      flashPrice: p.flashPrice ?? null,
+      // USD mengikuti harga Rp flash (kalau produk flash punya harga khusus).
+      flashPriceIntl: p.flashPrice != null ? (p.flashPriceIntl ?? Math.max(1, Math.round((p.flashPrice * 100) / 17650))) : null,
+    }
+    // Pertahankan harga flash hasil edit admin: bila flashPrice di DB sudah terisi
+    // dan BERBEDA dari katalog, berarti admin pernah mengaturnya lewat panel →
+    // jangan timpa saat re-seed. (Konsekuensinya: perubahan harga flash di katalog
+    // untuk produk yang sudah diedit admin tidak otomatis masuk — ubah via panel.)
+    // Produk baru / yang masih mengikuti katalog → nilai katalog diterapkan normal.
+    const adminPriced = flashById[p.id] != null && flashById[p.id] !== (p.flashPrice ?? null)
     // Jangan timpa stock/active/flashSale/diskon/sold yang sudah diatur (sold dipertahankan).
     // Produk BARU default masuk flash sale bila kategori 'Promo' (perilaku lama),
     // tapi admin bisa ubah via panel Flash Sale tanpa perlu ubah kategori.
     await prisma.product.upsert({
       where: { id: p.id },
-      update: data, // data tidak memuat flashSale/stock/active/sold → nilai admin dipertahankan
-      create: { id: p.id, stock: -1, active: true, sold, flashSale: p.category === 'Promo', ...data },
+      update: adminPriced ? data : { ...data, ...flashData },
+      create: { id: p.id, stock: -1, active: true, sold, flashSale: p.category === 'Promo', ...data, ...flashData },
     })
   }
   // Kupon TIDAK di-seed — dibuat oleh admin lewat panel.
