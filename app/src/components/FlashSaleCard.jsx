@@ -8,6 +8,13 @@ import { useLang } from '../context/LanguageContext.jsx'
 import { usePricing, amountFor } from '../i18n/pricing.js'
 import { usePurchased } from '../context/usePurchased.js'
 
+// Hash FNV-1a sederhana → angka deterministik per id produk (stabil antar refresh).
+const hashId = (s) => {
+  let h = 0x811c9dc5
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) }
+  return h >>> 0
+}
+
 export default function FlashSaleCard({ product, index = 0 }) {
   const { addItem } = useCart()
   const { t } = useLang()
@@ -20,13 +27,16 @@ export default function FlashSaleCard({ product, index = 0 }) {
 
   const stock = Number.isFinite(product.stock) ? product.stock : -1
   const sold = Math.max(0, Number(product.sold) || 0)
-  const hasLimitedStock = stock >= 0
   // `stock` dari DB adalah stok tersisa, bukan kuota awal. Jangan dikurangi `sold` lagi.
-  const left = hasLimitedStock ? Math.max(0, stock) : null
-  const pct = hasLimitedStock ? (left === 0 ? 100 : Math.min(95, Math.max(5, Math.round(100 - (left / Math.max(left + sold, 1)) * 100)))) : 0
-  const soldOutByStock = hasLimitedStock && left === 0
+  // Produk unlimited (stock = -1) TETAP dipakai apa adanya untuk logika order;
+  // untuk tampilan, sisa stoknya ditampilkan 5–20 (deterministik per produk via
+  // hash id) supaya kartu flash sale selalu terasa langka, bukan "Stok ∞".
+  const realStock = stock >= 0
+  const left = realStock ? Math.max(0, stock) : 5 + (hashId(product.id) % 16)
+  const pct = left === 0 ? 100 : Math.min(95, Math.max(5, Math.round(100 - (left / Math.max(left + sold, 1)) * 100)))
+  const soldOutByStock = realStock && left === 0
   const unavailable = purchased || stockOut || soldOutByStock
-  const almostGone = hasLimitedStock && left > 0 && left <= Math.max(3, Math.ceil((left + sold) * 0.2))
+  const almostGone = realStock && left > 0 && left <= Math.max(3, Math.ceil((left + sold) * 0.2))
 
   const sale = amountFor({ price: product.salePrice, priceIntl: product.salePriceIntl }, region)
   const orig = amountFor({ price: product.originalPrice, priceIntl: product.originalPriceIntl }, region)
@@ -122,7 +132,7 @@ export default function FlashSaleCard({ product, index = 0 }) {
             <span className={almostGone ? 'sale-hot' : ''}>
               {almostGone ? t('flash.almostGone') : t('flash.soldLabel')} {sold}
             </span>
-            <span className="text-muted">{hasLimitedStock ? `${t('flash.left')} ${left}` : 'Stok ∞'}</span>
+            <span className="text-muted">{`${t('flash.left')} ${left}`}</span>
           </div>
         </div>
 
