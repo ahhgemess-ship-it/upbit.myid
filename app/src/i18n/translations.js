@@ -354,6 +354,9 @@ export const T = {
   'rev.verified': { en: 'Verified', zh: '已验证', ja: '認証済み', id: 'Terverifikasi', ru: 'Проверено', ms: 'Disahkan', hi: 'सत्यापित', de: 'Verifiziert', vi: 'Đã xác minh' },
   'rev.pickStars': { en: 'Pick a star rating first.', zh: '请先选择星级。', ja: '先に星評価を選んでください。', id: 'Pilih jumlah bintang dulu.', ru: 'Сначала выберите количество звёзд.', ms: 'Pilih bilangan bintang dahulu.', hi: 'पहले स्टार रेटिंग चुनें।', de: 'Wählen Sie zuerst eine Sternebewertung.', vi: 'Chọn số sao trước.' },
   'rev.submitFail': { en: 'Failed to submit review.', zh: '提交评价失败。', ja: 'レビューの送信に失敗しました。', id: 'Gagal mengirim ulasan.', ru: 'Не удалось отправить отзыв.', ms: 'Gagal menghantar ulasan.', hi: 'समीक्षा भेजने में विफल।', de: 'Bewertung konnte nicht gesendet werden.', vi: 'Gửi đánh giá thất bại.' },
+  'rev.today': { en: 'Today', zh: '今天', ja: '今日', id: 'Hari ini', ru: 'Сегодня', ms: 'Hari Ini', hi: 'आज', de: 'Heute', vi: 'Hôm nay' },
+  'rev.yesterday': { en: 'Yesterday', zh: '昨天', ja: '昨日', id: 'Kemarin', ru: 'Вчера', ms: 'Semalam', hi: 'कल', de: 'Gestern', vi: 'Hôm qua' },
+  'rev.daysAgo': { en: '{n} days ago', zh: '{n} 天前', ja: '{n}日前', id: '{n} hari lalu', ru: '{n} дн. назад', ms: '{n} hari lalu', hi: '{n} दिन पहले', de: 'vor {n} Tagen', vi: '{n} ngày trước' },
   'rev.showAll': { en: 'Show All Reviews', zh: '查看所有评价', ja: 'すべてのレビューを見る', id: 'Lihat Semua Ulasan', ru: 'Все отзывы', ms: 'Lihat Semua Ulasan', hi: 'सभी समीक्षाएं देखें', de: 'Alle Bewertungen', vi: 'Xem tất cả đánh giá' },
   'rev.showLess': { en: 'Show Less', zh: '收起', ja: '折りたたむ', id: 'Sembunyikan', ru: 'Скрыть', ms: 'Sembunyi', hi: 'कम दिखाएं', de: 'Weniger anzeigen', vi: 'Ẩn bớt' },
 

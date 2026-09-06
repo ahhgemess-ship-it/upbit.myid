@@ -13,7 +13,7 @@ import reviewRoutes from './routes/reviews.js'
 import adminRoutes from './routes/admin.js'
 import notificationRoutes from './routes/notifications.js'
 import balanceRoutes from './routes/balance.js'
-import { startRatingShuffler, shuffleSeedRatings } from './reviewShuffle.js'
+import { startRatingShuffler, shuffleSeedRatings, refreshReviewDates, addDailyReviews } from './reviewShuffle.js'
 
 const app = express()
 app.set('trust proxy', 1) // di belakang proxy (Vite/Vercel) — agar rate-limit baca IP benar
@@ -45,8 +45,9 @@ app.use('/api', apiLimiter)
 
 app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }))
 
-// Vercel Cron memanggil ini tiap jam (lihat "crons" di vercel.json) untuk
-// mengacak rating. Dilindungi CRON_SECRET (Vercel mengirim header Authorization).
+// Vercel Cron memanggil ini 1×/hari (lihat "crons" di vercel.json) untuk:
+// acak rating + segarkan tanggal ulasan + tambah 1-2 ulasan baru per produk.
+// Dilindungi CRON_SECRET (Vercel mengirim header Authorization).
 app.get('/api/cron/shuffle-ratings', async (req, res) => {
   const secret = process.env.CRON_SECRET
   const isProd = process.env.NODE_ENV === 'production' || !!process.env.VERCEL
@@ -55,8 +56,9 @@ app.get('/api/cron/shuffle-ratings', async (req, res) => {
   if (isProd && !secret) return res.status(503).json({ error: 'cron disabled: CRON_SECRET not set' })
   if (secret && req.headers.authorization !== `Bearer ${secret}`) return res.status(401).json({ error: 'unauthorized' })
   try {
-    const n = await shuffleSeedRatings()
-    res.json({ ok: true, shuffled: n })
+    // Jalankan paralel (kolom/entitas berbeda: rating, tanggal, ulasan baru) → cron cepat.
+    const [n, d, a] = await Promise.all([shuffleSeedRatings(), refreshReviewDates(), addDailyReviews()])
+    res.json({ ok: true, shuffled: n, datesRefreshed: d, reviewsAdded: a })
   } catch {
     res.status(500).json({ ok: false })
   }
@@ -77,7 +79,7 @@ app.use((req, res) => res.status(404).json({ error: 'Not found' }))
 const PORT = process.env.PORT || 4000
 if (!process.env.VERCEL) {
   app.listen(PORT, () => console.log(`EvolusiAI API berjalan di http://localhost:${PORT}`))
-  startRatingShuffler() // acak rating ulasan tiap 1 jam
+  startRatingShuffler() // acak rating + refresh tanggal + tambah ulasan harian (1×/hari)
 }
 
 export default app

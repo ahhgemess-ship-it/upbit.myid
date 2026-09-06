@@ -39,9 +39,22 @@ function Stars({ value, onChange, size = 26, readOnly = false }) {
   )
 }
 
-function fmtDate(iso) {
+const LOCALE = { id: 'id-ID', zh: 'zh-CN', ja: 'ja-JP', vi: 'vi-VN', ru: 'ru-RU', ms: 'ms-MY', hi: 'hi-IN', de: 'de-DE' }
+
+// Label waktu relatif: Hari ini / Kemarin / X hari lalu — ulasan selalu terlihat fresh.
+function fmtDate(iso, t, lang) {
   try {
-    return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+    const d = new Date(iso)
+    const now = new Date()
+    const dayMs = 86400000
+    const diffDays = Math.round(
+      (new Date(now.getFullYear(), now.getMonth(), now.getDate())
+        - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / dayMs,
+    )
+    if (diffDays <= 0) return t('rev.today')
+    if (diffDays === 1) return t('rev.yesterday')
+    if (diffDays <= 60) return t('rev.daysAgo').replace('{n}', diffDays)
+    return d.toLocaleDateString(LOCALE[lang] || 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
   } catch {
     return ''
   }
@@ -49,7 +62,7 @@ function fmtDate(iso) {
 
 export default function ReviewSection({ product }) {
   const { user } = useAuth()
-  const { t } = useLang()
+  const { t, lang } = useLang()
 
   const [reviews, setReviews] = useState([])
   const [purchased, setPurchased] = useState(false)
@@ -223,7 +236,7 @@ export default function ReviewSection({ product }) {
                   <Stars value={r.rating} readOnly size={16} />
                 </div>
                 {r.comment && <p style={{ fontSize: 14.5, lineHeight: 1.55, marginTop: 12, color: 'var(--ink-soft)' }}>{r.comment}</p>}
-                <div className="text-muted" style={{ fontSize: 12.5, marginTop: 10 }}>{fmtDate(r.date)}</div>
+                <div className="text-muted" style={{ fontSize: 12.5, marginTop: 10 }}>{fmtDate(r.date, t, lang)}</div>
               </motion.div>
             ))}
           </div>
