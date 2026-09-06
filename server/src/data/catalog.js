@@ -24,12 +24,12 @@ export const products = [
     tiers: [{ label: '1.000 request', price: 45000 }, { label: '5.000 request', price: 200000 }, { label: '10.000 request', price: 380000 }] },
   { id: 'leonardo-ai-pro', name: 'Leonardo AI Pro', vendor: 'Leonardo', category: 'AI Image', price: 489000, estimate: null,
     tiers: [{ label: 'Artisan — 1 Bulan', price: 489000 }, { label: 'Artisan — Tahunan', price: 391000 }, { label: 'Maestro — 1 Bulan', price: 978000 }] },
-  { id: 'higgsfield-ai-starter', name: 'Higgsfield Starter', vendor: 'Higgsfield', category: 'Promo', badge: 'STARTER', badgeColor: '#0284c7', price: 250000, priceIntl: 1500, flashPrice: 50000, flashPriceIntl: 300, estimate: '10–20 menit',
-    tiers: [{ label: '1 Bulan', price: 50000, priceIntl: 300 }] },
-  { id: 'higgsfield-ai-plus', name: 'Higgsfield Plus', vendor: 'Higgsfield', category: 'Promo', badge: 'PLUS', badgeColor: '#b45309', price: 650000, priceIntl: 3900, flashPrice: 130000, flashPriceIntl: 780, estimate: '10–20 menit',
-    tiers: [{ label: '1 Bulan', price: 130000, priceIntl: 780 }] },
-  { id: 'higgsfield-ai-ultra', name: 'Higgsfield Ultra', vendor: 'Higgsfield', category: 'Promo', badge: 'ULTRA', badgeColor: '#7c3aed', price: 1650000, priceIntl: 9900, flashPrice: 330000, flashPriceIntl: 1980, estimate: '10–20 menit',
-    tiers: [{ label: '1 Bulan', price: 330000, priceIntl: 1980 }] },
+  { id: 'higgsfield-ai-basic', name: 'Higgsfield Basic', vendor: 'Higgsfield', category: 'Promo', badge: 'BASIC', badgeColor: '#0284c7', price: 158850, priceIntl: 900, flashPrice: 31770, flashPriceIntl: 180, estimate: '10–20 menit',
+    tiers: [{ label: '1 Bulan', price: 31770, priceIntl: 180 }] },
+  { id: 'higgsfield-ai-pro', name: 'Higgsfield Pro', vendor: 'Higgsfield', category: 'Promo', badge: 'PRO', badgeColor: '#b45309', price: 511850, priceIntl: 2900, flashPrice: 102370, flashPriceIntl: 580, estimate: '10–20 menit',
+    tiers: [{ label: '1 Bulan', price: 102370, priceIntl: 580 }] },
+  { id: 'higgsfield-ai-max', name: 'Higgsfield Max', vendor: 'Higgsfield', category: 'Promo', badge: 'MAX', badgeColor: '#7c3aed', price: 1394350, priceIntl: 7900, flashPrice: 278870, flashPriceIntl: 1580, estimate: '10–20 menit',
+    tiers: [{ label: '1 Bulan', price: 278870, priceIntl: 1580 }] },
 ]
 
 export const coupons = [

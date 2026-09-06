@@ -10,7 +10,7 @@ import { sendOrderCreated } from '../mailer.js'
 import { effectiveDiscount, salePrice } from '../discount.js'
 import { notify, notifyAdmins } from '../notify.js'
 import { saveUpload } from '../storage.js'
-import { toIDR, fromIDR } from '../money.js'
+import { toIDR, fromIDR, USD_TO_CNY, MYR_RATE } from '../money.js'
 
 const router = Router()
 
@@ -96,8 +96,6 @@ router.post('/', requireAuth, upload.single('proof'), async (req, res) => {
     }
 
     // Mata uang: IDR (lokal), USD (internasional), CNY (Yuan), atau MYR (Ringgit). Server otoritatif.
-    const USD_TO_CNY = 7.2
-    const MYR_RATE = 3500
     const currency = b.currency === 'USD' ? 'USD' : b.currency === 'CNY' ? 'CNY' : b.currency === 'MYR' ? 'MYR' : 'IDR'
 
     // Validasi harga + stok sisi-server dari katalog DB

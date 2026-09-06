@@ -18,12 +18,13 @@ export const DEFAULT_LANG = 'id'
 
 // ═══ Mata Uang per Bahasa ═══
 // Balance selalu disimpan dalam IDR di backend. Display dikonversi sesuai bahasa.
-const USD_RATE = 16300 // 1 USD = Rp 16.300
+// Kurs pasar perkiraan (Sep 2026): 1 USD ≈ Rp 17.650; 1 USD ≈ ¥6,72; 1 MYR ≈ Rp 4.370.
+const USD_RATE = 17650 // 1 USD = Rp 17.650
 export const CURRENCY = {
   id: { symbol: 'Rp',   rate: 1,       dec: 0, locale: 'id-ID', name: 'IDR' },
-  ms: { symbol: 'RM',   rate: 3500,    dec: 2, locale: 'ms-MY', name: 'MYR' },
+  ms: { symbol: 'RM',   rate: 4370,    dec: 2, locale: 'ms-MY', name: 'MYR' },
   en: { symbol: '$',    rate: USD_RATE, dec: 2, locale: 'en-US', name: 'USD' },
-  zh: { symbol: '¥',    rate: USD_RATE / 7.2, dec: 2, locale: 'zh-CN', name: 'CNY' },
+  zh: { symbol: '¥',    rate: USD_RATE / 6.72, dec: 2, locale: 'zh-CN', name: 'CNY' },
   ja: { symbol: '¥',    rate: USD_RATE / 150, dec: 0, locale: 'ja-JP', name: 'JPY' },
   ru: { symbol: '₽',    rate: USD_RATE / 95,  dec: 2, locale: 'ru-RU', name: 'RUB' },
   hi: { symbol: '₹',    rate: USD_RATE / 83.5,dec: 2, locale: 'hi-IN', name: 'INR' },

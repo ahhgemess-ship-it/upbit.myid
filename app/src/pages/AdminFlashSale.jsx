@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Search, X, Zap, Package, Check, Pencil, Save, Ban } from 'lucide-react'
 import { formatIDR, applyDiscount } from '../data/products.js'
+import { USD_TO_IDR } from '../i18n/pricing.js'
 import { api } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
@@ -60,7 +61,8 @@ export default function AdminFlashSale() {
     try {
       const { product } = await api.adminUpdateProduct(p.id, {
         flashPrice,
-        flashPriceIntl: p.flashPriceIntl ?? p.priceIntl,
+        // USD mengikuti harga Rp (flash) yang baru — jangan pakai nilai lama yang basi.
+        flashPriceIntl: Math.max(1, Math.round((flashPrice * 100) / USD_TO_IDR)),
         stock,
         stockOut: !!d.stockOut,
       })

@@ -1,13 +1,15 @@
 // Katalog produk digital EvolusiAI — berdasarkan PRD (prdproduk.md).
-// Harga dalam IDR. Kurs acuan 1 USD ≈ Rp 16.300 (estimasi, cek kurs terkini).
+// Harga asli/sumber otoritatif dalam IDR (Rupiah). Kurs pasar perkiraan (Sep 2026):
+// 1 USD ≈ Rp 17.650. Semua harga USD/CNY/MYR DITURUNKAN dari harga Rp memakai kurs ini,
+// supaya konsisten di setiap negara — harga Rp tidak pernah berubah mengikuti kurs.
 // Logo putih monokrom disimpan lokal di /public/logos, ditaruh di atas kotak warna brand.
 
-// Harga internasional default (USD, dalam SEN) = pembulatan dari IDR ke dolar bulat.
-// Admin bisa menimpa nilai ini lewat panel; DB menyimpan nilai eksplisit.
-const INTL_RATE = 16300
-const toIntlCents = (idr) => Math.max(1, Math.round(idr / INTL_RATE)) * 100
-// USD (sen) presisi sesuai kurs — dipakai produk promo agar dolar akurat (mis. Rp50.000 → $3.07).
-const promoCents = (idr) => Math.max(1, Math.round((idr / INTL_RATE) * 100))
+// Konversi harga Rp → USD dalam SEN (presisi persis sesuai kurs, tanpa pembulatan ke dolar bulat).
+// Contoh: Rp 50.000 → $2.83; Rp 326.000 → $18.47. Nilai eksplisit di DB tetap dihormati.
+const INTL_RATE = 17650
+const toIntlCents = (idr) => Math.max(1, Math.round((idr / INTL_RATE) * 100))
+// USD (sen) presisi sesuai kurs — dipakai produk promo agar dolar akurat (mis. Rp50.000 → $2.83).
+const promoCents = toIntlCents
 const withIntl = (p) => ({
   ...p,
   priceIntl: p.priceIntl ?? toIntlCents(p.price),
@@ -195,7 +197,6 @@ const FAMILIES = [
     logo: '/logos/openai-white.png',
     brand: '#10a37f',
     price: 3260000,
-    priceIntl: 20000,
     period: 'bln',
     rating: 4.9,
     sold: 480,
@@ -206,7 +207,7 @@ const FAMILIES = [
       'Mode suara lanjutan tanpa batas',
     ],
     tiers: [
-      { label: '1 Bulan', price: 3260000, priceIntl: 20000 },
+      { label: '1 Bulan', price: 3260000 },
     ],
   },
   {
@@ -246,7 +247,6 @@ const FAMILIES = [
     logo: '/logos/cursor-white.svg',
     brand: '#0f0f0f',
     price: 326000,
-    priceIntl: 2000,
     period: 'bln',
     rating: 4.9,
     sold: 1120,
@@ -257,9 +257,9 @@ const FAMILIES = [
       'Kredit pemakaian model premium sesuai paket',
     ],
     tiers: [
-      { label: 'Pro', price: 326000, priceIntl: 2000 },
-      { label: 'Pro+', price: 978000, priceIntl: 6000, note: 'Kredit 3x Pro' },
-      { label: 'Ultra', price: 3260000, priceIntl: 20000, note: 'Multiplier 20x' },
+      { label: 'Pro', price: 326000 },
+      { label: 'Pro+', price: 978000, note: 'Kredit 3x Pro' },
+      { label: 'Ultra', price: 3260000, note: 'Multiplier 20x' },
     ],
   },
   {
@@ -273,7 +273,6 @@ const FAMILIES = [
     logo: '/logos/qoder-color.png',
     brand: '#18181b',
     price: 326000,
-    priceIntl: 2000,
     period: 'bln',
     rating: 4.8,
     sold: 640,
@@ -284,9 +283,9 @@ const FAMILIES = [
       'Kredit chat & agent sesuai paket',
     ],
     tiers: [
-      { label: 'Pro', price: 326000, priceIntl: 2000, note: '2.000 kredit' },
-      { label: 'Pro+', price: 978000, priceIntl: 6000, note: 'Kuota lebih besar' },
-      { label: 'Ultra', price: 3260000, priceIntl: 20000, note: '20.000 kredit' },
+      { label: 'Pro', price: 326000, note: '2.000 kredit' },
+      { label: 'Pro+', price: 978000, note: 'Kuota lebih besar' },
+      { label: 'Ultra', price: 3260000, note: '20.000 kredit' },
     ],
   },
   {
@@ -509,33 +508,33 @@ const FAMILIES = [
       { label: '1 Tahun', price: 1000000, priceIntl: promoCents(1000000), note: 'Paling hemat' },
     ],
   },
-  // ===== HIGGSFIELD AI (flash sale, akun private, diskon 80%) — per plan =====
+  // ===== HIGGSFIELD AI (flash sale, akun private, diskon 80%) — plan terbaru 2026 =====
   {
-    id: 'higgsfield-ai-starter', name: 'Higgsfield Starter', vendor: 'Higgsfield', category: 'Promo',
-    tagline: 'Promo spesial Higgsfield AI Starter — akun private, diskon 80%.',
-    description: 'Platform AI video & gambar generatif — bikin video sinematik, animasi karakter, dan iklan produk dengan kontrol penuh. Paket Starter cocok untuk pemula: ±300 kredit per bulan, semua tool dasar video & gambar, hasil tanpa watermark. Akun private, tanpa sharing.',
-    logo: '/logos/higgsfield-white.png', brand: '#0f0f0f', badge: 'STARTER', badgeColor: '#0284c7',
-    price: 250000, priceIntl: 1500, flashPrice: 50000, flashPriceIntl: 300, period: 'bln', rating: 4.7, sold: 0, estimate: '10–20 menit',
-    features: ['Higgsfield Starter penuh', '±300 kredit/bulan', 'Semua tool video & gambar', 'Akun private no sharing'],
-    tiers: [{ label: '1 Bulan', price: 50000, priceIntl: 300, note: 'Diskon 80%' }],
+    id: 'higgsfield-ai-basic', name: 'Higgsfield Basic', vendor: 'Higgsfield', category: 'Promo',
+    tagline: 'Promo spesial Higgsfield AI Basic — akun private, diskon 80%.',
+    description: 'Platform AI video & gambar generatif — bikin video sinematik, animasi karakter, dan iklan produk dengan kontrol penuh. Paket Basic: 120 kredit per bulan, unlimited free generation Nano Banana Pro & Nano Banana 2, parallel hingga 2 video & 2 image, akses Supercomputer, plus Seedance 2.0 Fast & 2.0 Mini. Akun private, tanpa sharing.',
+    logo: '/logos/higgsfield-white.png', brand: '#0f0f0f', badge: 'BASIC', badgeColor: '#0284c7',
+    price: 158850, flashPrice: 31770, period: 'bln', rating: 4.7, sold: 0, estimate: '10–20 menit',
+    features: ['Higgsfield Basic penuh', '120 kredit/bulan', 'Unlimited gen Nano Banana Pro & 2', 'Parallel hingga 2 video, 2 image', 'Akun private no sharing'],
+    tiers: [{ label: '1 Bulan', price: 31770, note: 'Diskon 80%' }],
   },
   {
-    id: 'higgsfield-ai-plus', name: 'Higgsfield Plus', vendor: 'Higgsfield', category: 'Promo',
-    tagline: 'Promo spesial Higgsfield AI Plus — akun private, diskon 80%.',
-    description: 'Platform AI video & gambar generatif — bikin video sinematik, animasi karakter, dan iklan produk dengan kontrol penuh. Paket Plus: ±1.000 kredit per bulan, semua model video & gambar, dan akses prioritas saat trafik tinggi. Akun private, tanpa sharing.',
-    logo: '/logos/higgsfield-white.png', brand: '#0f0f0f', badge: 'PLUS', badgeColor: '#b45309',
-    price: 650000, priceIntl: 3900, flashPrice: 130000, flashPriceIntl: 780, period: 'bln', rating: 4.8, sold: 0, estimate: '10–20 menit',
-    features: ['Higgsfield Plus penuh', '±1.000 kredit/bulan', 'Semua model video & gambar', 'Akun private no sharing'],
-    tiers: [{ label: '1 Bulan', price: 130000, priceIntl: 780, note: 'Diskon 80%' }],
+    id: 'higgsfield-ai-pro', name: 'Higgsfield Pro', vendor: 'Higgsfield', category: 'Promo',
+    tagline: 'Promo spesial Higgsfield AI Pro — akun private, diskon 80%.',
+    description: 'Platform AI video & gambar generatif — bikin video sinematik, animasi karakter, dan iklan produk dengan kontrol penuh. Paket Pro: 600 kredit per bulan, unlimited free generation Nano Banana Pro & Nano Banana 2 plus 7 model lain, full line-up Seedance (2.5 1080p & 2.0 4K), parallel hingga 3 video & 4 image, dan akses Supercomputer. Akun private, tanpa sharing.',
+    logo: '/logos/higgsfield-white.png', brand: '#0f0f0f', badge: 'PRO', badgeColor: '#b45309',
+    price: 511850, flashPrice: 102370, period: 'bln', rating: 4.8, sold: 0, estimate: '10–20 menit',
+    features: ['Higgsfield Pro penuh', '600 kredit/bulan', 'Seedance 2.5 & 2.0 full access', 'Parallel hingga 3 video, 4 image', 'Akun private no sharing'],
+    tiers: [{ label: '1 Bulan', price: 102370, note: 'Diskon 80%' }],
   },
   {
-    id: 'higgsfield-ai-ultra', name: 'Higgsfield Ultra', vendor: 'Higgsfield', category: 'Promo',
-    tagline: 'Promo spesial Higgsfield AI Ultra — akun private, diskon 80%.',
-    description: 'Platform AI video & gambar generatif — bikin video sinematik, animasi karakter, dan iklan produk dengan kontrol penuh. Paket Ultra untuk pro: ±3.000 kredit per bulan, akses prioritas tertinggi, fitur eksperimen & model baru lebih dulu, plus semua tool video & gambar. Akun private, tanpa sharing.',
-    logo: '/logos/higgsfield-white.png', brand: '#0f0f0f', badge: 'ULTRA', badgeColor: '#7c3aed',
-    price: 1650000, priceIntl: 9900, flashPrice: 330000, flashPriceIntl: 1980, period: 'bln', rating: 4.9, sold: 0, estimate: '10–20 menit',
-    features: ['Higgsfield Ultra penuh', '±3.000 kredit/bulan', 'Akses prioritas tertinggi', 'Akun private no sharing'],
-    tiers: [{ label: '1 Bulan', price: 330000, priceIntl: 1980, note: 'Diskon 80%' }],
+    id: 'higgsfield-ai-max', name: 'Higgsfield Max', vendor: 'Higgsfield', category: 'Promo',
+    tagline: 'Promo spesial Higgsfield AI Max — best value, akun private, diskon 80%.',
+    description: 'Platform AI video & gambar generatif — bikin video sinematik, animasi karakter, dan iklan produk dengan kontrol penuh. Paket Max — best value: 1.800 kredit per bulan, unlimited free generation Nano Banana Pro & Nano Banana 2 (2K, 7-day unlimited) plus 7 model lain, full line-up Seedance (2.5 1080p & 2.0 4K), parallel generations tanpa batas, dan akses Supercomputer. Akun private, tanpa sharing.',
+    logo: '/logos/higgsfield-white.png', brand: '#0f0f0f', badge: 'MAX', badgeColor: '#7c3aed',
+    price: 1394350, flashPrice: 278870, period: 'bln', rating: 4.9, sold: 0, estimate: '10–20 menit',
+    features: ['Higgsfield Max penuh', '1.800 kredit/bulan', 'Parallel generations tanpa batas', 'Seedance 2.5 & 2.0 full access', 'Akun private no sharing'],
+    tiers: [{ label: '1 Bulan', price: 278870, note: 'Diskon 80%' }],
   },
 ]
 
@@ -561,7 +560,13 @@ export const categories = [...new Set(products.map((p) => p.category))]
 const flashOf = (p, i) => {
   const mult = 3 + ((i * 3) % 6) * 0.2 // 3.0–4.0 → diskon ~67–75%
   const salePrice = Number.isFinite(Number(p.flashPrice)) && Number(p.flashPrice) > 0 ? Number(p.flashPrice) : p.price
-  const salePriceIntl = Number.isFinite(Number(p.flashPriceIntl)) && Number(p.flashPriceIntl) > 0 ? Number(p.flashPriceIntl) : p.priceIntl
+  // USD selalu mengikuti harga Rp (flash) — turunkan dari Rp bila belum tersimpan.
+  const salePriceIntl =
+    Number.isFinite(Number(p.flashPriceIntl)) && Number(p.flashPriceIntl) > 0
+      ? Number(p.flashPriceIntl)
+      : Number.isFinite(Number(p.flashPrice)) && Number(p.flashPrice) > 0
+        ? promoCents(p.flashPrice)
+        : p.priceIntl
   // Jika ada harga asli eksplisit (price > harga flash sale), pakai itu sebagai harga coret
   // supaya diskon akurat (mis. harga asli Rp650.000, flash Rp130.000 → diskon 80%).
   const originalPrice = p.price > salePrice ? p.price : Math.round((salePrice * mult) / 5000) * 5000

@@ -2,9 +2,11 @@
 //   - User.balance & BalanceTransaction.amount SELALU dalam IDR (Rupiah).
 //   - Order.total/subtotal/discount & OrderItem.price dalam mata uang pesanan:
 //       IDR = rupiah penuh, USD = sen (cents), CNY = fen.
-export const USD_TO_IDR = 16300 // 1 USD ≈ Rp 16.300
-export const USD_TO_CNY = 7.2 // 1 USD ≈ 7,2 Yuan
-export const MYR_RATE = 3500   // 1 MYR ≈ Rp 3.500
+// Kurs pasar perkiraan (Sep 2026): 1 USD ≈ Rp 17.650; 1 USD ≈ ¥6,72; 1 MYR ≈ Rp 4.370.
+// Harga USD/CNY/MYR entitas diturunkan dari harga Rp (sumber asli) memakai kurs ini.
+export const USD_TO_IDR = 17650
+export const USD_TO_CNY = 6.72
+export const MYR_RATE = 4370   // 1 MYR ≈ Rp 4.370
 
 // Mata uang pesanan → IDR rupiah.
 export function toIDR(amount, currency) {

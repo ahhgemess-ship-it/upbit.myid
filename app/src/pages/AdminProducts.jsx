@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Plus, Pencil, Trash2, X, Check, Upload, Image as ImageIcon } from 'lucide-react'
 import { formatIDR, applyDiscount } from '../data/products.js'
+import { USD_TO_IDR } from '../i18n/pricing.js'
 import { api } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
@@ -143,6 +144,10 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
   }
 
   const setTier = (i, k, v) => setF((s) => ({ ...s, tiers: s.tiers.map((t, j) => (j === i ? { ...t, [k]: v } : t)) }))
+  // USD mengikuti harga Rp (aturan toko): ganti harga Rp → harga internasional ikut kurs pasar.
+  const usdOf = (idr) => ((Math.max(1, Math.round((parseFloat(idr) || 0) * 100 / USD_TO_IDR)) / 100)).toFixed(2)
+  const setRpPrice = (v) => setF((s) => ({ ...s, price: v, priceIntl: usdOf(v) }))
+  const setTierRpPrice = (i, v) => setTier(i, 'price', v) || setTier(i, 'priceIntl', usdOf(v))
   const addTier = () => setF((s) => ({ ...s, tiers: [...s.tiers, newTier()] }))
   const rmTier = (i) => setF((s) => ({ ...s, tiers: s.tiers.filter((_, j) => j !== i) }))
   const toCents = (usd) => Math.round((parseFloat(usd) || 0) * 100) // form pakai dolar, DB simpan sen
@@ -215,7 +220,7 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
           <Field label="Deskripsi"><textarea className="input" rows={3} value={f.description} onChange={(e) => set('description', e.target.value)} style={{ resize: 'vertical' }} /></Field>
 
           <div className="form-grid">
-            <Field label="Harga lokal — Indonesia (Rp)"><input className="input" type="number" value={f.price} onChange={(e) => set('price', e.target.value)} /></Field>
+            <Field label="Harga lokal — Indonesia (Rp)"><input className="input" type="number" value={f.price} onChange={(e) => setRpPrice(e.target.value)} /></Field>
             <Field label="Harga internasional (USD $)"><input className="input" type="number" step="0.01" value={f.priceIntl} onChange={(e) => set('priceIntl', e.target.value)} placeholder="cth. 19.99" /></Field>
             <Field label="Stok (−1 = ∞)"><input className="input" type="number" value={f.stock} onChange={(e) => set('stock', e.target.value)} /></Field>
             <Field label="Rating"><input className="input" type="number" step="0.1" value={f.rating} onChange={(e) => set('rating', e.target.value)} /></Field>
@@ -241,7 +246,7 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
           {f.tiers.map((t, i) => (
             <div key={t._uid || i} className="tier-edit-row">
               <input className="input" placeholder="Label (mis. 1 Bulan)" value={t.label} onChange={(e) => setTier(i, 'label', e.target.value)} />
-              <input className="input" type="number" placeholder="Rp" value={t.price} onChange={(e) => setTier(i, 'price', e.target.value)} style={{ maxWidth: 120 }} title="Harga lokal (Rp)" />
+              <input className="input" type="number" placeholder="Rp" value={t.price} onChange={(e) => setTierRpPrice(i, e.target.value)} style={{ maxWidth: 120 }} title="Harga lokal (Rp)" />
               <input className="input" type="number" step="0.01" placeholder="$ USD" value={t.priceIntl} onChange={(e) => setTier(i, 'priceIntl', e.target.value)} style={{ maxWidth: 110 }} title="Harga internasional (USD)" />
               <input className="input" placeholder="Catatan" value={t.note} onChange={(e) => setTier(i, 'note', e.target.value)} />
               <button className="icon-btn danger" onClick={() => rmTier(i)} disabled={f.tiers.length === 1}><Trash2 size={15} /></button>

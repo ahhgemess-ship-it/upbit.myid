@@ -6,9 +6,11 @@
 import { useLang } from '../context/LanguageContext.jsx'
 import { formatIDR } from '../data/products.js'
 
-export const USD_TO_IDR = 16300 // untuk estimasi nominal crypto / konversi pembayaran
-export const USD_TO_CNY = 7.2 // 1 USD ≈ 7,2 Yuan
-export const MYR_RATE = 3500   // 1 MYR ≈ Rp 3.500, digunakan untuk konversi balik IDR
+// Kurs pasar perkiraan (Sep 2026): 1 USD ≈ Rp 17.650; 1 USD ≈ ¥6,72; 1 MYR ≈ Rp 4.370.
+// Harga USD/CNY/MYR diturunkan dari harga Rp (sumber asli) memakai kurs ini.
+export const USD_TO_IDR = 17650 // untuk estimasi nominal crypto / konversi pembayaran
+export const USD_TO_CNY = 6.72 // 1 USD ≈ ¥6,72 (kurs pasar)
+export const MYR_RATE = 4370   // 1 MYR ≈ Rp 4.370, digunakan untuk konversi balik IDR
 
 export const regionForLang = (lang) => (lang === 'id' ? 'ID' : lang === 'zh' ? 'CN' : lang === 'ms' ? 'MY' : 'INTL')
 export const currencyForRegion = (region) =>

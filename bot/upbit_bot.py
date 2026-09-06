@@ -625,12 +625,13 @@ def prods():
 
 # ═══ MATA UANG per BAHASA ═══
 # Balance disimpan dalam IDR. Display dikonversi sesuai bahasa user.
-USD_RATE = 16300  # 1 USD = Rp 16.300
+# Kurs pasar perkiraan (Sep 2026): 1 USD ≈ Rp 17.650; 1 USD ≈ ¥6,72; 1 MYR ≈ Rp 4.370.
+USD_RATE = 17650  # 1 USD = Rp 17.650
 CURRENCY = {
     "id": {"symbol": "Rp",   "rate": 1,             "dec": 0},
-    "ms": {"symbol": "RM",   "rate": 3500,          "dec": 2},
+    "ms": {"symbol": "RM",   "rate": 4370,          "dec": 2},
     "en": {"symbol": "$",    "rate": USD_RATE,       "dec": 2},
-    "zh": {"symbol": "¥",    "rate": USD_RATE / 7.2, "dec": 2},
+    "zh": {"symbol": "¥",    "rate": USD_RATE / 6.72, "dec": 2},
     "ja": {"symbol": "¥",    "rate": USD_RATE / 150, "dec": 0},
     "ru": {"symbol": "₽",    "rate": USD_RATE / 95,  "dec": 2},
     "hi": {"symbol": "₹",    "rate": USD_RATE / 83.5,"dec": 2},

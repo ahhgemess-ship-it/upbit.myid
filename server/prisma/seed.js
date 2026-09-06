@@ -40,7 +40,8 @@ async function main() {
       price: p.price,
       priceIntl: p.priceIntl ?? 0,
       flashPrice: p.flashPrice ?? null,
-      flashPriceIntl: p.flashPriceIntl ?? null,
+      // USD mengikuti harga Rp flash (kalau produk flash punya harga khusus).
+      flashPriceIntl: p.flashPrice != null ? (p.flashPriceIntl ?? Math.max(1, Math.round((p.flashPrice * 100) / 17650))) : null,
       estimate: p.estimate || null,
       tiers: JSON.stringify(p.tiers || []),
     }
