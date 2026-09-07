@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ShoppingCart, Check, Zap, Ban } from 'lucide-react'
 import BrandLogo from './BrandLogo.jsx'
+import { durationBadge } from '../i18n/productContent.js'
 import { useCart } from '../context/CartContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 import { usePricing, amountFor } from '../i18n/pricing.js'
@@ -24,6 +25,8 @@ export default function FlashSaleCard({ product, index = 0 }) {
   const { isPurchased } = usePurchased()
   const purchased = isPurchased(product.id)
   const stockOut = !!product.stockOut
+  // Badge durasi ringkas dari tier utama: "3 Bulan" → "3bln"/"3m", "1 Bulan" → "1bln"/"1m".
+  const durBadge = durationBadge(product.tiers?.[0]?.label, t)
 
   const stock = Number.isFinite(product.stock) ? product.stock : -1
   const sold = Math.max(0, Number(product.sold) || 0)
@@ -106,6 +109,9 @@ export default function FlashSaleCard({ product, index = 0 }) {
             }}>{product.badge}</span>
           ) : (
             <span className="chip" style={{ fontSize: 11 }}>{t('cat.' + product.category)}</span>
+          )}
+          {durBadge && (
+            <span className="chip chip-lime" style={{ fontSize: 11, fontWeight: 700, alignSelf: 'flex-start', marginTop: 2 }}>{durBadge}</span>
           )}
         </div>
 

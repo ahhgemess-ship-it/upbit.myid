@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, Pencil, Trash2, X, Check, Upload, Image as ImageIcon } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, Check, Upload, Image as ImageIcon, Zap, Ban } from 'lucide-react'
 import { formatIDR, applyDiscount } from '../data/products.js'
 import { USD_TO_IDR } from '../i18n/pricing.js'
 import { api } from '../api.js'
@@ -16,7 +16,17 @@ const empty = {
   id: '', name: '', vendor: '', category: '', tagline: '', description: '',
   logo: '', brand: '#4f46e5', period: 'bln', price: 0, priceIntl: 0, estimate: '', rating: 5, sold: 0,
   stock: -1, active: true, discountPercent: 0, discountStart: '', discountEnd: '',
+  flashSale: false, stockOut: false, flashPrice: null, flashPriceIntl: null,
   tiers: [newTier()], features: [''],
+}
+
+// Produk termasuk flash sale? (sama dengan aturan katalog di data/products.js)
+const isFlash = (p) => p.flashSale === true || (p.flashSale == null && p.category === 'Promo')
+
+// Badge durasi ringkas untuk panel admin (Indonesia): "3 Bulan" → "3bln".
+const durId = (label) => {
+  const m = String(label || '').match(/(\d+(?:[.,]\d+)?)\s*(bulan|tahun|bln|thn)/i)
+  return m ? m[1] + (/^(tahun|thn)$/i.test(m[2]) ? 'thn' : 'bln') : null
 }
 
 const toLocalInput = (iso) => {
@@ -32,6 +42,7 @@ export default function AdminProducts() {
   const { refresh } = useCatalog()
   const [rows, setRows] = useState(null)
   const [editing, setEditing] = useState(null) // null | 'new' | product
+  const [filter, setFilter] = useState('semua') // 'semua' | 'flash' | 'reguler'
 
   const load = () => api.adminProducts().then((d) => setRows(d.products)).catch(() => setRows([]))
   useEffect(() => { if (isAdmin) load() }, [isAdmin])
@@ -47,6 +58,12 @@ export default function AdminProducts() {
     catch (e) { toast(e.message, 'error') }
   }
 
+  // Flash sale dulu di daftar supaya gampang dibedakan, lalu urut nama.
+  const sorted = [...(rows || [])].sort((a, b) => (isFlash(b) ? 1 : 0) - (isFlash(a) ? 1 : 0) || a.name.localeCompare(b.name))
+  const shown = sorted.filter((p) => filter === 'semua' || (filter === 'flash' ? isFlash(p) : !isFlash(p)))
+  const nFlash = (rows || []).filter(isFlash).length
+  const nReg = (rows || []).length - nFlash
+
   return (
     <div className="container section">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
@@ -56,36 +73,75 @@ export default function AdminProducts() {
         </button>
       </div>
       <p className="text-muted" style={{ fontSize: 14, marginTop: 8, maxWidth: 600 }}>
-        Tambah/ubah/hapus produk, atur stok, harga, diskon & jadwalnya. Perubahan langsung tampil di storefront.
+        Harga, stok, stok habis, terjual, diskon & jenis/durasi produk. Perubahan langsung tampil di storefront.
       </p>
+
+      {/* Filter: pisahkan flash sale vs reguler biar tidak membingungkan */}
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 18 }}>
+        {[
+          ['semua', `Semua (${(rows || []).length})`],
+          ['flash', `⚡ Flash Sale (${nFlash})`],
+          ['reguler', `Reguler (${nReg})`],
+        ].map(([k, label]) => (
+          <button
+            key={k}
+            className="chip"
+            style={{ cursor: 'pointer', background: filter === k ? 'var(--ink)' : 'var(--surface-2)', color: filter === k ? '#fff' : 'var(--ink)' }}
+            onClick={() => setFilter(k)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       {rows === null ? (
         <p className="text-muted" style={{ marginTop: 28 }}>Memuat…</p>
       ) : (
-        <div className="disc-table" style={{ marginTop: 26 }}>
-          {rows.map((p) => (
-            <div key={p.id} className="card prod-row">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
-                <span className="prod-swatch" style={{ background: p.brand || 'var(--surface-2)' }} />
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span className="display" style={{ fontSize: 15 }}>{p.name}</span>
-                    {!p.active && <span className="chip" style={{ fontSize: 10, background: 'var(--surface-2)' }}>nonaktif</span>}
-                    {p.discountPercent > 0 && <span className="disc-badge">-{p.discountPercent}%</span>}
+        <div className="disc-table" style={{ marginTop: 22 }}>
+          {shown.map((p) => {
+            const flash = isFlash(p)
+            const cur = flash ? (p.flashPrice ?? p.price) : applyDiscount(p.price, p.discountPercent)
+            const orig = flash
+              ? (p.price > (p.flashPrice ?? Infinity) ? p.price : null)
+              : (p.discountPercent > 0 ? p.price : null)
+            const durs = (p.tiers || []).map((x) => durId(x.label)).filter(Boolean).join(' / ')
+            return (
+              <div key={p.id} className="card prod-row" style={flash ? { border: '1.5px solid var(--lime-deep)' } : undefined}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
+                  <span className="prod-swatch" style={{ background: p.brand || 'var(--surface-2)' }} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span className="display" style={{ fontSize: 15 }}>{p.name}</span>
+                      {flash && (
+                        <span className="chip" style={{ background: 'var(--lime)', borderColor: 'var(--ink)', fontSize: 10, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <Zap size={10} fill="currentColor" /> FLASH SALE
+                        </span>
+                      )}
+                      {p.stockOut && (
+                        <span className="chip" style={{ background: '#fee2e2', borderColor: '#dc2626', color: '#b91c1c', fontSize: 10, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <Ban size={10} /> STOK HABIS
+                        </span>
+                      )}
+                      {!p.active && <span className="chip" style={{ fontSize: 10, background: 'var(--surface-2)' }}>nonaktif</span>}
+                      {!flash && p.discountPercent > 0 && <span className="disc-badge">-{p.discountPercent}%</span>}
+                    </div>
+                    <span className="text-muted" style={{ fontSize: 12.5 }}>
+                      {p.vendor} · {p.category}
+                      {durs ? ` · ${durs}` : ''}
+                      {' · '}{flash ? 'flash ' : ''}{formatIDR(cur)}
+                      {orig ? <> · normal <s>{formatIDR(orig)}</s></> : null}
+                      {' · '}{p.stock === -1 ? 'stok ∞' : p.stockOut ? 'stok habis' : `stok ${p.stock}`}
+                    </span>
                   </div>
-                  <span className="text-muted" style={{ fontSize: 12.5 }}>
-                    {p.vendor} · {p.category} · {formatIDR(applyDiscount(p.price, p.discountPercent))}
-                    {' / '}${(applyDiscount(p.priceIntl || 0, p.discountPercent) / 100).toFixed(2)}
-                    {' · '}{p.stock === -1 ? 'stok ∞' : `stok ${p.stock}`}
-                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button className="icon-btn" onClick={() => setEditing(p)} aria-label="Edit"><Pencil size={16} /></button>
+                  <button className="icon-btn danger" onClick={() => del(p)} aria-label="Hapus"><Trash2 size={16} /></button>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button className="icon-btn" onClick={() => setEditing(p)} aria-label="Edit"><Pencil size={16} /></button>
-                <button className="icon-btn danger" onClick={() => del(p)} aria-label="Hapus"><Trash2 size={16} /></button>
-              </div>
-            </div>
-          ))}
+            )
+          })}
+          {shown.length === 0 && <p className="text-muted" style={{ padding: '20px 4px' }}>Tidak ada produk di filter ini.</p>}
         </div>
       )}
 
@@ -111,6 +167,8 @@ function normalize(p) {
     priceIntl: fromCents(p.priceIntl),
     discountPercent: p.discountRaw ?? p.discountPercent ?? 0,
     discountStart: toLocalInput(p.discountStart), discountEnd: toLocalInput(p.discountEnd),
+    flashSale: !!p.flashSale, stockOut: !!p.stockOut,
+    flashPrice: p.flashPrice ?? null, flashPriceIntl: p.flashPriceIntl ?? null, // Rp & sen — internal
     tiers: p.tiers?.length
       ? p.tiers.map((t) => ({ _uid: uid(), label: t.label, price: t.price, priceIntl: fromCents(t.priceIntl), note: t.note || '' }))
       : [{ _uid: uid(), label: p.period || 'Produk', price: p.price || 0, priceIntl: fromCents(p.priceIntl), note: '' }],
@@ -124,6 +182,15 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
   const [uploading, setUploading] = useState(false)
   const logoRef = useRef(null)
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }))
+
+  // "Harga saat ini" sebagai input langsung:
+  //  - flash sale → menulis flashPrice (harga flash tier utama)
+  //  - reguler → dipecah jadi persen diskon (harga normal = dicoret)
+  const [nowInput, setNowInput] = useState(() =>
+    initial.flashSale
+      ? String(initial.flashPrice ?? initial.price ?? '')
+      : String(applyDiscount(initial.price || 0, initial.discountPercent || 0))
+  )
 
   const onPickLogo = async (e) => {
     const file = e.target.files?.[0]
@@ -152,6 +219,34 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
   const rmTier = (i) => setF((s) => ({ ...s, tiers: s.tiers.filter((_, j) => j !== i) }))
   const toCents = (usd) => Math.round((parseFloat(usd) || 0) * 100) // form pakai dolar, DB simpan sen
 
+  const setPriceNow = (v) => {
+    setNowInput(v)
+    const n = parseInt(v, 10) || 0
+    if (f.flashSale) {
+      setF((s) => ({ ...s, flashPrice: n > 0 ? n : null, flashPriceIntl: n > 0 ? Math.round(n * 100 / USD_TO_IDR) : null }))
+    } else {
+      const base = parseInt(f.price, 10) || 0
+      const pct = base > 0 && n > 0 && n < base ? Math.max(0, Math.min(90, Math.round((1 - n / base) * 100))) : 0
+      setF((s) => ({ ...s, discountPercent: pct }))
+    }
+  }
+
+  const onToggleFlash = (on) => {
+    setF((s) => ({ ...s, flashSale: on, ...(on ? {} : { flashPrice: null, flashPriceIntl: null }) }))
+    if (!on) setNowInput(String(applyDiscount(parseInt(f.price, 10) || 0, f.discountPercent || 0)))
+  }
+
+  // Pratinjau live supaya admin tahu persis apa yang tampil di kartu.
+  const base = parseInt(f.price, 10) || 0
+  const now = parseInt(nowInput, 10) || 0
+  const hint = f.flashSale
+    ? (base > 0 && now > 0 && now < base
+        ? <>Tampil di kartu: normal <b>{formatIDR(base)}</b> dicoret → <b>-{Math.round((1 - now / base) * 100)}%</b>, harga bayar <b>{formatIDR(now)}</b>. Harga flash berlaku untuk tier utama; tier lain tetap harga katalog.</>
+        : 'Harga normal akan dicoret otomatis oleh sistem flash sale (±3–4× harga flash) bila tidak diisi lebih tinggi.')
+    : (f.discountPercent > 0
+        ? <>Tampil di kartu: normal <b>{formatIDR(base)}</b> dicoret → harga saat ini <b>{formatIDR(applyDiscount(base, f.discountPercent))}</b> (diskon {f.discountPercent}%).</>
+        : 'Tanpa diskon — harga normal = harga saat ini, tidak ada coretan.')
+
   const save = async () => {
     const tiers = f.tiers.filter((t) => t.label.trim()).map((t) => ({ label: t.label.trim(), price: parseInt(t.price, 10) || 0, priceIntl: toCents(t.priceIntl), ...(t.note?.trim() ? { note: t.note.trim() } : {}) }))
     const features = f.features.map((x) => x.trim()).filter(Boolean)
@@ -166,14 +261,19 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
       estimate: f.estimate.trim() || null,
       rating: Number(f.rating) || 0, sold: parseInt(f.sold, 10) || 0,
       stock: f.stock === '' ? -1 : parseInt(f.stock, 10),
-      active: !!f.active, discountPercent: Math.max(0, Math.min(90, parseInt(f.discountPercent, 10) || 0)),
+      active: !!f.active,
+      discountPercent: Math.max(0, Math.min(90, parseInt(f.discountPercent, 10) || 0)),
       discountStart: f.discountStart ? new Date(f.discountStart).toISOString() : null,
       discountEnd: f.discountEnd ? new Date(f.discountEnd).toISOString() : null,
+      flashSale: !!f.flashSale,
+      stockOut: !!f.stockOut,
+      flashPrice: f.flashSale ? (parseInt(nowInput, 10) || null) : null,
+      flashPriceIntl: f.flashSale ? (parseInt(f.flashPriceIntl, 10) || null) : null,
       tiers, features,
     }
     setBusy(true)
     try {
-      if (isNew) { await api.adminCreateProduct({ id: f.id.trim() || undefined, ...payload }); toast('Produk dibuat', 'success') }
+      if (isNew) { await api.adminCreateProduct({ ...payload }); toast('Produk dibuat', 'success') }
       else { await api.adminUpdateProduct(initial.id, payload); toast('Produk diperbarui', 'success') }
       onSaved()
     } catch (e) { toast(e.message, 'error') } finally { setBusy(false) }
@@ -187,14 +287,12 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
           <button className="icon-btn" onClick={onClose}><X size={18} /></button>
         </div>
         <div className="modal-body">
+          <div className="form-section-title" style={{ marginTop: 0, borderTop: 'none', paddingTop: 0 }}>Identitas</div>
           <div className="form-grid">
             <Field label="Nama"><input className="input" value={f.name} onChange={(e) => set('name', e.target.value)} /></Field>
             <Field label="Vendor"><input className="input" value={f.vendor} onChange={(e) => set('vendor', e.target.value)} /></Field>
             <Field label="Kategori"><input className="input" value={f.category} onChange={(e) => set('category', e.target.value)} placeholder="AI Assistant / API / Developer…" /></Field>
-            <Field label="Periode"><input className="input" value={f.period} onChange={(e) => set('period', e.target.value)} placeholder="bln / 12 bln / paket" /></Field>
-            {isNew && <Field label="ID (opsional)"><input className="input" value={f.id} onChange={(e) => set('id', e.target.value)} placeholder="otomatis dari nama" /></Field>}
-            <Field label="Brand warna"><input className="input" value={f.brand} onChange={(e) => set('brand', e.target.value)} placeholder="#4f46e5" /></Field>
-            <Field label="Estimasi"><input className="input" value={f.estimate} onChange={(e) => set('estimate', e.target.value)} placeholder="10–20 menit" /></Field>
+            <Field label="Periode (satuan harga)"><input className="input" value={f.period} onChange={(e) => set('period', e.target.value)} placeholder="bln / 12 bln / paket" /></Field>
           </div>
 
           {/* Gambar produk — via upload, bukan URL */}
@@ -216,47 +314,61 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
               </div>
             </div>
           </div>
-          <Field label="Tagline"><input className="input" value={f.tagline} onChange={(e) => set('tagline', e.target.value)} /></Field>
-          <Field label="Deskripsi"><textarea className="input" rows={3} value={f.description} onChange={(e) => set('description', e.target.value)} style={{ resize: 'vertical' }} /></Field>
 
-          <div className="form-grid">
-            <Field label="Harga lokal — Indonesia (Rp)"><input className="input" type="number" value={f.price} onChange={(e) => setRpPrice(e.target.value)} /></Field>
-            <Field label="Harga internasional (USD $)"><input className="input" type="number" step="0.01" value={f.priceIntl} onChange={(e) => set('priceIntl', e.target.value)} placeholder="cth. 19.99" /></Field>
-            <Field label="Stok (−1 = ∞)"><input className="input" type="number" value={f.stock} onChange={(e) => set('stock', e.target.value)} /></Field>
-            <Field label="Rating"><input className="input" type="number" step="0.1" value={f.rating} onChange={(e) => set('rating', e.target.value)} /></Field>
-            <Field label="Terjual"><input className="input" type="number" value={f.sold} onChange={(e) => set('sold', e.target.value)} /></Field>
-          </div>
-          <p className="text-muted" style={{ fontSize: 12, marginTop: -4 }}>
-            Harga lokal (Rupiah) tampil saat bahasa Indonesia; harga internasional (USD) tampil saat user memilih bahasa lain.
-          </p>
-
-          {/* Diskon + jadwal */}
-          <div className="form-section-title">Diskon & jadwal</div>
-          <div className="form-grid">
-            <Field label="Diskon (%)"><input className="input" type="number" min="0" max="90" value={f.discountPercent} onChange={(e) => set('discountPercent', e.target.value)} /></Field>
-            <Field label="Mulai (opsional)"><input className="input" type="datetime-local" value={f.discountStart} onChange={(e) => set('discountStart', e.target.value)} /></Field>
-            <Field label="Berakhir (opsional)"><input className="input" type="datetime-local" value={f.discountEnd} onChange={(e) => set('discountEnd', e.target.value)} /></Field>
-            <Field label="Status">
-              <label className="check-row"><input type="checkbox" checked={f.active} onChange={(e) => set('active', e.target.checked)} /> Aktif (tampil di toko)</label>
-            </Field>
-          </div>
-
-          {/* Tiers */}
-          <div className="form-section-title">Tier harga</div>
+          <div className="form-section-title">Jenis produk / durasi (tier)</div>
           {f.tiers.map((t, i) => (
             <div key={t._uid || i} className="tier-edit-row">
-              <input className="input" placeholder="Label (mis. 1 Bulan)" value={t.label} onChange={(e) => setTier(i, 'label', e.target.value)} />
-              <input className="input" type="number" placeholder="Rp" value={t.price} onChange={(e) => setTierRpPrice(i, e.target.value)} style={{ maxWidth: 120 }} title="Harga lokal (Rp)" />
-              <input className="input" type="number" step="0.01" placeholder="$ USD" value={t.priceIntl} onChange={(e) => setTier(i, 'priceIntl', e.target.value)} style={{ maxWidth: 110 }} title="Harga internasional (USD)" />
-              <input className="input" placeholder="Catatan" value={t.note} onChange={(e) => setTier(i, 'note', e.target.value)} />
+              <input className="input" placeholder="Label (mis. 1 Bulan / 3 Bulan / 1 Tahun)" value={t.label} onChange={(e) => setTier(i, 'label', e.target.value)} />
+              <input className="input" type="number" placeholder="Harga (Rp)" value={t.price} onChange={(e) => setTierRpPrice(i, e.target.value)} style={{ maxWidth: 150 }} title="Harga tier (Rp) — USD otomatis mengikuti" />
               <button className="icon-btn danger" onClick={() => rmTier(i)} disabled={f.tiers.length === 1}><Trash2 size={15} /></button>
             </div>
           ))}
           <button className="btn-link" style={{ marginTop: 4 }} onClick={addTier}><Plus size={15} /> Tambah tier</button>
+          <p className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+            Tier = varian/jenis produk (1bln, 3bln, 1thn…), jadi badge durasi di katalog. USD otomatis mengikuti harga Rp.
+          </p>
 
-          {/* Features */}
-          <div className="form-section-title">Fitur (satu per baris)</div>
-          <textarea className="input" rows={4} value={f.features.join('\n')} onChange={(e) => set('features', e.target.value.split('\n'))} style={{ resize: 'vertical', width: '100%' }} />
+          <div className="form-section-title">Harga & diskon</div>
+          <label className="check-row" style={{ paddingTop: 0 }}>
+            <input type="checkbox" checked={f.flashSale} onChange={(e) => onToggleFlash(e.target.checked)} />
+            <Zap size={14} /> Produk Flash Sale — "harga saat ini" jadi harga flash
+          </label>
+          <div className="form-grid">
+            <Field label="Harga normal — dicoret (Rp)"><input className="input" type="number" value={f.price} onChange={(e) => setRpPrice(e.target.value)} /></Field>
+            <Field label={f.flashSale ? 'Harga saat ini — flash (Rp)' : 'Harga saat ini (Rp)'}>
+              <input className="input" type="number" value={nowInput} onChange={(e) => setPriceNow(e.target.value)} />
+            </Field>
+          </div>
+          <p className="text-muted" style={{ fontSize: 12, marginTop: -4 }}>{hint}</p>
+
+          <div className="form-section-title">Stok & penjualan</div>
+          <div className="form-grid">
+            <Field label="Stok (kosong = ∞)"><input className="input" type="number" value={f.stock} onChange={(e) => set('stock', e.target.value)} /></Field>
+            <Field label="Terjual"><input className="input" type="number" value={f.sold} onChange={(e) => set('sold', e.target.value)} /></Field>
+          </div>
+          <label className="check-row"><input type="checkbox" checked={f.active} onChange={(e) => set('active', e.target.checked)} /> Aktif (tampil di toko)</label>
+          <label className="check-row" style={{ paddingTop: 0 }}>
+            <input type="checkbox" checked={f.stockOut} onChange={(e) => set('stockOut', e.target.checked)} />
+            <Ban size={14} /> Stok habis (tutup pembelian sementara)
+          </label>
+
+          {/* Konten opsional — disembunyikan agar form tetap fokus */}
+          <details style={{ marginTop: 14, borderTop: '1.5px solid var(--line-soft)', paddingTop: 12 }}>
+            <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--muted)' }}>
+              Konten opsional — tagline, deskripsi, fitur, rating, estimasi, warna
+            </summary>
+            <div style={{ marginTop: 12 }}>
+              <Field label="Tagline"><input className="input" value={f.tagline} onChange={(e) => set('tagline', e.target.value)} /></Field>
+              <Field label="Deskripsi"><textarea className="input" rows={3} value={f.description} onChange={(e) => set('description', e.target.value)} style={{ resize: 'vertical' }} /></Field>
+              <div className="form-grid">
+                <Field label="Rating"><input className="input" type="number" step="0.1" value={f.rating} onChange={(e) => set('rating', e.target.value)} /></Field>
+                <Field label="Estimasi proses"><input className="input" value={f.estimate} onChange={(e) => set('estimate', e.target.value)} placeholder="10–20 menit" /></Field>
+                <Field label="Brand warna"><input className="input" value={f.brand} onChange={(e) => set('brand', e.target.value)} placeholder="#4f46e5" /></Field>
+              </div>
+              <div className="form-section-title">Fitur (satu per baris)</div>
+              <textarea className="input" rows={4} value={f.features.join('\n')} onChange={(e) => set('features', e.target.value.split('\n'))} style={{ resize: 'vertical', width: '100%' }} />
+            </div>
+          </details>
         </div>
         <div className="modal-foot">
           <button className="btn-link" onClick={onClose}>Batal</button>

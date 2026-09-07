@@ -469,6 +469,11 @@ export const T = {
   'tier.credits': { en: 'credits', zh: '积分', ja: 'クレジット', id: 'kredit', ru: 'кредитов', ms: 'kredit', hi: 'क्रेडिट', de: 'Credits', vi: 'tín dụng' },
   'unit.mo': { en: 'mo', zh: '个月', ja: 'ヶ月', id: 'bln', ru: 'мес', ms: 'bln', hi: 'माह', de: 'Mon', vi: 'tháng' },
   'unit.pack': { en: 'pack', zh: '套餐', ja: 'パック', id: 'paket', ru: 'пакет', ms: 'pakej', hi: 'पैक', de: 'Paket', vi: 'gói' },
+  // Badge durasi ringkas di kartu katalog: "3 Bulan" → "3bln" (id) / "3m" (en).
+  'dur.mo': { en: 'm', zh: '月', ja: 'ヶ月', id: 'bln', ru: 'мес', ms: 'bln', hi: 'माह', de: 'Mon', vi: 'th' },
+  'dur.yr': { en: 'y', zh: '年', ja: '年', id: 'thn', ru: 'г', ms: 'thn', hi: 'वर्ष', de: 'J', vi: 'năm' },
+  // Judul section katalog reguler di halaman Store (flash sale dipisah section sendiri).
+  'store.regularSection': { en: 'All Products', zh: '所有产品', ja: 'すべての製品', id: 'Semua Produk', ru: 'Все товары', ms: 'Semua Produk', hi: 'सभी उत्पाद', de: 'Alle Produkte', vi: 'Tất cả sản phẩm' },
   'acct.tagShort': { en: 'Private · No Sharing', zh: '私人 · 不共享', ja: '専用 · 共有なし', id: 'Private · No Sharing', ru: 'Личный · Без передачи', ms: 'Peribadi · Tanpa Kongsi', hi: 'निजी · नो शेयरिंग', de: 'Privat · Kein Teilen', vi: 'Riêng · Không chia sẻ' },
   'acct.tag': { en: 'Private Account · No Sharing · No Invite', zh: '私人账号 · 不共享 · 不邀请', ja: '専用アカウント · 共有なし · 招待なし', id: 'Akun Private · No Sharing · No Invite', ru: 'Личный аккаунт · Без передачи · Без приглашений', ms: 'Akaun Peribadi · Tanpa Kongsi · Tanpa Jemputan', hi: 'निजी अकाउंट · नो शेयरिंग · नो इनवाइट', de: 'Privates Konto · Kein Teilen · Keine Einladung', vi: 'Tài khoản riêng · Không chia sẻ · Không mời' },
   'tier.save': { en: 'Save', zh: '省', ja: '節約', id: 'Hemat', ru: 'Экономия', ms: 'Jimat', hi: 'बचत', de: 'Sparen', vi: 'Tiết kiệm' },

@@ -224,6 +224,17 @@ export function localizeTier(label, t) {
     .replace(/\bkredit\b/g, t('tier.credits'))
 }
 
+// Badge durasi ringkas untuk kartu katalog: "3 Bulan" → "3bln" (id) / "3m" (en),
+// "1 Tahun" → "1thn" / "1y", "12 bln" → "12bln". Mengembalikan null bila label
+// bukan durasi (mis. "8.000 kredit", "Standard") supaya kartu tidak menampilkan
+// badge kosong.
+export function durationBadge(label, t) {
+  if (!label) return null
+  const m = String(label).match(/(\d+(?:[.,]\d+)?)\s*(bulan|tahun|bln|thn)/i)
+  if (!m) return null
+  return m[1] + (/^(tahun|thn)$/i.test(m[2]) ? t('dur.yr') : t('dur.mo'))
+}
+
 // Terjemahkan catatan tier (mis. "Hemat ~17%", "Populer").
 export function localizeNote(note, t) {
   if (!note) return note

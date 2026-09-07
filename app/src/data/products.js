@@ -597,6 +597,8 @@ const flashOf = (p, i) => {
 // yang belum punya flag, fallback ke kategori 'Promo' (perilaku lama).
 const inFlashSale = (p) =>
   p.flashSale === true || (p.flashSale == null && p.category === 'Promo')
+// Ekspor untuk Store/panel admin: bedakan produk flash sale vs reguler.
+export const isFlashProduct = inFlashSale
 export const flashFrom = (list) => (list || []).filter(inFlashSale).map(flashOf)
 
 export const flashSale = flashFrom(products)

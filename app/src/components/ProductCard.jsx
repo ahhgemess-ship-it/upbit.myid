@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowUpRight, Star, ShoppingCart, Check, ShieldCheck, Ban } from 'lucide-react'
+import { ArrowUpRight, Star, ShoppingCart, Check, ShieldCheck, Ban, Zap } from 'lucide-react'
 import BrandLogo from './BrandLogo.jsx'
 import { applyDiscount } from '../data/products.js'
 import { useCart } from '../context/CartContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { useDiscount } from '../context/CatalogContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
-import { localizedProduct, localizeTier, localizePeriod } from '../i18n/productContent.js'
+import { localizedProduct, localizeTier, localizePeriod, durationBadge } from '../i18n/productContent.js'
 import { usePricing } from '../i18n/pricing.js'
 import { usePurchased } from '../context/usePurchased.js'
 
@@ -23,6 +23,10 @@ export default function ProductCard({ product: rawProduct, index = 0 }) {
   const [added, setAdded] = useState(false)
   const { isPurchased } = usePurchased()
   const purchased = isPurchased(product.id)
+  // Produk flash sale dibedakan visualnya dari produk reguler (badge + aksen).
+  const isFlash = product.flashSale === true || (product.flashSale == null && product.category === 'Promo')
+  // Badge durasi ringkas: "3 Bulan" → "3bln"/"3m". Null untuk tier non-durasi.
+  const durBadge = durationBadge(product.tiers?.[0]?.label, t)
 
   const percent = discountFor(product.id)
   const base = amountOf(product)
@@ -78,6 +82,7 @@ export default function ProductCard({ product: rawProduct, index = 0 }) {
           filter: purchased ? 'grayscale(0.85)' : 'none',
           position: 'relative',
           overflow: 'hidden',
+          ...(isFlash && !purchased ? { border: '1.5px solid var(--lime-deep)' } : {}),
         }}
       >
         {/* Overlay Stok Habis */}
@@ -102,9 +107,15 @@ export default function ProductCard({ product: rawProduct, index = 0 }) {
 
         <div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-            <span className={`chip pc-chip ${product.category === 'Promo' ? 'chip-promo' : ''}`}>{t('cat.' + product.category)}</span>
+            {isFlash ? (
+              <span className="chip" style={{ background: 'var(--ink)', color: 'var(--lime)', borderColor: 'var(--ink)', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 800, letterSpacing: '.05em' }}>
+                <Zap size={11} fill="currentColor" /> FLASH SALE
+              </span>
+            ) : (
+              <span className="chip pc-chip">{t('cat.' + product.category)}</span>
+            )}
             {product.tiers?.[0]?.label && (
-              <span className="chip chip-lime" style={{ fontSize: 11 }}>{localizeTier(product.tiers[0].label, t)}</span>
+              <span className="chip chip-lime" style={{ fontSize: 11, fontWeight: 700 }}>{durBadge || localizeTier(product.tiers[0].label, t)}</span>
             )}
           </div>
           <h3 className="display pc-name" style={{ fontSize: 20, marginTop: 12 }}>{product.name}</h3>
