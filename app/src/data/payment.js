@@ -1,9 +1,9 @@
 // Konfigurasi pembayaran EvolusiAI.
 // Dua metode: QRIS & Crypto (BNB / USDT on BNB Smart Chain).
 
-// Payload QRIS statis (Evolusiai Store) — hasil decode dari qris.jpeg.
+// Payload QRIS statis (Vercelex Community / GoPay) — hasil decode dari QR terbaru.
 const QRIS_STATIC =
-  '00020101021126610016ID.CO.SHOPEE.WWW01189360091800231770190208231770190303UMI51440014ID.CO.QRIS.WWW0215ID10265313881830303UMI5204581753033605802ID5915Evolusiai Store6013JAKARTA PUSAT61051052062070703A016304760B'
+  '00020101021126610014COM.GO-JEK.WWW01189360091438879692080210G8879692080303UMI51440014ID.CO.QRIS.WWW0215ID10254577286460303UMI5204839853033605802ID5918VERCELEX COMMUNITY6015JAKARTA SELATAN61051216062070703A0163048DB7'
 
 // CRC16/CCITT-FALSE (poly 0x1021, init 0xFFFF) — checksum wajib QRIS (tag 63).
 function crc16(str) {
@@ -19,8 +19,8 @@ function crc16(str) {
 }
 
 export const QRIS = {
-  merchant: 'EvolusiAi Store',
-  nmid: 'ID1026531388183',
+  merchant: 'Vercelex Community',
+  nmid: 'ID1025457728646',
   // QRIS DINAMIS: sisipkan nominal (tag 54), ubah jadi dynamic (POI 11→12),
   // lalu hitung ulang CRC. Hasilnya nominal terisi otomatis di app pembayaran
   // user — tidak perlu ketik nominal manual.
