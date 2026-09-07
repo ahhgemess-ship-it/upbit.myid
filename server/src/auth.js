@@ -41,6 +41,7 @@ export async function requireAuth(req, res, next) {
     const payload = jwt.verify(token, JWT_SECRET)
     const user = await prisma.user.findUnique({ where: { id: payload.uid } })
     if (!user) return res.status(401).json({ error: 'User tidak ditemukan' })
+    if (user.blocked) return res.status(403).json({ error: 'Akun diblokir. Hubungi admin jika ini keliru.' })
     req.user = user
     next()
   } catch {

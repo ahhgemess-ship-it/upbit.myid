@@ -18,6 +18,7 @@ model User {
   name      String
   picture   String?
   role           String   @default("USER") // USER | ADMIN
+  blocked        Boolean  @default(false) // true = akun diblokir admin (tidak bisa login/order)
   balance        Int      @default(0) // saldo dalam IDR (Rupiah)
   checkInStreak  Int      @default(0) // posisi terakhir di cycle check-in 7 hari (0-6)
   lastCheckInAt  DateTime? // kapan terakhir check-in

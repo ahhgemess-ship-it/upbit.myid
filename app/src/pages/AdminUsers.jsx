@@ -109,6 +109,20 @@ export default function AdminUsers() {
     }
   }
 
+  const toggleBlocked = async () => {
+    setSaving(true)
+    setSaveMsg(null)
+    try {
+      const res = await api.adminUpdateUser(selectedId, { blocked: !detail.user.blocked })
+      setDetail(prev => ({ ...prev, user: { ...prev.user, ...res.user } }))
+      setSaveMsg({ type: 'success', text: res.user.blocked ? 'Akun diblokir — user tidak bisa login/order.' : 'Blokir dibuka ✓' })
+    } catch (e) {
+      setSaveMsg({ type: 'error', text: e.message })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const changePage = (p) => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }) }
 
   if (!ready) return null
@@ -257,6 +271,11 @@ export default function AdminUsers() {
                         <span>·</span>
                         <Calendar size={12} /> {new Date(detail.user.createdAt).toLocaleDateString('id-ID')}
                       </div>
+                      {detail.user.blocked && (
+                        <div style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 999, fontSize: 11.5, fontWeight: 800, background: 'rgba(255,77,77,.12)', color: '#dc2626' }}>
+                          <Ban size={12} /> DIBLOKIR
+                        </div>
+                      )}
                       {editing && (
                         <select value={editRole} onChange={(e) => setEditRole(e.target.value)}
                           style={{ marginTop: 8, padding: '6px 10px', borderRadius: 8, border: '1.5px solid var(--line-soft)', fontSize: 13, fontWeight: 600, background: 'var(--surface-2)' }}>
@@ -323,9 +342,15 @@ export default function AdminUsers() {
                         </button>
                       </>
                     ) : (
-                      <button onClick={() => setEditing(true)} className="pill" style={{ padding: '9px 20px', fontSize: 13.5 }}>
-                        <Edit3 size={15} /> Edit User
-                      </button>
+                      <>
+                        <button onClick={() => setEditing(true)} className="pill" style={{ padding: '9px 20px', fontSize: 13.5 }}>
+                          <Edit3 size={15} /> Edit User
+                        </button>
+                        <button onClick={toggleBlocked} disabled={saving} className="pill"
+                          style={{ padding: '9px 20px', fontSize: 13.5, fontWeight: 700, color: detail.user.blocked ? '#16a34a' : '#dc2626' }}>
+                          <Ban size={15} /> {detail.user.blocked ? 'Buka Blokir' : 'Blokir Akun'}
+                        </button>
+                      </>
                     )}
                   </div>
 

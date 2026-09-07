@@ -6,7 +6,7 @@ import multer from 'multer'
 import { fileURLToPath } from 'node:url'
 import { prisma } from '../db.js'
 import { requireAuth, requireAdmin } from '../auth.js'
-import { formatOrder } from './orders.js'
+import { formatOrder, refundableAmount } from './orders.js'
 import { formatProduct } from './products.js'
 import { encrypt } from '../crypto.js'
 import { sendOrderCompleted } from '../mailer.js'
@@ -83,7 +83,7 @@ router.get('/users/:id', async (req, res) => {
     res.json({
       user: {
         id: user.id, email: user.email, name: user.name, picture: user.picture,
-        role: user.role, balance: user.balance, checkInStreak: user.checkInStreak,
+        role: user.role, blocked: user.blocked, balance: user.balance, checkInStreak: user.checkInStreak,
         lastCheckInAt: user.lastCheckInAt, createdAt: user.createdAt,
       },
       orders: user.orders,
@@ -102,13 +102,17 @@ router.get('/users/:id', async (req, res) => {
   }
 })
 
-// PATCH /api/admin/users/:id — admin edit user (name, role, saldo absolut)
+// PATCH /api/admin/users/:id — admin edit user (name, role, saldo absolut, blokir)
 router.patch('/users/:id', async (req, res) => {
   try {
-    const { name, role, balance, balanceAdjust, adjustNote } = req.body || {}
+    const { name, role, balance, balanceAdjust, adjustNote, blocked } = req.body || {}
     const data = {}
     if (name !== undefined) data.name = String(name).trim()
     if (role && ['USER', 'ADMIN'].includes(role)) data.role = role
+    if (blocked !== undefined) {
+      if (req.user.id === req.params.id && blocked) return res.status(400).json({ error: 'Tidak bisa memblokir akun sendiri' })
+      data.blocked = Boolean(blocked)
+    }
 
     // Saldo harus berupa nilai akhir absolut, bukan nominal yang ditambahkan.
     // balanceAdjust dipertahankan hanya untuk kompatibilitas client lama dan tidak dipakai lagi.
@@ -382,7 +386,9 @@ router.get('/orders/:id', async (req, res) => {
   res.json({ order: formatOrder(order, { admin: true }) })
 })
 
-router.patch('/orders/:id', async (req, res) => {
+// POST /api/admin/orders/:id/cancel — batalkan pesanan + refund ke Saldo user.
+// Idempoten: pesanan yang sudah CANCELLED/refund disetujui TIDAK direfund lagi (anti double-refund).
+async function cancelOrderHandler(req, res) {
   const { status, adminNote } = req.body
   const current = await prisma.order.findUnique({ where: { id: req.params.id }, include: { items: true } })
   if (!current) return res.status(404).json({ error: 'Pesanan tidak ditemukan' })
@@ -392,11 +398,15 @@ router.patch('/orders/:id', async (req, res) => {
   if (adminNote !== undefined) data.adminNote = adminNote
 
   let order
+  // ANTI-REFUND-FARMING: satu pesanan hanya boleh direfund sekali. Tanpa guard ini,
+  // klik "Batalkan" berulang (atau cancel setelah auto stock-out refund) menambah saldo
+  // lagi setiap kali — itu yang dipakai user untuk farming saldo gratis.
+  const alreadyRefunded = current.status === 'CANCELLED' || current.refundStatus === 'APPROVED'
   if (status === 'CANCELLED' && current.status !== 'CANCELLED') {
     // Rollback: kembalikan saldo terpakai + sisa pembayaran, kuota kupon, dan stok.
     const usedTx = await prisma.balanceTransaction.findFirst({ where: { orderId: current.id, type: 'purchase' } })
     const balanceUsed = usedTx ? Math.abs(usedTx.amount) : 0
-    const refundAmount = balanceUsed + toIDR(current.total, current.currency)
+    const refundAmount = alreadyRefunded ? 0 : refundableAmount(current, balanceUsed)
     order = await prisma.$transaction(async (tx) => {
       const o = await tx.order.update({ where: { id: current.id }, data, include: { items: true, user: true } })
       if (refundAmount > 0) {
@@ -421,8 +431,26 @@ router.patch('/orders/:id', async (req, res) => {
     order = await prisma.order.update({ where: { id: current.id }, data, include: { items: true, user: true } })
   }
 
-  if (status === 'CANCELLED') notify(order.userId, { type: 'order_cancelled', title: `Pesanan ${order.id} dibatalkan`, body: adminNote || 'Dana sudah dikembalikan ke Saldo kamu.', orderId: order.id })
+  if (status === 'CANCELLED' && current.status !== 'CANCELLED') notify(order.userId, { type: 'order_cancelled', title: `Pesanan ${order.id} dibatalkan`, body: refundAmount > 0 ? 'Dana sudah dikembalikan ke Saldo kamu.' : (adminNote || 'Pesanan dibatalkan.'), orderId: order.id })
   res.json({ order: formatOrder(order, { admin: true }) })
+}
+
+router.post('/orders/:id/cancel', cancelOrderHandler)
+
+// Alias kompatibilitas frontend: PATCH dengan status CANCELLED diarahkan ke handler cancel
+// yang sama (idempoten — pesanan yang sudah direfund tidak direfund lagi).
+router.patch('/orders/:id', async (req, res) => {
+  const { status, adminNote } = req.body || {}
+  if (status === 'CANCELLED') {
+    req.body = { status: 'CANCELLED', adminNote }
+    return cancelOrderHandler(req, res)
+  }
+  const data = {}
+  if (status && ['PROCESSING', 'COMPLETED', 'CANCELLED'].includes(status)) data.status = status
+  if (adminNote !== undefined) data.adminNote = adminNote
+  const order = await prisma.order.update({ where: { id: req.params.id }, data, include: { items: true, user: true } }).catch(() => null)
+  if (!order) return res.status(404).json({ error: 'Pesanan tidak ditemukan' })
+  return res.json({ order: formatOrder(order, { admin: true }) })
 })
 
 // POST /api/admin/orders/:id/refund { action: 'approve'|'reject', note }
@@ -435,10 +463,11 @@ router.post('/orders/:id/refund', async (req, res) => {
   let updated
   if (action === 'approve') {
     // Kembalikan dana ke Saldo user (saldo terpakai + sisa pembayaran, dikonversi ke IDR).
-    const wasApproved = order.refundStatus === 'APPROVED'
+    // Idempoten: refund disetujui hanya dijalankan SEKALI per pesanan (anti double-refund).
+    const wasApproved = order.refundStatus === 'APPROVED' || order.status === 'CANCELLED'
     const usedTx = await prisma.balanceTransaction.findFirst({ where: { orderId: order.id, type: 'purchase' } })
     const balanceUsed = usedTx ? Math.abs(usedTx.amount) : 0
-    const refundAmount = balanceUsed + toIDR(order.total, order.currency)
+    const refundAmount = wasApproved ? 0 : refundableAmount(order, balanceUsed)
     updated = await prisma.$transaction(async (tx) => {
       const o = await tx.order.update({
         where: { id: order.id },

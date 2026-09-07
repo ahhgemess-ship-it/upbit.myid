@@ -11,6 +11,7 @@ import { effectiveDiscount, salePrice } from '../discount.js'
 import { notify, notifyAdmins } from '../notify.js'
 import { saveUpload } from '../storage.js'
 import { toIDR, fromIDR, USD_TO_CNY, MYR_RATE } from '../money.js'
+import { userRateLimit } from '../rateLimit.js'
 
 const router = Router()
 
@@ -71,13 +72,29 @@ export function formatOrder(order, { admin = false } = {}) {
   }
 }
 
+// Berapa rupiah yang boleh dikembalikan ke Saldo untuk sebuah order.
+// - PENDING   → pembayaran eksternal (QRIS/crypto) BELUM diverifikasi admin: tidak ada uang
+//   asli yang masuk, jadi hanya saldo internal yang terpakai yang boleh dikembalikan.
+//   Merefund sisa pembayaran di status ini = mesin cetak saldo gratis (refund farming).
+// - CANCELLED / refundStatus APPROVED → sudah pernah direfund; jangan refund dua kali.
+// - COMPLETED → pesanan sudah dikirim; refund penuh hanya lewat persetujuan admin.
+export function refundableAmount(order, balanceUsed = 0) {
+  if (!order) return 0
+  if (order.refundStatus === 'APPROVED') return 0
+  if (order.status === 'CANCELLED' || order.status === 'COMPLETED') return 0
+  const used = Math.max(0, balanceUsed || 0)
+  if (order.status === 'PENDING') return used
+  return used + Math.max(0, toIDR(order.total, order.currency))
+}
+
 const STOCK_OUT_MIN = 30000
 const STOCK_OUT_MAX = 80000
 // Cek stock-out berdasarkan harga IDR produk (tier.price selalu IDR) — berlaku semua mata uang.
 const isStockOutPrice = (tierPriceIdr) => tierPriceIdr >= STOCK_OUT_MIN && tierPriceIdr <= STOCK_OUT_MAX
 
-// POST /api/orders (multipart) — buat pesanan baru
-router.post('/', requireAuth, upload.single('proof'), async (req, res) => {
+// POST /api/orders (multipart) — buat pesanan baru.
+// Rate limit 8 order/menit/user: memperlambat farming otomatis via script.
+router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message: 'Terlalu banyak pesanan. Tunggu sebentar.' }), upload.single('proof'), async (req, res) => {
   try {
     const b = req.body
     const items = JSON.parse(b.items || '[]')
@@ -117,8 +134,10 @@ router.post('/', requireAuth, upload.single('proof'), async (req, res) => {
         ? { ...tier, price: prod.flashPrice ?? prod.price, priceIntl: prod.flashPriceIntl ?? prod.priceIntl }
         : tier
       const qty = Math.max(1, Math.min(99, parseInt(raw.qty, 10) || 1))
-      // Cek stok (−1 = tak terbatas). Produk 30k-80k skip stok global karena auto-refund.
-      if (prod.stock !== -1 && !isStockOutPrice(selectedTier.price)) {
+      // Cek stok (−1 = tak terbatas). ANTI-REFUND-FARMING: tidak ada pengecualian harga —
+      // produk stok terbatas 30k–80k juga divalidasi (dulu di-skip "karena auto-refund",
+      // padahal auto-refund tidak membatalkan order saat stok nyata tersedia).
+      if (prod.stock !== -1) {
         stockNeed[prod.id] = (stockNeed[prod.id] || 0) + qty
         if (stockNeed[prod.id] > prod.stock) {
           return res.status(409).json({ error: `Stok ${prod.name} tidak cukup (sisa ${prod.stock})` })
@@ -275,7 +294,10 @@ router.post('/', requireAuth, upload.single('proof'), async (req, res) => {
     let stockOut = false
     if (hasStockOutItem) {
       try {
-        const refundAmount = balanceUsed + toIDR(total, currency) // saldo terpakai (IDR) + sisa pembayaran (dikonversi ke IDR)
+        // ANTI-REFUND-FARMING: order ini baru dibuat & pembayaran eksternal (QRIS/crypto) belum
+        // diverifikasi admin. Yang boleh dikembalikan hanya saldo internal yang dipakai —
+        // bukan total pesanan, kalau tidak user bisa mencetak saldo gratis tanpa bayar.
+        const refundAmount = Math.min(refundableAmount(order, balanceUsed), balanceUsed)
         await prisma.$transaction(async (tx) => {
           await tx.order.update({
             where: { id: order.id },
