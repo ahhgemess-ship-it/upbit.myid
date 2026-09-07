@@ -2,12 +2,17 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowRight, ArrowUpRight } from 'lucide-react'
 import Asterisk, { Sparkle } from './Asterisk.jsx'
-import BrandLogo from './BrandLogo.jsx'
-import { products } from '../data/products.js'
 import { useLang } from '../context/LanguageContext.jsx'
 
-const showcase = products.slice(0, 5)
-const cardBg = ['var(--indigo)', 'var(--ink)', 'var(--indigo)', 'var(--ink)', 'var(--indigo)']
+// Foto maskot di bawah judul utama (menggantikan kotak logo produk).
+// Urutan diselang-seling: krem → hijau → peach → hijau → peach.
+const MASCOTS = [
+  { src: '/mascots/duo.webp', alt: 'Maskot Claude dan OpenAI' },
+  { src: '/mascots/openai-girl.webp', alt: 'Maskot OpenAI' },
+  { src: '/mascots/claude-girl.webp', alt: 'Maskot Claude' },
+  { src: '/mascots/openai-boy.webp', alt: 'Maskot OpenAI' },
+  { src: '/mascots/claude-boy.webp', alt: 'Maskot Claude' },
+]
 
 const fade = (d = 0) => ({
   initial: { opacity: 0, y: 20 },
@@ -61,29 +66,27 @@ export default function Hero() {
           </div>
         </motion.div>
 
-        {/* showcase row — mirror referensi (desktop), scroll-snap (mobile) */}
+        {/* showcase row — foto maskot (desktop grid, scroll-snap mobile) */}
         <div className="hero-showcase">
-          {showcase.map((p, i) => (
+          {MASCOTS.map((m, i) => (
             <motion.div
-              key={p.id}
+              key={m.src}
               className={`hero-showcase-cell ${i % 2 === 1 ? 'is-tall' : ''}`}
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 + i * 0.08 }}
             >
-              <Link
-                to={`/product/${p.id}`}
+              <div
                 className="hero-showcase-card"
-                style={{ background: cardBg[i] }}
+                style={{ padding: 0, overflow: 'hidden', background: 'var(--surface-2)' }}
               >
-                <BrandLogo src={p.logo} name={p.name} brand="transparent" size={56} radius={14} logoScale={0.72} />
-                <span style={{
-                  fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 13,
-                  color: 'var(--bg)', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '.03em',
-                }}>
-                  {p.name}
-                </span>
-              </Link>
+                <img
+                  src={m.src}
+                  alt={m.alt}
+                  loading={i > 1 ? 'lazy' : undefined}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                />
+              </div>
             </motion.div>
           ))}
         </div>
