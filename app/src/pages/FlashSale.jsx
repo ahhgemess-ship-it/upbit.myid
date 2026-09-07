@@ -6,7 +6,7 @@ import Countdown from '../components/Countdown.jsx'
 import FlashSaleCard from '../components/FlashSaleCard.jsx'
 import Asterisk from '../components/Asterisk.jsx'
 import SortDropdown from '../components/SortDropdown.jsx'
-import { flashFrom, getSaleEndTime } from '../data/products.js'
+import { flashFrom, getSaleEndTime, sortFlashNeat } from '../data/products.js'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 
@@ -25,8 +25,10 @@ export default function FlashSale() {
   const [sort, setSort] = useState('relevan')
   // Baca dari katalog DB (via CatalogContext) supaya edit harga/nama/deskripsi
   // produk Promo di admin panel langsung tampil. Fallback awal = statis.
+  // Urutan dasar RAPI: dikelompokkan per produk, durasi naik — lalu sortir user
+  // (termurah/termahal) menimpa bila dipilih.
   const flashSale = useMemo(() => {
-    const list = flashFrom(products)
+    const list = sortFlashNeat(flashFrom(products))
     const fn = FLASH_SORT_OPTIONS.find((o) => o.key === sort)?.fn
     return fn ? [...list].sort(fn) : list
   }, [products, sort])

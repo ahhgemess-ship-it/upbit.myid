@@ -23,7 +23,7 @@ export default function FlashSaleCard({ product, index = 0 }) {
   const navigate = useNavigate()
   const [added, setAdded] = useState(false)
   const { isPurchased } = usePurchased()
-  const purchased = isPurchased(product.id)
+  const purchased = isPurchased(product._srcId || product.id)
   const stockOut = !!product.stockOut
   // Badge durasi ringkas dari tier utama: "3 Bulan" → "3bln"/"3m", "1 Bulan" → "1bln"/"1m".
   const durBadge = durationBadge(product.tiers?.[0]?.label, t)

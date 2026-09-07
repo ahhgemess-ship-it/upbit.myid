@@ -9,7 +9,7 @@ import Countdown from '../components/Countdown.jsx'
 import Asterisk from '../components/Asterisk.jsx'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
-import { flashFrom, getSaleEndTime } from '../data/products.js'
+import { flashFrom, getSaleEndTime, sortFlashNeat } from '../data/products.js'
 
 export default function Home() {
   const { products } = useCatalog()
@@ -17,7 +17,7 @@ export default function Home() {
   const saleEnd = getSaleEndTime()
   // Flash sale baca dari katalog DB (via CatalogContext) — edit produk Promo
   // di admin panel langsung tampil. Fallback awal = katalog statis.
-  const flashList = flashFrom(products)
+  const flashList = sortFlashNeat(flashFrom(products))
   const flashItems = flashList.slice(0, 6)
   const maxDiscount = flashList.length ? Math.max(...flashList.map((p) => p.discount)) : 0
   const benefits = [

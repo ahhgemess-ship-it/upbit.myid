@@ -22,7 +22,7 @@ export default function ProductCard({ product: rawProduct, index = 0 }) {
   const navigate = useNavigate()
   const [added, setAdded] = useState(false)
   const { isPurchased } = usePurchased()
-  const purchased = isPurchased(product.id)
+  const purchased = isPurchased(product._srcId || product.id)
   // Produk flash sale dibedakan visualnya dari produk reguler (badge + aksen).
   const isFlash = product.flashSale === true || (product.flashSale == null && product.category === 'Promo')
   // Badge durasi ringkas: "3 Bulan" → "3bln"/"3m". Null untuk tier non-durasi.

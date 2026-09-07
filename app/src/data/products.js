@@ -20,13 +20,19 @@ const withIntl = (p) => ({
 // supaya katalog tampil lebih ramai & tiap varian jadi kartu sendiri.
 const slug = (s) => (s || '').toLowerCase().replace(/\+/g, 'plus').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 function splitFamily(p) {
-  // Produk PROMO (flash sale) tetap satu kartu dengan semua opsi durasi — tidak dipecah.
-  if (!p.tiers || p.tiers.length <= 1 || p.category === 'Promo') return [p]
-  return p.tiers.map((tier) => ({
+  // SEMUA produk dipecah per durasi: 1 tier = 1 produk tersendiri (kartu, halaman
+  // detail, dan keranjang masing-masing) — tidak ada lagi dropdown opsi durasi
+  // dalam satu produk. `_srcId` + label tier asli dipertahankan agar checkout
+  // tetap mengenali produk induknya di database.
+  if (!p.tiers || p.tiers.length <= 1) return [{ ...p, _srcId: p.id }]
+  return p.tiers.map((tier, i) => ({
     ...p,
+    _srcId: p.id,
     id: `${p.id}-${slug(tier.label)}`,
     price: tier.price,
     priceIntl: tier.priceIntl,
+    // Harga flash hanya milik tier utama (pertama); durasi lain memakai harga katalognya.
+    ...(i === 0 ? {} : { flashPrice: null, flashPriceIntl: null }),
     tiers: [tier],
   }))
 }
@@ -541,6 +547,9 @@ const FAMILIES = [
 // Katalog final: harga internasional terisi, lalu dipecah per tier jadi produk terpisah.
 export const products = FAMILIES.flatMap((p) => splitFamily(withIntl(p)))
 
+// Pecah daftar produk apa pun (statik ATAU dari DB) jadi satu produk per durasi.
+export const splitCatalog = (list) => (list || []).flatMap(splitFamily)
+
 export const formatIDR = (n) =>
   'Rp ' + n.toLocaleString('id-ID')
 
@@ -600,6 +609,21 @@ const inFlashSale = (p) =>
 // Ekspor untuk Store/panel admin: bedakan produk flash sale vs reguler.
 export const isFlashProduct = inFlashSale
 export const flashFrom = (list) => (list || []).filter(inFlashSale).map(flashOf)
+
+// Urutan rapi flash sale: dikelompokkan per vendor → nama produk, lalu durasi naik
+// (1bln → 3bln → 6bln → 1thn) — tidak acak. Dipakai sebagai urutan dasar sebelum
+// sortir pilihan user (termurah/termahal).
+const durMonths = (label) => {
+  const m = String(label || '').match(/(\d+(?:[.,]\d+)?)\s*(bulan|tahun|bln|thn)/i)
+  if (!m) return 0
+  const n = parseFloat(m[1].replace(',', '.')) || 0
+  return /^(tahun|thn)$/i.test(m[2]) ? n * 12 : n
+}
+export const sortFlashNeat = (list) =>
+  [...(list || [])].sort((a, b) =>
+    (a.vendor || '').localeCompare(b.vendor || '') ||
+    (a.name || '').localeCompare(b.name || '', 'id', { numeric: true }) ||
+    durMonths(a.tiers?.[0]?.label) - durMonths(b.tiers?.[0]?.label))
 
 export const flashSale = flashFrom(products)
 

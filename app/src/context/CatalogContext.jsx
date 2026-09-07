@@ -1,10 +1,12 @@
 import { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react'
 import { api } from '../api.js'
-import { products as staticProducts } from '../data/products.js'
+import { products as staticProducts, splitCatalog } from '../data/products.js'
 
 // Katalog dari database (sumber tunggal). Memakai katalog statis sebagai
 // tampilan awal/fallback supaya halaman langsung terisi & tetap jalan bila
 // backend mati. Begitu /api/products merespons, data DB menimpa.
+// Katalog DB dipecah per durasi (splitCatalog) supaya tiap pilihan durasi tampil
+// sebagai produk sendiri — bukan satu produk dengan dropdown opsi.
 const CatalogContext = createContext(null)
 
 export function CatalogProvider({ children }) {
@@ -14,7 +16,7 @@ export function CatalogProvider({ children }) {
   const refresh = useCallback(async () => {
     try {
       const list = await api.products()
-      if (Array.isArray(list) && list.length) setProducts(list)
+      if (Array.isArray(list) && list.length) setProducts(splitCatalog(list))
     } catch { /* backend mati → pakai fallback statis */ } finally {
       setLoaded(true)
     }

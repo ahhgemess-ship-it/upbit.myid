@@ -7,7 +7,7 @@ import Asterisk from '../components/Asterisk.jsx'
 import SortDropdown, { SORT_OPTIONS } from '../components/SortDropdown.jsx'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
-import { flashFrom, isFlashProduct } from '../data/products.js'
+import { flashFrom, isFlashProduct, sortFlashNeat } from '../data/products.js'
 
 export default function Store() {
   const { products, categories } = useCatalog()
@@ -28,7 +28,7 @@ export default function Store() {
 
   // Katalog dipisah dua section: produk FLASH SALE (kartu khusus flash) dan
   // produk REGULER — supaya tidak tercampur dan tidak membingungkan.
-  const flashList = useMemo(() => applySort(flashFrom(products).filter(matches)), [products, query, cat, sort])
+  const flashList = useMemo(() => applySort(sortFlashNeat(flashFrom(products)).filter(matches)), [products, query, cat, sort])
   const regList = useMemo(() => applySort(products.filter((p) => !isFlashProduct(p) && matches(p))), [products, query, cat, sort])
 
   const tabs = ['Semua', ...categories]

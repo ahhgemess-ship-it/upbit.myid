@@ -60,9 +60,12 @@ function fmtDate(iso, t, lang) {
   }
 }
 
-export default function ReviewSection({ product }) {
+export default function ReviewSection({ product, familyId }) {
   const { user } = useAuth()
   const { t, lang } = useLang()
+  // Ulasan disimpan per produk INDUK (familyId) supaya satu thread ulasan untuk
+  // semua varian durasi dari produk yang sama.
+  const reviewKey = familyId || product.id
 
   const [reviews, setReviews] = useState([])
   const [purchased, setPurchased] = useState(false)
@@ -74,15 +77,15 @@ export default function ReviewSection({ product }) {
   const [showAll, setShowAll] = useState(false)
 
   const loadReviews = useCallback(() => {
-    api.reviews(product.id).then((d) => setReviews(d.reviews)).catch(() => setReviews([]))
-  }, [product.id])
+    api.reviews(reviewKey).then((d) => setReviews(d.reviews)).catch(() => setReviews([]))
+  }, [reviewKey])
 
   useEffect(() => { loadReviews() }, [loadReviews])
 
   useEffect(() => {
     if (!user) { setPurchased(false); setExisting(null); return }
     let on = true
-    api.reviewEligibility(product.id)
+    api.reviewEligibility(reviewKey)
       .then((d) => {
         if (!on) return
         setPurchased(d.purchased)
@@ -91,7 +94,7 @@ export default function ReviewSection({ product }) {
       })
       .catch(() => {})
     return () => { on = false }
-  }, [user, product.id])
+  }, [user, reviewKey])
 
   const avg = reviews.length
     ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
@@ -102,7 +105,7 @@ export default function ReviewSection({ product }) {
     setError('')
     if (rating < 1) return setError(t('rev.pickStars'))
     try {
-      await api.submitReview(product.id, rating, comment)
+      await api.submitReview(reviewKey, rating, comment)
       setExisting({ rating, comment })
       setSaved(true)
       loadReviews()

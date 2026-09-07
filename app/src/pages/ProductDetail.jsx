@@ -57,8 +57,9 @@ export default function ProductDetail() {
   const percent = isFlashSale ? 0 : discountFor(product.id)
   const tierBase = amountOf(effectiveTier)
   const salePrice = applyDiscount(tierBase, percent)
-  const related = products.filter((p) => p.id !== product.id && p.category === product.category).slice(0, 3)
-  const fallbackRelated = products.filter((p) => p.id !== product.id).slice(0, 3)
+  const srcKey = product._srcId || product.id
+  const related = products.filter((p) => (p._srcId || p.id) !== srcKey && p.category === product.category).slice(0, 3)
+  const fallbackRelated = products.filter((p) => (p._srcId || p.id) !== srcKey).slice(0, 3)
   const relatedList = related.length ? related : fallbackRelated
 
   // Tier terpilih dgn diskon (kedua mata uang).
@@ -165,8 +166,9 @@ export default function ProductDetail() {
             ))}
           </ul>
 
-          {/* tier selector — dropdown */}
-          <div style={{ marginTop: 8 }} ref={tierRef}>
+          {/* tier selector — dropdown. Hanya bila produk punya >1 durasi; katalog
+              sudah dipecah per durasi, jadi umumnya tiap produk satu pilihan. */}
+          {product.tiers.length > 1 && <div style={{ marginTop: 8 }} ref={tierRef}>
             <span className="eyebrow">{t('pd.pickDuration')}</span>
             <div style={{ position: 'relative', marginTop: 12 }}>
               <button
@@ -220,7 +222,7 @@ export default function ProductDetail() {
                 )}
               </AnimatePresence>
             </div>
-          </div>
+          </div>}
 
           {/* price + add */}
           {flashSoldOut && (
@@ -285,8 +287,8 @@ export default function ProductDetail() {
         </motion.div>
       </div>
 
-      {/* ulasan & rating */}
-      <ReviewSection product={product} />
+      {/* ulasan & rating — satu thread untuk semua varian durasi produk yang sama */}
+      <ReviewSection product={product} familyId={srcKey} />
 
       {/* related */}
       <div style={{ marginTop: 70 }}>
