@@ -47,9 +47,13 @@ export default function ProductDetail() {
   const tier = product.tiers[tierIdx]
   const isFlashSale = product.flashSale === true && Number(product.flashPrice) > 0
   const flashSoldOut = isFlashSale && (product.stockOut || product.stock === 0)
-  const effectiveTier = isFlashSale
-    ? { ...tier, price: product.flashPrice, priceIntl: product.flashPriceIntl ?? tier.priceIntl }
-    : tier
+  // Harga flash hanya berlaku untuk tier utama (pertama). Tier lain tetap memakai
+  // harga katalognya — edit harga flash di panel admin tidak menyamakan semua durasi.
+  const isFlashTier = isFlashSale && tierIdx === 0
+  const tierPriceOf = (ti, i) => (isFlashSale && i === 0
+    ? { ...ti, price: product.flashPrice, priceIntl: product.flashPriceIntl ?? ti.priceIntl }
+    : ti)
+  const effectiveTier = tierPriceOf(tier, tierIdx)
   const percent = isFlashSale ? 0 : discountFor(product.id)
   const tierBase = amountOf(effectiveTier)
   const salePrice = applyDiscount(tierBase, percent)
@@ -60,7 +64,7 @@ export default function ProductDetail() {
   // Tier terpilih dgn diskon (kedua mata uang).
   const chosenTier = () => ({
     ...effectiveTier,
-    ...(isFlashSale ? { label: `${effectiveTier.label} (Flash Sale)` } : {}),
+    ...(isFlashTier ? { label: `${effectiveTier.label} (Flash Sale)` } : {}),
     price: applyDiscount(effectiveTier.price, percent),
     original: effectiveTier.price,
     priceIntl: applyDiscount(effectiveTier.priceIntl, percent),
@@ -206,7 +210,7 @@ export default function ProductDetail() {
                           </span>
                           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             {percent > 0 && <span className="pc-strike" style={{ fontSize: 12.5 }}>{fmt(amountOf(ti))}</span>}
-                            <span className="display" style={{ fontSize: 15 }}>{fmt(applyDiscount(amountOf(ti), percent))}</span>
+                            <span className="display" style={{ fontSize: 15 }}>{fmt(applyDiscount(amountOf(tierPriceOf(ti, i)), percent))}</span>
                             {tierIdx === i && <Check size={16} strokeWidth={3} color="var(--indigo)" />}
                           </span>
                         </button>

@@ -134,6 +134,7 @@ export default function AdminFlashSale() {
             const on = !!p.flashSale
             const d = drafts[p.id] || { flashPrice: p.flashPrice ?? p.price, stock: p.stock === -1 ? '' : p.stock, stockOut: !!p.stockOut }
             const editing = editingId === p.id
+            const multiTier = Array.isArray(p.tiers) && p.tiers.length > 1
             return (
               <div key={p.id} className="card prod-row" style={{ alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
                 <span className="prod-swatch" style={{ background: p.brand || 'var(--surface-2)' }} />
@@ -150,7 +151,11 @@ export default function AdminFlashSale() {
                     </span>
                   ) : (
                     <div className="fs-edit-grid">
-                      <label><span>Harga Flash Sale (Rp)</span><input className="input" type="number" min="1" value={d.flashPrice} onChange={(e) => setDraft(p.id, 'flashPrice', e.target.value)} /></label>
+                      <label>
+                        <span>Harga Flash Sale (Rp){multiTier ? ` — tier utama (${p.tiers[0].label})` : ''}</span>
+                        <input className="input" type="number" min="1" value={d.flashPrice} onChange={(e) => setDraft(p.id, 'flashPrice', e.target.value)} />
+                        {multiTier && <small style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 500 }}>Tier lain ({p.tiers.slice(1).map((ti) => ti.label).join(', ')}) tetap memakai harga katalognya.</small>}
+                      </label>
                       <label><span>Stok (-1 = ∞)</span><input className="input" type="number" min="-1" value={d.stock} onChange={(e) => setDraft(p.id, 'stock', e.target.value)} /></label>
                       <label className="fs-out-check"><input type="checkbox" checked={d.stockOut} onChange={(e) => setDraft(p.id, 'stockOut', e.target.checked)} /><Ban size={15} /> Stok habis</label>
                     </div>

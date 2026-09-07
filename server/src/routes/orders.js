@@ -129,8 +129,12 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       if (!prod.active) return res.status(400).json({ error: `Produk tidak tersedia: ${prod.name}` })
       if (prod.stockOut) return res.status(409).json({ error: `Stok ${prod.name} sedang habis` })
       const flashTier = typeof raw.tierLabel === 'string' && raw.tierLabel.endsWith(' (Flash Sale)')
-      const tier = prod.tiers.find((t) => t.label === raw.tierLabel) || prod.tiers[0]
-      const selectedTier = flashTier && prod.flashSale
+      const baseLabel = flashTier ? raw.tierLabel.replace(/ \(Flash Sale\)$/, '') : raw.tierLabel
+      const tierIdx = prod.tiers.findIndex((t) => t.label === baseLabel)
+      const tier = tierIdx >= 0 ? prod.tiers[tierIdx] : prod.tiers[0]
+      // Harga flash hanya untuk tier utama (pertama) — konsisten dengan tampilan detail
+      // produk. Tier lain selalu memakai harga katalognya, apa pun labelnya.
+      const selectedTier = flashTier && prod.flashSale && tierIdx <= 0
         ? { ...tier, price: prod.flashPrice ?? prod.price, priceIntl: prod.flashPriceIntl ?? prod.priceIntl }
         : tier
       const qty = Math.max(1, Math.min(99, parseInt(raw.qty, 10) || 1))
@@ -150,7 +154,9 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
           : currency === 'CNY' ? Math.round((selectedTier.priceIntl || 0) * USD_TO_CNY)
             : currency === 'MYR' ? Math.round(((selectedTier.price || 0) / MYR_RATE) * 100)
               : selectedTier.price
-      const pct = flashTier && prod.flashSale ? 0 : effectiveDiscount(prod)
+      // Produk flash sale tidak mendapat diskon tambahan di tier mana pun
+      // (sama dengan tampilan frontend, yang menampilkan percent = 0).
+      const pct = prod.flashSale ? 0 : effectiveDiscount(prod)
       const unitPrice = salePrice(base, pct)
       subtotal += unitPrice * qty
       if (prod.estimate) estimate = prod.estimate
