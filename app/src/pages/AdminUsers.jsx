@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { api } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useToast } from '../context/ToastContext.jsx'
 import AdminGate from '../components/AdminGate.jsx'
 import Pager from '../components/Pager.jsx'
 
@@ -16,6 +17,7 @@ const formatIDR = (n) => 'Rp ' + (n || 0).toLocaleString('id-ID')
 
 export default function AdminUsers() {
   const { isAdmin, ready } = useAuth()
+  const { toast } = useToast()
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
   const [data, setData] = useState(null)
@@ -35,7 +37,34 @@ export default function AdminUsers() {
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState(null)
 
+  // Default global minimal tarik saldo + override per user
+  const [globalMin, setGlobalMin] = useState(null)
+  const [globalMinValue, setGlobalMinValue] = useState('')
+  const [savingGlobalMin, setSavingGlobalMin] = useState(false)
+  const [editMinWithdraw, setEditMinWithdraw] = useState('')
+
   useEffect(() => { setPage(1) }, [q])
+
+  useEffect(() => {
+    if (!isAdmin) return
+    api.adminGetSettings().then((d) => setGlobalMin(d.minWithdraw)).catch(() => setGlobalMin(310000))
+  }, [isAdmin])
+
+  const saveGlobalMin = async () => {
+    setSavingGlobalMin(true)
+    try {
+      const v = Number(globalMinValue)
+      if (!Number.isSafeInteger(v) || v < 0) throw new Error('Harus angka bulat 0 atau lebih')
+      const res = await api.adminUpdateSettings({ minWithdraw: v })
+      setGlobalMin(res.minWithdraw)
+      setGlobalMinValue('')
+      toast(`Default min. tarik saldo: Rp ${v.toLocaleString('id-ID')} ✓`, 'success')
+    } catch (e) {
+      toast(e.message, 'error')
+    } finally {
+      setSavingGlobalMin(false)
+    }
+  }
 
   useEffect(() => {
     if (!isAdmin) return
@@ -64,6 +93,7 @@ export default function AdminUsers() {
       setEditName(d.user.name)
       setEditRole(d.user.role)
       setBalanceValue(String(d.user.balance ?? 0))
+      setEditMinWithdraw(d.user.minWithdraw == null ? '' : String(d.user.minWithdraw))
       setAdjustNote('')
       setDetailLoading(false)
     }).catch((e) => {
@@ -95,6 +125,13 @@ export default function AdminUsers() {
         payload.balance = parsedBalance
         payload.adjustNote = adjustNote || null
       }
+      const minRaw = editMinWithdraw.trim()
+      if (minRaw !== '') {
+        const v = Number(minRaw)
+        if (!Number.isSafeInteger(v) || v < 0) throw new Error('Min. tarik saldo harus angka bulat 0 atau lebih (kosongkan = default)')
+      }
+      const currentMin = detail.user.minWithdraw == null ? '' : String(detail.user.minWithdraw)
+      if (minRaw !== currentMin) payload.minWithdraw = minRaw === '' ? null : Number(minRaw)
       const res = await api.adminUpdateUser(selectedId, payload)
       setDetail(prev => ({ ...prev, user: { ...prev.user, ...res.user } }))
       setSaveMsg({ type: 'success', text: 'Perubahan disimpan ✓' })
@@ -133,6 +170,23 @@ export default function AdminUsers() {
   return (
     <div className="container section">
       <h1 className="display h-lg">KELOLA PENGGUNA</h1>
+
+      {/* Default global minimal tarik saldo */}
+      <div className="card" style={{ padding: '14px 16px', marginTop: 18, maxWidth: 560, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div style={{ fontWeight: 700, fontSize: 13.5 }}>Minimal Tarik Saldo (default semua user)</div>
+          <div className="text-muted" style={{ fontSize: 11.5, marginTop: 2 }}>
+            Sekarang: {globalMin != null ? `Rp ${globalMin.toLocaleString('id-ID')}` : '…'} · override per user ada di detail user
+          </div>
+        </div>
+        <div className="input-ic" style={{ width: 140 }}>
+          <span style={{ paddingLeft: 10, fontWeight: 700, fontSize: 12.5 }}>Rp</span>
+          <input className="input" type="number" min="0" step="1" placeholder="Nilai baru" value={globalMinValue} onChange={(e) => setGlobalMinValue(e.target.value)} style={{ paddingLeft: 4 }} />
+        </div>
+        <button className="pill pill-indigo" style={{ padding: '8px 14px', fontSize: 12.5 }} disabled={savingGlobalMin || globalMinValue.trim() === ''} onClick={saveGlobalMin}>
+          <Check size={13} /> Simpan
+        </button>
+      </div>
 
       {/* Search */}
       <div className="input-ic" style={{ marginTop: 20, marginBottom: 20, maxWidth: 480 }}>
@@ -289,6 +343,7 @@ export default function AdminUsers() {
                   {/* Stats grid */}
                   <div className="stat-cards" style={{ marginBottom: 20 }}>
                     <StatCard icon={Wallet} label="Saldo" value={formatIDR(detail.user.balance)} accent />
+                    <StatCard icon={Banknote} label="Min. Tarik" value={detail.user.minWithdraw != null ? `${formatIDR(detail.user.minWithdraw)} (khusus)` : `${formatIDR(globalMin ?? 310000)} (default)`} />
                     <StatCard icon={TrendingUp} label="Total Belanja" value={formatIDR(detail.summary.totalSpent)} />
                     <StatCard icon={ShoppingBag} label="Total Order" value={detail.summary.totalOrders} />
                     <StatCard icon={RotateCcw} label="Refund" value={`${detail.summary.refundCount} (${detail.summary.refundPending} pending)`} />
@@ -326,6 +381,18 @@ export default function AdminUsers() {
                         <div className="text-muted" style={{ fontSize: 11.5, marginTop: 6 }}>
                           Masukkan saldo akhir user, bukan nominal penambahan. Nilai dapat dibuat 0 dan perubahan otomatis tercatat di riwayat.
                         </div>
+                        <div style={{ fontWeight: 700, fontSize: 14, margin: '16px 0 10px', display: 'flex', alignItems: 'center', gap: 6, borderTop: '1.5px dashed var(--line-soft)', paddingTop: 14 }}>
+                          <Banknote size={15} /> Minimal Tarik Saldo (khusus user ini)
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <div className="input-ic" style={{ flex: 1, minWidth: 160 }}>
+                            <span style={{ paddingLeft: 10, fontWeight: 700, fontSize: 13 }}>Rp</span>
+                            <input className="input" type="number" min="0" step="1" placeholder={globalMin != null ? `kosongkan = default Rp ${globalMin.toLocaleString('id-ID')}` : 'kosongkan = default global'} value={editMinWithdraw} onChange={(e) => setEditMinWithdraw(e.target.value)} style={{ paddingLeft: 4 }} />
+                          </div>
+                        </div>
+                        <div className="text-muted" style={{ fontSize: 11.5, marginTop: 6 }}>
+                          Syarat total belanja minimum agar user ini bisa tarik saldo. Kosongkan = ikut default global{globalMin != null ? ` (Rp ${globalMin.toLocaleString('id-ID')})` : ''}. Isi 0 = user ini langsung bisa tarik kapan saja.
+                        </div>
                       </div>
                     </motion.div>
                   )}
@@ -337,7 +404,7 @@ export default function AdminUsers() {
                         <button onClick={handleSave} disabled={saving} className="pill pill-indigo" style={{ padding: '9px 20px', fontSize: 13.5 }}>
                           <Check size={15} /> {saving ? 'Menyimpan...' : 'Simpan'}
                         </button>
-                        <button onClick={() => { setEditing(false); setBalanceValue(String(detail.user.balance ?? 0)); setAdjustNote(''); setSaveMsg(null) }} className="pill" style={{ padding: '9px 20px', fontSize: 13.5 }}>
+                        <button onClick={() => { setEditing(false); setBalanceValue(String(detail.user.balance ?? 0)); setEditMinWithdraw(detail.user.minWithdraw == null ? '' : String(detail.user.minWithdraw)); setAdjustNote(''); setSaveMsg(null) }} className="pill" style={{ padding: '9px 20px', fontSize: 13.5 }}>
                           <X size={15} /> Batal
                         </button>
                       </>

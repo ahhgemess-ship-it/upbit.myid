@@ -20,6 +20,7 @@ model User {
   role           String   @default("USER") // USER | ADMIN
   blocked        Boolean  @default(false) // true = akun diblokir admin (tidak bisa login/order)
   balance        Int      @default(0) // saldo dalam IDR (Rupiah)
+  minWithdraw    Int?     // override minimal total belanja utk tarik saldo, khusus user ini (null = default global)
   checkInStreak  Int      @default(0) // posisi terakhir di cycle check-in 7 hari (0-6)
   lastCheckInAt  DateTime? // kapan terakhir check-in
   createdAt      DateTime @default(now())
@@ -181,4 +182,11 @@ model UserProductStock {
 
   @@unique([userId, productId])
   @@index([userId])
+}
+
+// Pengaturan global toko (key-value) — mis. default minimal tarik saldo.
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }

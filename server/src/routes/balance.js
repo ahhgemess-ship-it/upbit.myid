@@ -5,8 +5,22 @@ import { toIDR } from '../money.js'
 
 const router = Router()
 
-// Minimum total transaksi untuk bisa withdraw
-const MIN_WITHDRAW_TOTAL = 310000 // Rp 310.000
+// Minimal total transaksi untuk bisa withdraw — default global (bisa diubah admin
+// lewat panel), dan bisa dioverride per user (User.minWithdraw, diatur di detail user).
+const DEFAULT_MIN_WITHDRAW = 310000 // Rp 310.000
+
+async function getGlobalMinWithdraw() {
+  const s = await prisma.setting.findUnique({ where: { key: 'minWithdraw' } })
+  const v = s ? parseInt(s.value, 10) : NaN
+  return Number.isSafeInteger(v) && v >= 0 ? v : DEFAULT_MIN_WITHDRAW
+}
+
+// Min efektif untuk seorang user: override per-user menang atas default global.
+async function getMinWithdrawFor(user) {
+  const perUser = user && Number.isSafeInteger(user.minWithdraw) ? user.minWithdraw : null
+  if (perUser !== null && perUser >= 0) return perUser
+  return getGlobalMinWithdraw()
+}
 
 // Reward check-in harian: Rp 300/hari, bonus Rp 2.000 di hari ke-7
 const CHECKIN_REWARD = 300
@@ -25,14 +39,18 @@ function isYesterdayUtc(d, now = new Date()) {
   return isSameUtcDay(d, yesterday)
 }
 
-// Cek apakah user eligible untuk withdraw (total transaksi >= 250k, dalam IDR)
+// Cek apakah user eligible untuk withdraw (total transaksi >= min tarik saldo efektifnya)
 async function checkWithdrawEligible(userId) {
-  const orders = await prisma.order.findMany({
-    where: { userId, status: 'COMPLETED' },
-    select: { total: true, currency: true },
-  })
+  const [user, orders] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { minWithdraw: true } }),
+    prisma.order.findMany({
+      where: { userId, status: 'COMPLETED' },
+      select: { total: true, currency: true },
+    }),
+  ])
+  const min = await getMinWithdrawFor(user)
   const totalIdr = orders.reduce((s, o) => s + toIDR(o.total, o.currency), 0)
-  return totalIdr >= MIN_WITHDRAW_TOTAL
+  return totalIdr >= min
 }
 
 // GET /api/balance — lihat saldo & total transaksi
@@ -44,11 +62,12 @@ router.get('/', requireAuth, async (req, res) => {
       select: { total: true, currency: true },
     })
     const totalSpent = orders.reduce((s, o) => s + toIDR(o.total, o.currency), 0)
-    const eligible = totalSpent >= MIN_WITHDRAW_TOTAL
+    const minWithdraw = await getMinWithdrawFor(user)
+    const eligible = totalSpent >= minWithdraw
     res.json({
       balance: user.balance,
       totalSpent,
-      minWithdraw: MIN_WITHDRAW_TOTAL,
+      minWithdraw,
       withdrawEligible: eligible,
     })
   } catch (e) {
@@ -80,13 +99,15 @@ router.post('/withdraw', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Jumlah tidak valid' })
     }
 
-    // Cek eligible (total transaksi >= MIN_WITHDRAW_TOTAL, dalam IDR)
+    // Cek eligible (total transaksi >= min tarik saldo efektif user, dalam IDR)
+    const me = await prisma.user.findUnique({ where: { id: req.user.id }, select: { minWithdraw: true } })
+    const min = await getMinWithdrawFor(me)
     const eligible = await checkWithdrawEligible(req.user.id)
     if (!eligible) {
       return res.status(400).json({
         error: 'Belum bisa tarik saldo',
-        detail: `Total transaksi Anda harus minimal Rp ${MIN_WITHDRAW_TOTAL.toLocaleString('id-ID')} untuk bisa menarik saldo.`,
-        minWithdraw: MIN_WITHDRAW_TOTAL,
+        detail: `Total transaksi Anda harus minimal Rp ${min.toLocaleString('id-ID')} untuk bisa menarik saldo.`,
+        minWithdraw: min,
       })
     }
 

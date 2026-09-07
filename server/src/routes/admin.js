@@ -45,7 +45,7 @@ router.get('/users', async (req, res) => {
         where,
         select: {
           id: true, email: true, name: true, picture: true, role: true,
-          balance: true, checkInStreak: true, lastCheckInAt: true, createdAt: true,
+          balance: true, minWithdraw: true, checkInStreak: true, lastCheckInAt: true, createdAt: true,
           _count: { select: { orders: true, balanceTransactions: true } },
         },
         orderBy: { createdAt: 'desc' },
@@ -83,7 +83,7 @@ router.get('/users/:id', async (req, res) => {
     res.json({
       user: {
         id: user.id, email: user.email, name: user.name, picture: user.picture,
-        role: user.role, blocked: user.blocked, balance: user.balance, checkInStreak: user.checkInStreak,
+        role: user.role, blocked: user.blocked, balance: user.balance, minWithdraw: user.minWithdraw, checkInStreak: user.checkInStreak,
         lastCheckInAt: user.lastCheckInAt, createdAt: user.createdAt,
       },
       orders: user.orders,
@@ -105,13 +105,25 @@ router.get('/users/:id', async (req, res) => {
 // PATCH /api/admin/users/:id — admin edit user (name, role, saldo absolut, blokir)
 router.patch('/users/:id', async (req, res) => {
   try {
-    const { name, role, balance, balanceAdjust, adjustNote, blocked } = req.body || {}
+    const { name, role, balance, balanceAdjust, adjustNote, blocked, minWithdraw } = req.body || {}
     const data = {}
     if (name !== undefined) data.name = String(name).trim()
     if (role && ['USER', 'ADMIN'].includes(role)) data.role = role
     if (blocked !== undefined) {
       if (req.user.id === req.params.id && blocked) return res.status(400).json({ error: 'Tidak bisa memblokir akun sendiri' })
       data.blocked = Boolean(blocked)
+    }
+    // Override minimal tarik saldo per user: string/number angka >= 0, atau kosong = reset ke default global.
+    if (minWithdraw !== undefined) {
+      if (minWithdraw === '' || minWithdraw === null) {
+        data.minWithdraw = null
+      } else {
+        const v = Number(minWithdraw)
+        if (!Number.isSafeInteger(v) || v < 0 || v > 2_000_000_000) {
+          return res.status(400).json({ error: 'Min. tarik saldo harus angka bulat 0 atau lebih (kosongkan = default global)' })
+        }
+        data.minWithdraw = v
+      }
     }
 
     // Saldo harus berupa nilai akhir absolut, bukan nominal yang ditambahkan.
@@ -136,7 +148,7 @@ router.patch('/users/:id', async (req, res) => {
       const user = await tx.user.update({
         where: { id: req.params.id },
         data: { ...data, ...(targetBalance === null ? {} : { balance: targetBalance }) },
-        select: { id: true, email: true, name: true, role: true, balance: true, checkInStreak: true },
+        select: { id: true, email: true, name: true, role: true, balance: true, minWithdraw: true, checkInStreak: true },
       })
 
       if (targetBalance !== null && delta !== 0) {
@@ -154,6 +166,36 @@ router.patch('/users/:id', async (req, res) => {
 
     if (!result) return res.status(404).json({ error: 'User tidak ditemukan' })
     res.json({ user: result.user, balanceDelta: result.delta })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// GET /api/admin/settings — pengaturan global toko (saat ini: default min tarik saldo)
+router.get('/settings', async (req, res) => {
+  try {
+    const s = await prisma.setting.findUnique({ where: { key: 'minWithdraw' } })
+    const v = s ? parseInt(s.value, 10) : NaN
+    res.json({ minWithdraw: Number.isSafeInteger(v) && v >= 0 ? v : 310000 })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// PUT /api/admin/settings — ubah pengaturan global toko
+router.put('/settings', async (req, res) => {
+  try {
+    const { minWithdraw } = req.body || {}
+    const v = Number(minWithdraw)
+    if (!Number.isSafeInteger(v) || v < 0 || v > 2_000_000_000) {
+      return res.status(400).json({ error: 'Min. tarik saldo harus angka bulat 0 atau lebih' })
+    }
+    await prisma.setting.upsert({
+      where: { key: 'minWithdraw' },
+      update: { value: String(v) },
+      create: { key: 'minWithdraw', value: String(v) },
+    })
+    res.json({ minWithdraw: v })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
