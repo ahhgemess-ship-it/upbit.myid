@@ -14,6 +14,7 @@
     { "src": "/favicon\\.ico", "dest": "/app/favicon.ico" },
     { "src": "/favicon\\.svg", "dest": "/app/favicon.svg" },
     { "src": "/logos/(.*)", "dest": "/app/logos/$1" },
+    { "src": "/mascots/(.*)", "dest": "/app/mascots/$1" },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/app/index.html" }
   ],
