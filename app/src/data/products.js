@@ -564,10 +564,51 @@ export const categories = [...new Set(products.map((p) => p.category))]
 // ===== Flash Sale =====
 // Flash sale = produk PROMO (kategori 'Promo'), bersifat PERMANEN.
 // Hitung mundur hanya untuk urgensi marketing — saat habis pun produk TIDAK
-// dihapus, tetap tampil. Harga "normal" (coret) diturunkan dari harga promo
-// supaya terlihat diskon besar; harga jual sebenarnya = harga promo.
-const flashOf = (p, i) => {
-  const mult = 3 + ((i * 3) % 6) * 0.2 // 3.0–4.0 → diskon ~67–75%
+// dihapus, tetap tampil. Harga "normal" (coret) = harga OFFICIAL produk yang
+// sama di katalog reguler; harga jual sebenarnya (harga flash) TIDAK pernah
+// diubah oleh rumus apa pun.
+
+// Nama promo → nama produk reguler yang setara (untuk pencocokan official).
+const normalizeName = (name) => {
+  const alias = {
+    'Gemini Pro': 'Google AI Pro', 'Gemini Ultra': 'Google AI Ultra',
+    'Kiro IDE': 'Kiro AI',
+    'Cursor Pro': 'Cursor', 'Cursor Pro+': 'Cursor', 'Cursor Ultra': 'Cursor',
+  }
+  return alias[name] || name
+}
+// Kunci durasi untuk pencocokan tier: "3 Bulan" → "3m", "1 Tahun" → "1y",
+// label non-durasi ("Pro+", "8.000 kredit") → label itu sendiri (dinormalkan).
+const durKey = (label) => {
+  const m = String(label || '').match(/(\d+(?:[.,]\d+)?)\s*(bulan|tahun|bln|thn)/i)
+  if (!m) return String(label || '').trim().toLowerCase().replace(/\s+/g, ' ')
+  const n = parseFloat(m[1].replace(',', '.'))
+  return `${n}${/^(tahun|thn)$/i.test(m[2]) ? 'y' : 'm'}`
+}
+// Harga OFFICIAL sebuah produk flash: cari produk REGULER dengan nama (setelah
+// alias) + vendor yang sama, ambil tier berdurasi sama; kalau tidak ada yang
+// persis, pakai tier termurah dari keluarga produk reguler tsb.
+export const officialOf = (p, all) => {
+  // Utamakan katalog yang sedang dipakai (DB/live); jatuh ke katalog statis bila
+  // daftar itu kosong/tidak memuat produk reguler yang cocok.
+  const src = Array.isArray(all) && all.length ? all : products
+  const want = durKey(p.tiers?.[0]?.label)
+  const cands = src.filter((q) => !inFlashSale(q)
+    && (normalizeName(q.name) || '') === (normalizeName(p.name) || '')
+    && (q.vendor || '') === (p.vendor || ''))
+  if (!cands.length) return null
+  const tiersAll = cands.flatMap((q) => (Array.isArray(q.tiers) && q.tiers.length
+    ? q.tiers
+    : [{ label: q.period || '', price: q.price, priceIntl: q.priceIntl }]))
+  const tier = tiersAll.find((t) => durKey(t.label) === want)
+    || tiersAll.reduce((a, b) => ((Number(b.price) || Infinity) < (Number(a.price) || Infinity) ? b : a))
+  const price = Number(tier?.price)
+  if (!Number.isFinite(price) || price <= 0) return null
+  const priceIntl = Number(tier?.priceIntl)
+  return { price, priceIntl: Number.isFinite(priceIntl) && priceIntl > 0 ? priceIntl : toIntlCents(price) }
+}
+
+const flashOf = (p, i, all) => {
   const salePrice = Number.isFinite(Number(p.flashPrice)) && Number(p.flashPrice) > 0 ? Number(p.flashPrice) : p.price
   // USD selalu mengikuti harga Rp (flash) — turunkan dari Rp bila belum tersimpan.
   const salePriceIntl =
@@ -576,9 +617,17 @@ const flashOf = (p, i) => {
       : Number.isFinite(Number(p.flashPrice)) && Number(p.flashPrice) > 0
         ? promoCents(p.flashPrice)
         : p.priceIntl
-  // Jika ada harga asli eksplisit (price > harga flash sale), pakai itu sebagai harga coret
-  // supaya diskon akurat (mis. harga asli Rp650.000, flash Rp130.000 → diskon 80%).
-  const originalPrice = p.price > salePrice ? p.price : Math.round((salePrice * mult) / 5000) * 5000
+  // Harga coret ("sebelumnya") dipakui urutan ini — BUKAN angka acak:
+  //   1. Harga official dari katalog reguler (produk sama, durasi sama/termurah)
+  //   2. Harga normal yang tersimpan di produk itu sendiri (input admin)
+  //   3. Fallback deterministik: tepat 3× harga flash (dibulatkan ke 1.000)
+  const official = officialOf(p, all || products)
+  const saleNum = Number(salePrice) || 0
+  const useOfficial = Number.isFinite(official?.price) && official.price > saleNum
+  const originalPrice = useOfficial ? official.price
+    : p.price > saleNum ? p.price
+    : Math.round((saleNum * 3) / 1000) * 1000
+  const originalPriceIntl = useOfficial ? official.priceIntl : promoCents(originalPrice)
   const fallbackSold = 300 + ((i * 53) % 501) // 300–800 (total terjual, acak stabil)
   const fallbackLeft = 10 + ((i * 17) % 41) // 10–50 (sisa stok, acak stabil)
   const hasManagedStock = Number.isFinite(p.stock) && p.stock >= -1
@@ -595,7 +644,7 @@ const flashOf = (p, i) => {
     stockOut: !!p.stockOut,
     sold,
     originalPrice,
-    originalPriceIntl: promoCents(originalPrice),
+    originalPriceIntl,
     salePrice,
     salePriceIntl,
   }
@@ -608,7 +657,10 @@ const inFlashSale = (p) =>
   p.flashSale === true || (p.flashSale == null && p.category === 'Promo')
 // Ekspor untuk Store/panel admin: bedakan produk flash sale vs reguler.
 export const isFlashProduct = inFlashSale
-export const flashFrom = (list) => (list || []).filter(inFlashSale).map(flashOf)
+export const flashFrom = (list) => {
+  const src = list || products
+  return src.filter(inFlashSale).map((p, i) => flashOf(p, i, src))
+}
 
 // Urutan rapi flash sale: dikelompokkan per vendor → nama produk, lalu durasi naik
 // (1bln → 3bln → 6bln → 1thn) — tidak acak. Dipakai sebagai urutan dasar sebelum

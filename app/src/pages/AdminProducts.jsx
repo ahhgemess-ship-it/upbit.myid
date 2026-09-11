@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Plus, Pencil, Trash2, X, Check, Upload, Image as ImageIcon, Zap, Ban } from 'lucide-react'
-import { formatIDR, applyDiscount } from '../data/products.js'
+import { formatIDR, applyDiscount, officialOf } from '../data/products.js'
 import { USD_TO_IDR } from '../i18n/pricing.js'
 import { api } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -101,8 +101,10 @@ export default function AdminProducts() {
           {shown.map((p) => {
             const flash = isFlash(p)
             const cur = flash ? (p.flashPrice ?? p.price) : applyDiscount(p.price, p.discountPercent)
+            // Harga coret yang TAMPIL di kartu flash = official resolver (sumber sama dgn flashOf).
+            const official = flash ? officialOf(p, rows || []) : null
             const orig = flash
-              ? (p.price > (p.flashPrice ?? Infinity) ? p.price : null)
+              ? (official && official.price > cur ? official.price : (p.price > cur ? p.price : null))
               : (p.discountPercent > 0 ? p.price : null)
             const durs = (p.tiers || []).map((x) => durId(x.label)).filter(Boolean).join(' / ')
             return (
@@ -242,7 +244,7 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
   const hint = f.flashSale
     ? (base > 0 && now > 0 && now < base
         ? <>Tampil di kartu: normal <b>{formatIDR(base)}</b> dicoret → <b>-{Math.round((1 - now / base) * 100)}%</b>, harga bayar <b>{formatIDR(now)}</b>. Harga flash berlaku untuk tier utama; tier lain tetap harga katalog.</>
-        : 'Harga normal akan dicoret otomatis oleh sistem flash sale (±3–4× harga flash) bila tidak diisi lebih tinggi.')
+        : 'Harga normal (dicoret) diambil otomatis dari harga official produk yang sama di katalog reguler. Isi harga normal lebih tinggi bila mau menentukan sendiri.')
     : (f.discountPercent > 0
         ? <>Tampil di kartu: normal <b>{formatIDR(base)}</b> dicoret → harga saat ini <b>{formatIDR(applyDiscount(base, f.discountPercent))}</b> (diskon {f.discountPercent}%).</>
         : 'Tanpa diskon — harga normal = harga saat ini, tidak ada coretan.')

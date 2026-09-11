@@ -6,7 +6,7 @@ import BrandLogo from '../components/BrandLogo.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import ReviewSection from '../components/ReviewSection.jsx'
 import Asterisk from '../components/Asterisk.jsx'
-import { applyDiscount } from '../data/products.js'
+import { applyDiscount, officialOf } from '../data/products.js'
 import { useCart } from '../context/CartContext.jsx'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
@@ -55,6 +55,13 @@ export default function ProductDetail() {
     : ti)
   const effectiveTier = tierPriceOf(tier, tierIdx)
   const percent = isFlashSale ? 0 : discountFor(product.id)
+  // Produk flash sale: harga official (katalog reguler, durasi sama) jadi harga
+  // dicoret — diskon reguler tidak berlaku di produk flash sale.
+  const official = isFlashSale ? officialOf(product) : null
+  const flashOff = official && official.price > effectiveTier.price
+    ? Math.max(0, Math.round((1 - effectiveTier.price / official.price) * 100))
+    : 0
+  const flashBase = amountOf({ price: official?.price ?? 0, priceIntl: official?.priceIntl ?? 0 })
   const tierBase = amountOf(effectiveTier)
   const salePrice = applyDiscount(tierBase, percent)
   const srcKey = product._srcId || product.id
@@ -182,7 +189,9 @@ export default function ProductDetail() {
                   {tier.note && <span className="chip chip-lime" style={{ fontSize: 11, padding: '3px 9px' }}>{localizeNote(tier.note, t)}</span>}
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  {percent > 0 && <span className="pc-strike" style={{ fontSize: 13 }}>{fmt(tierBase)}</span>}
+                  {(percent > 0 || (isFlashTier && flashOff > 0)) && (
+                    <span className="pc-strike" style={{ fontSize: 13 }}>{percent > 0 ? fmt(tierBase) : fmt(flashBase)}</span>
+                  )}
                   <span className="display" style={{ fontSize: 18 }}>{fmt(salePrice)}</span>
                   <motion.span animate={{ rotate: tierOpen ? 180 : 0 }} transition={{ duration: 0.2 }} style={{ display: 'grid', placeItems: 'center', color: 'var(--muted)' }}>
                     <ChevronDown size={20} />
@@ -212,6 +221,7 @@ export default function ProductDetail() {
                           </span>
                           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             {percent > 0 && <span className="pc-strike" style={{ fontSize: 12.5 }}>{fmt(amountOf(ti))}</span>}
+                            {percent === 0 && i === 0 && flashOff > 0 && <span className="pc-strike" style={{ fontSize: 12.5 }}>{fmt(flashBase)}</span>}
                             <span className="display" style={{ fontSize: 15 }}>{fmt(applyDiscount(amountOf(tierPriceOf(ti, i)), percent))}</span>
                             {tierIdx === i && <Check size={16} strokeWidth={3} color="var(--indigo)" />}
                           </span>
@@ -233,12 +243,17 @@ export default function ProductDetail() {
               <span className="text-muted" style={{ fontSize: 13 }}>{t('pd.total')}</span>
               <div className="pd-price-line">
                 <div className="display pd-price-big">{fmt(salePrice)}</div>
-                {percent > 0 && (
+                {percent > 0 ? (
                   <>
                     <span className="pc-strike" style={{ fontSize: 15 }}>{fmt(tierBase)}</span>
                     <span className="disc-badge">-{percent}%</span>
                   </>
-                )}
+                ) : (flashOff > 0 && (
+                  <>
+                    <span className="pc-strike" style={{ fontSize: 15 }}>{fmt(flashBase)}</span>
+                    <span className="disc-badge">-{flashOff}%</span>
+                  </>
+                ))}
               </div>
             </div>
             <div className="pd-actions">
