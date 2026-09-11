@@ -303,7 +303,19 @@ ul { list-style: none; }
   letter-spacing: .02em;
 }
 .sale-card-top { display: flex; align-items: center; gap: 12px; }
-.sale-name { font-size: 19px; }
+.sale-name {
+  font-size: 19px;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.sale-name-text { min-width: 0; }
+/* badge durasi (1bln/3bln/1thn) di samping nama — pengganti badge kategori */
+.sale-dur {
+  display: inline-flex; align-items: center;
+  font-size: 10.5px; font-weight: 800; letter-spacing: .03em;
+  padding: 3px 8px; border-radius: 999px;
+  background: var(--lime); border: 1.5px solid var(--ink); color: var(--ink);
+  flex-shrink: 0; line-height: 1;
+}
 .sale-price-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .sale-price { font-size: 24px; color: var(--indigo); }
 .sale-price-old {
@@ -654,11 +666,12 @@ ul { list-style: none; }
   /* kartu flash sale — disamakan dengan kartu katalog reguler */
   .sale-card { min-width: 0; padding: 13px; gap: 10px; }
   .sale-card-top span:first-child { width: 46px !important; height: 46px !important; }
-  .sale-card-top .chip { display: none; }   /* kategori disembunyikan, konsisten dgn pc-chip */
-  .sale-name {
-    font-size: 14.5px !important; line-height: 1.15;
+  .sale-name { font-size: 14.5px !important; line-height: 1.15; gap: 6px; }
+  .sale-name-text {
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 100%;
   }
+  .sale-dur { font-size: 9.5px; padding: 2.5px 6px; }
   .sale-price-row { gap: 8px; margin-top: -2px; }
   .sale-price { font-size: 16px !important; }
   .sale-price-old { font-size: 12px !important; }

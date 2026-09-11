@@ -99,7 +99,7 @@ export default function FlashSaleCard({ product, index = 0 }) {
 
         <div className="sale-card-top">
           <BrandLogo src={product.logo} name={product.name} brand={product.brand} size={52} />
-          {product.badge && product.badgeColor ? (
+          {product.badge && product.badgeColor && (
             <span style={{
               display: 'inline-flex', alignItems: 'center', alignSelf: 'flex-start', marginTop: 2,
               background: product.badgeColor, color: '#fff',
@@ -107,15 +107,15 @@ export default function FlashSaleCard({ product, index = 0 }) {
               padding: '5px 9px', borderRadius: 999, border: '1px solid rgba(255,255,255,.25)',
               boxShadow: '0 1px 0 rgba(0,0,0,.25)',
             }}>{product.badge}</span>
-          ) : (
-            <span className="chip" style={{ fontSize: 11 }}>{t('cat.' + product.category)}</span>
-          )}
-          {durBadge && (
-            <span className="chip chip-lime" style={{ fontSize: 11, fontWeight: 700, alignSelf: 'flex-start', marginTop: 2 }}>{durBadge}</span>
           )}
         </div>
 
-        <h3 className="display sale-name">{product.name}</h3>
+        {/* Nama produk AI + badge durasi (1bln/3bln/1thn) — pengganti badge kategori
+            "Promo". Badge durasi menempel di nama tiap kartu & tetap tampil di mobile. */}
+        <h3 className="display sale-name">
+          <span className="sale-name-text">{product.name}</span>
+          {durBadge && <span className="sale-dur">{durBadge}</span>}
+        </h3>
 
         {/* harga */}
         <div className="sale-price-row">
