@@ -23,6 +23,7 @@ model User {
   minWithdraw    Int?     // override minimal total belanja utk tarik saldo, khusus user ini (null = default global)
   checkInStreak  Int      @default(0) // posisi terakhir di cycle check-in 7 hari (0-6)
   lastCheckInAt  DateTime? // kapan terakhir check-in
+  telegramId     String?  // ID Telegram user (terisi setelah hubungkan via bot) — 1 bot = 1 akun
   createdAt      DateTime @default(now())
 
   orders             Order[]
@@ -30,6 +31,7 @@ model User {
   notifications      Notification[]
   balanceTransactions BalanceTransaction[]
   exhaustedProducts  UserProductStock[]
+  telegramLinkCodes  TelegramLinkCode[]
 }
 
 model Order {
@@ -189,4 +191,35 @@ model Setting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// Kode sekali-pakai untuk menghubungkan akun website ke Telegram (berlaku 15 menit).
+model TelegramLinkCode {
+  code      String   @id // 6 digit
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([userId])
+}
+
+// State percakapan bot per chat (lang, menu aktif) — serverless tidak punya memori.
+model TelegramState {
+  chatId    String   @id // ID chat Telegram (string angka)
+  data      String   @default("{}") // JSON: { lang, ... }
+  updatedAt DateTime @updatedAt
+}
+
+// Buku saldo lama dari bot VPS (file JSON) — dikreditkan ke User.balance begitu
+// akun Telegram terhubung ke akun website, lalu ditandai consumed (sekali pakai).
+model BotLedger {
+  id         String    @id @default(cuid())
+  telegramId String // ID Telegram pemilik saldo lama
+  amount     Int // saldo lama (IDR)
+  note       String?
+  consumedAt DateTime? // terisi setelah dikreditkan ke akun website
+  createdAt  DateTime  @default(now())
+
+  @@index([telegramId])
 }

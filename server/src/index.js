@@ -71,6 +71,8 @@ app.use('/api/reviews', reviewRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/balance', balanceRoutes)
+import telegramRoutes from './routes/telegram.js'
+app.use('/api/telegram', telegramRoutes)
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }))
 

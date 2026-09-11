@@ -12,6 +12,7 @@ import { notify, notifyAdmins } from '../notify.js'
 import { saveUpload } from '../storage.js'
 import { toIDR, fromIDR, USD_TO_CNY, MYR_RATE } from '../money.js'
 import { userRateLimit } from '../rateLimit.js'
+import { sendTelegramToUser } from '../telegramBot.js'
 
 const router = Router()
 
@@ -336,6 +337,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
     const msg = stockOut ? 'stok habis — otomatis refund' : 'Pembayaran sedang kami verifikasi.'
     sendOrderCreated(formatted) // email (mode log bila SMTP kosong)
     notify(req.user.id, { type: 'order_created', title: `Pesanan ${order.id} diterima`, body: msg, orderId: order.id })
+    sendTelegramToUser(req.user.id, 'notifCreated', { id: order.id, total: totalLabel })
     notifyAdmins({ type: 'admin_new_order', title: `Pesanan baru ${order.id}`, body: `${formatted.items.length} item · ${totalLabel}`, orderId: order.id })
     res.status(201).json({ order: formatted, stockOut })
   } catch (e) {

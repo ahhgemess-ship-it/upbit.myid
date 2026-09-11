@@ -3,13 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Wallet, ArrowUpRight, Clock, AlertCircle, Check, History,
   QrCode, Landmark, RefreshCw, ShoppingBag, Banknote, Lock, Info, DollarSign,
-  Calendar, Gift, Star,
+  Calendar, Gift, Star, Send, ExternalLink,
 } from 'lucide-react'
 import Asterisk from '../components/Asterisk.jsx'
 import { useBalance } from '../context/BalanceContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 import { formatCurrency, CURRENCY } from '../i18n/translations.js'
+import { api } from '../api.js'
 
 const txMeta = {
   refund: { labelKey: 'tx.refund', icon: RefreshCw },
@@ -43,8 +44,18 @@ export default function Balance() {
   const [filter, setFilter] = useState('all')
   const [checkInMsg, setCheckInMsg] = useState(null)
   const [lockedAlert, setLockedAlert] = useState(false)
+  // Telegram link (satu dompet dengan bot)
+  const [tgLinked, setTgLinked] = useState(null)
+  const [tgCode, setTgCode] = useState(null)
+  const [tgBusy, setTgBusy] = useState(false)
 
   useEffect(() => { fetchHistory() }, [fetchHistory])
+
+  // Status koneksi Telegram
+  useEffect(() => {
+    if (!user) return
+    api.telegramStatus().then((s) => setTgLinked(!!s?.linked)).catch(() => setTgLinked(false))
+  }, [user])
 
   // Cleanup lockedAlert timeout
   useEffect(() => {
@@ -103,6 +114,19 @@ export default function Balance() {
 
   const handleLockedClick = () => {
     setLockedAlert(true)
+  }
+
+  // Buat kode hubungkan Telegram (berlaku 15 menit)
+  const handleTgLink = async () => {
+    setTgBusy(true)
+    try {
+      const res = await api.telegramLinkCode()
+      setTgCode(res)
+    } catch {
+      setTgCode({ error: true })
+    } finally {
+      setTgBusy(false)
+    }
   }
 
   const refresh = () => { fetchBalance(); fetchHistory(); fetchCheckInStatus() }
@@ -227,6 +251,65 @@ export default function Balance() {
             </motion.button>
           </div>
         </div>
+      </motion.div>
+
+      {/* ============ Telegram Link Card ============ */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="card"
+        style={{ marginBottom: 24, padding: 'clamp(16px, 2.5vw, 22px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ display: 'grid', placeItems: 'center', width: 44, height: 44, borderRadius: 13, background: tgLinked ? 'var(--lime)' : 'var(--surface-2)', border: '1.5px solid ' + (tgLinked ? 'var(--ink)' : 'var(--line-soft)'), flexShrink: 0 }}>
+            <Send size={19} color={tgLinked ? 'var(--ink)' : 'var(--muted)'} />
+          </span>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 14.5 }}>
+              {tgLinked ? t('tg.linked') : t('tg.link')}
+            </div>
+            <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 2 }}>
+              {tgLinked ? t('tg.synced') : t('tg.expired')}
+            </div>
+          </div>
+        </div>
+
+        {!tgLinked && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            {tgCode && !tgCode.error && (
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-soft)', letterSpacing: '.04em' }}>{t('tg.codeIs')}</div>
+                <div style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 20, letterSpacing: '.18em' }}>{tgCode.code}</div>
+              </div>
+            )}
+            {tgCode && !tgCode.error
+              ? (
+                <a
+                  href={`https://t.me/${tgCode.botUsername || 'EvolusiAI_StoreBot'}`}
+                  target="_blank" rel="noreferrer"
+                  className="pill pill-indigo"
+                  style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 18px', fontSize: 13.5, fontWeight: 800 }}
+                >
+                  <ExternalLink size={15} /> {t('tg.openBot')}
+                </a>
+              )
+              : (
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleTgLink}
+                  disabled={tgBusy}
+                  style={{
+                    cursor: tgBusy ? 'wait' : 'pointer',
+                    background: 'var(--ink)', color: 'var(--lime)', border: '1.5px solid var(--ink)',
+                    borderRadius: 999, padding: '10px 20px', fontSize: 13.5, fontWeight: 800,
+                    display: 'flex', alignItems: 'center', gap: 7, opacity: tgBusy ? 0.6 : 1,
+                  }}
+                >
+                  <Send size={15} /> {t('tg.link')}
+                </motion.button>
+              )}
+          </div>
+        )}
       </motion.div>
 
       <div className="balance-grid">

@@ -11,6 +11,7 @@ import { formatProduct } from './products.js'
 import { encrypt } from '../crypto.js'
 import { sendOrderCompleted } from '../mailer.js'
 import { notify } from '../notify.js'
+import { sendTelegramToUser } from '../telegramBot.js'
 import { saveUpload, readUpload } from '../storage.js'
 import { toIDR } from '../money.js'
 
@@ -473,7 +474,10 @@ async function cancelOrderHandler(req, res) {
     order = await prisma.order.update({ where: { id: current.id }, data, include: { items: true, user: true } })
   }
 
-  if (status === 'CANCELLED' && current.status !== 'CANCELLED') notify(order.userId, { type: 'order_cancelled', title: `Pesanan ${order.id} dibatalkan`, body: refundAmount > 0 ? 'Dana sudah dikembalikan ke Saldo kamu.' : (adminNote || 'Pesanan dibatalkan.'), orderId: order.id })
+  if (status === 'CANCELLED' && current.status !== 'CANCELLED') {
+    notify(order.userId, { type: 'order_cancelled', title: `Pesanan ${order.id} dibatalkan`, body: refundAmount > 0 ? 'Dana sudah dikembalikan ke Saldo kamu.' : (adminNote || 'Pesanan dibatalkan.'), orderId: order.id })
+    sendTelegramToUser(order.userId, 'notifCancelled', { id: order.id, refund: refundAmount > 0 ? `↩️ +<b>Rp ${Number(refundAmount).toLocaleString('id-ID')}</b> kembali ke Saldo.` : '' })
+  }
   res.json({ order: formatOrder(order, { admin: true }) })
 }
 
@@ -567,6 +571,7 @@ router.post('/orders/:id/deliver', async (req, res) => {
   if (complete && order.status === 'COMPLETED') {
     sendOrderCompleted(formatted)
     notify(order.userId, { type: 'order_completed', title: `Pesanan ${order.id} selesai`, body: 'Akses kamu sudah siap. Cek detail pesanan.', orderId: order.id })
+    sendTelegramToUser(order.userId, 'notifCompleted', { id: order.id })
   }
   res.json({ order: formatted })
 })

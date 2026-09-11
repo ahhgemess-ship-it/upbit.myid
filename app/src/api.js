@@ -107,6 +107,9 @@ const _real = {
   withdrawBalance: (amount, method) => req('/api/balance/withdraw', { method: 'POST', body: { amount, method } }),
   checkInStatus: () => req('/api/balance/checkin/status'),
   checkIn: () => req('/api/balance/checkin', { method: 'POST' }),
+  // Telegram link (satu dompet dengan bot)
+  telegramStatus: () => req('/api/telegram/status'),
+  telegramLinkCode: () => req('/api/telegram/link-code', { method: 'POST' }),
   // admin users
   adminUsers: (params = '') => req(`/api/admin/users${params ? `?${params}` : ''}`),
   adminGetUser: (id) => req(`/api/admin/users/${id}`),
