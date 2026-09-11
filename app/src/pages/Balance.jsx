@@ -171,6 +171,8 @@ export default function Balance() {
     setTopupOpen(true)
     setTuMsg(null)
     try { const rows = await api.topupHistory(); setTuHistory(rows) } catch { setTuHistory([]) }
+    // Mobile: gulir ke kartu top-up supaya formnya langsung terlihat
+    setTimeout(() => document.getElementById('topup-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
   }
 
   const submitTopup = async () => {
@@ -229,9 +231,23 @@ export default function Balance() {
       </div>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 28 }}>
         <h1 className="display h-lg">{t('balance.title')}</h1>
-        <button onClick={refresh} className="btn-link" style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13.5, padding: '6px 0' }}>
-          <RefreshCw size={15} /> {t('balance.refresh')}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          {/* Top Up: tombol pintasan selalu terlihat (mobile termasuk) */}
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => (topupOpen ? setTopupOpen(false) : openTopup())}
+            style={{
+              cursor: 'pointer', background: 'var(--lime)', color: 'var(--ink)',
+              border: '1.5px solid var(--ink)', borderRadius: 999, padding: '9px 18px',
+              fontSize: 13.5, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 7,
+            }}
+          >
+            <Wallet size={15} /> {t('tu.go')}
+          </motion.button>
+          <button onClick={refresh} className="btn-link" style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13.5, padding: '6px 0' }}>
+            <RefreshCw size={15} /> {t('balance.refresh')}
+          </button>
+        </div>
       </div>
 
       {/* ============ Check-in Card ============ */}
@@ -389,10 +405,11 @@ export default function Balance() {
 
       {/* ============ Top Up Card ============ */}
       <motion.div
+        id="topup-card"
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         className="card"
-        style={{ marginBottom: 24, padding: 'clamp(18px, 3vw, 26px)' }}
+        style={{ marginBottom: 24, padding: 'clamp(18px, 3vw, 26px)', scrollMarginTop: 16 }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
