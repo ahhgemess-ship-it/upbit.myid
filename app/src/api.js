@@ -110,6 +110,13 @@ const _real = {
   // Telegram link (satu dompet dengan bot)
   telegramStatus: () => req('/api/telegram/status'),
   telegramLinkCode: () => req('/api/telegram/link-code', { method: 'POST' }),
+  // Top-up saldo (multipart)
+  createTopup: (form) => req('/api/balance/topup', { method: 'POST', form }),
+  topupHistory: () => req('/api/balance/topup'),
+  // Admin: verifikasi top-up
+  adminTopups: (params = '') => req(`/api/admin/topups${params}`),
+  adminApproveTopup: (id) => req(`/api/admin/topups/${id}/approve`, { method: 'POST', body: {} }),
+  adminRejectTopup: (id) => req(`/api/admin/topups/${id}/reject`, { method: 'POST', body: {} }),
   // admin users
   adminUsers: (params = '') => req(`/api/admin/users${params ? `?${params}` : ''}`),
   adminGetUser: (id) => req(`/api/admin/users/${id}`),

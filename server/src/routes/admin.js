@@ -12,6 +12,7 @@ import { encrypt } from '../crypto.js'
 import { sendOrderCompleted } from '../mailer.js'
 import { notify } from '../notify.js'
 import { sendTelegramToUser } from '../telegramBot.js'
+import { approveTopup, rejectTopup } from './topup.js'
 import { saveUpload, readUpload } from '../storage.js'
 import { toIDR } from '../money.js'
 
@@ -482,6 +483,43 @@ async function cancelOrderHandler(req, res) {
 }
 
 router.post('/orders/:id/cancel', cancelOrderHandler)
+
+// ── Top-up saldo: verifikasi & kredit ──
+router.get('/topups', requireAdmin, async (req, res) => {
+  try {
+    const status = ['PENDING', 'APPROVED', 'REJECTED'].includes(req.query.status) ? req.query.status : undefined
+    const rows = await prisma.topupRequest.findMany({
+      where: status ? { status } : undefined,
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      include: { user: { select: { name: true, email: true } } },
+    })
+    const nPending = await prisma.topupRequest.count({ where: { status: 'PENDING' } })
+    res.json({ rows, nPending })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+router.post('/topups/:id/approve', requireAdmin, async (req, res) => {
+  try {
+    const out = await approveTopup(req.params.id, req.body?.adminNote)
+    if (out.error) return res.status(out.error).json({ error: out.message })
+    res.json({ ok: true, balance: out.user.balance })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+router.post('/topups/:id/reject', requireAdmin, async (req, res) => {
+  try {
+    const out = await rejectTopup(req.params.id, req.body?.adminNote)
+    if (out.error) return res.status(out.error).json({ error: out.message })
+    res.json({ ok: true })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
 
 // Alias kompatibilitas frontend: PATCH dengan status CANCELLED diarahkan ke handler cancel
 // yang sama (idempoten — pesanan yang sudah direfund tidak direfund lagi).

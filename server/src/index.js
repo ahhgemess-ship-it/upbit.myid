@@ -70,6 +70,8 @@ app.use('/api/orders', (req, res, next) => (req.method === 'POST' ? orderLimiter
 app.use('/api/reviews', reviewRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/notifications', notificationRoutes)
+import topupRoutes from './routes/topup.js'
+app.use('/api/balance/topup', topupRoutes)
 app.use('/api/balance', balanceRoutes)
 import telegramRoutes from './routes/telegram.js'
 app.use('/api/telegram', telegramRoutes)

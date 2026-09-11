@@ -32,6 +32,7 @@ model User {
   balanceTransactions BalanceTransaction[]
   exhaustedProducts  UserProductStock[]
   telegramLinkCodes  TelegramLinkCode[]
+  topups             TopupRequest[]
 }
 
 model Order {
@@ -222,4 +223,27 @@ model BotLedger {
   createdAt  DateTime  @default(now())
 
   @@index([telegramId])
+}
+
+// Pengajuan top-up saldo oleh user — dikreditkan admin setelah pembayaran
+// terverifikasi (approve). Bisa QRIS, Alipay, Pay&Go, atau crypto.
+model TopupRequest {
+  id         String    @id // TOP-XXXXXX
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  baseAmount Int // nominal yang dibayar (IDR)
+  amount     Int // nominal yang dikreditkan ke saldo (base + bonus)
+  bonusPct   Int       @default(0) // 0 | 10 (base >= 50.000)
+  method     String // qris | alipay | paygo | crypto
+  asset      String? // aset crypto (BNB/USDT) bila method = crypto
+  payAmount  String? // nominal dibayar sesuai metode (teks, mis. 0.0004 BNB)
+  txRef      String? // tx hash / nomor referensi (non-QRIS)
+  proof      String? // file bukti transfer (QRIS) — ref blob/disk
+  status     String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  adminNote  String?
+  approvedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@index([status])
 }

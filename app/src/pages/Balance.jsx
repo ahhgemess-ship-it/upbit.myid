@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Wallet, ArrowUpRight, Clock, AlertCircle, Check, History,
   QrCode, Landmark, RefreshCw, ShoppingBag, Banknote, Lock, Info, DollarSign,
-  Calendar, Gift, Star, Send, ExternalLink,
+  Calendar, Gift, Star, Send, ExternalLink, Plus, CreditCard, Coins,
 } from 'lucide-react'
 import Asterisk from '../components/Asterisk.jsx'
 import { useBalance } from '../context/BalanceContext.jsx'
@@ -11,6 +11,8 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 import { formatCurrency, CURRENCY } from '../i18n/translations.js'
 import { api } from '../api.js'
+import { QRIS, CRYPTO, toCryptoAmount } from '../data/payment.js'
+import { QRCodeSVG } from 'qrcode.react'
 
 const txMeta = {
   refund: { labelKey: 'tx.refund', icon: RefreshCw },
@@ -48,6 +50,17 @@ export default function Balance() {
   const [tgLinked, setTgLinked] = useState(null)
   const [tgCode, setTgCode] = useState(null)
   const [tgBusy, setTgBusy] = useState(false)
+  // ── Top-up saldo ──
+  const [topupOpen, setTopupOpen] = useState(false)
+  const [tuBase, setTuBase] = useState('')        // nominal dasar (string input)
+  const [tuMethod, setTuMethod] = useState('qris')
+  const [tuAsset, setTuAsset] = useState(CRYPTO.assets[0]?.id || 'bnb')
+  const [tuTxRef, setTuTxRef] = useState('')      // tx hash / no. referensi
+  const [tuProof, setTuProof] = useState(null)    // file bukti (QRIS)
+  const [tuBusy, setTuBusy] = useState(false)
+  const [tuMsg, setTuMsg] = useState(null)
+  const [tuHistory, setTuHistory] = useState(null)
+  const tuFileRef = useRef(null)
 
   useEffect(() => { fetchHistory() }, [fetchHistory])
 
@@ -126,6 +139,68 @@ export default function Balance() {
       setTgCode({ error: true })
     } finally {
       setTgBusy(false)
+    }
+  }
+
+  // ── Top-up: kalkulasi ──
+  const TU_MIN = 5000
+  const TU_BONUS_MIN = 50000
+  const TU_BONUS_PCT = 10
+  const tuBaseNum = parseInt(tuBase, 10) || 0
+  const tuBonusPct = tuBaseNum >= TU_BONUS_MIN ? TU_BONUS_PCT : 0
+  const tuBonus = Math.round((tuBaseNum * tuBonusPct) / 100)
+  const tuTotal = tuBaseNum > 0 ? tuBaseNum + tuBonus : 0
+  const tuTemplates = [5000, 10000, 20000, 50000, 1000000]
+  // Konversi IDR → ekuivalen bahasa/mata uang aktif (USD sen / CNY fen / MYR sen)
+  const idrToLocale = (idr) =>
+    lang === 'id' ? idr
+      : lang === 'ms' ? Math.round((idr / 4370) * 100)
+      : lang === 'zh' ? Math.round((idr / 17650) * 6.72 * 100)
+      : Math.round((idr / 17650) * 100)
+  const localeToIdr = (v) =>
+    lang === 'id' ? v
+      : lang === 'ms' ? Math.round((v / 100) * 4370)
+      : lang === 'zh' ? Math.round((v / 100 / 6.72) * 17650)
+      : Math.round((v / 100) * 17650)
+  const fmtLoc = (loc) => formatCurrency(localeToIdr(loc), lang)
+  const tuAssetObj = CRYPTO.assets.find((a) => a.id === tuAsset) || CRYPTO.assets[0]
+  const tuCryptoAmount = tuAssetObj && tuTotal > 0 ? toCryptoAmount(tuTotal, tuAssetObj) : '0'
+  const tuIdrEquiv = tuTotal // QRIS selalu IDR (merchant Indonesia)
+
+  const openTopup = async () => {
+    setTopupOpen(true)
+    setTuMsg(null)
+    try { const rows = await api.topupHistory(); setTuHistory(rows) } catch { setTuHistory([]) }
+  }
+
+  const submitTopup = async () => {
+    setTuMsg(null)
+    if (tuBaseNum < TU_MIN) { setTuMsg({ type: 'error', text: `Minimal top-up ${formatCurrency(TU_MIN, 'id')}` }); return }
+    if (tuMethod === 'qris' && !tuProof) { setTuMsg({ type: 'error', text: 'Upload bukti transfer dulu ya' }); return }
+    if (tuMethod === 'crypto' && tuTxRef.trim().length < 10) { setTuMsg({ type: 'error', text: 'Tx Hash tidak valid' }); return }
+    if (tuMethod !== 'qris' && tuMethod !== 'crypto' && tuTxRef.trim().length < 6) { setTuMsg({ type: 'error', text: 'Isi nomor referensi pembayaran' }); return }
+    setTuBusy(true)
+    try {
+      const fd = new FormData()
+      fd.append('baseAmount', String(tuBaseNum))
+      fd.append('method', tuMethod)
+      fd.append('txRef', tuTxRef.trim())
+      if (tuMethod === 'crypto') {
+        fd.append('asset', tuAsset)
+        fd.append('payAmount', `${tuCryptoAmount} ${tuAssetObj.symbol}`)
+      } else {
+        fd.append('payAmount', `${formatCurrency(tuTotal, lang)} (${tuMethod.toUpperCase()})`)
+      }
+      if (tuProof) fd.append('proof', tuProof)
+      await api.createTopup(fd)
+      setTuMsg({ type: 'success', text: t('tu.sent') })
+      setTuBase(''); setTuTxRef(''); setTuProof(null); if (tuFileRef.current) tuFileRef.current.value = ''
+      const rows = await api.topupHistory(); setTuHistory(rows)
+      fetchBalance()
+    } catch (e) {
+      setTuMsg({ type: 'error', text: e.message || t('tu.failed') })
+    } finally {
+      setTuBusy(false)
     }
   }
 
@@ -310,6 +385,251 @@ export default function Balance() {
               )}
           </div>
         )}
+      </motion.div>
+
+      {/* ============ Top Up Card ============ */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="card"
+        style={{ marginBottom: 24, padding: 'clamp(18px, 3vw, 26px)' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ display: 'grid', placeItems: 'center', width: 44, height: 44, borderRadius: 13, background: 'var(--lime)', border: '1.5px solid var(--ink)', flexShrink: 0 }}>
+              <Wallet size={20} color="var(--ink)" />
+            </span>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 15 }}>{t('tu.title')}</div>
+              <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 2 }}>
+                {t('tu.subtitle').replace('{min}', '')}
+              </div>
+            </div>
+          </div>
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => (topupOpen ? setTopupOpen(false) : openTopup())}
+            style={{
+              cursor: 'pointer', background: topupOpen ? 'var(--surface-2)' : 'var(--ink)', color: topupOpen ? 'var(--ink)' : 'var(--lime)',
+              border: '1.5px solid var(--ink)', borderRadius: 999, padding: '10px 20px', fontSize: 13.5, fontWeight: 800,
+              display: 'flex', alignItems: 'center', gap: 7,
+            }}
+          >
+            <Plus size={15} style={{ transform: topupOpen ? 'rotate(45deg)' : 'none', transition: 'transform .2s' }} /> {t('tu.go')}
+          </motion.button>
+        </div>
+
+        <AnimatePresence>
+          {topupOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              style={{ overflow: 'hidden' }}
+            >
+              <div style={{ paddingTop: 20 }}>
+                {/* Template nominal (dalam mata uang aktif) */}
+                <label className="field-label">{t('tu.amount')}</label>
+                <div style={{ display: 'flex', gap: 7, margin: '8px 0 10px', flexWrap: 'wrap' }}>
+                  {tuTemplates.map((tplIdr) => {
+                    const loc = idrToLocale(tplIdr)
+                    const active = tuBaseNum === tplIdr
+                    const hasBonus = tplIdr >= TU_BONUS_MIN
+                    return (
+                      <button
+                        key={tplIdr}
+                        onClick={() => setTuBase(String(localeToIdr(loc)))}
+                        style={{
+                          cursor: 'pointer', borderRadius: 12, padding: '8px 14px', fontSize: 13, fontWeight: 800,
+                          background: active ? 'var(--indigo)' : 'var(--surface-2)',
+                          color: active ? '#fff' : 'var(--ink)',
+                          border: '1.5px solid ' + (active ? 'var(--indigo)' : 'var(--line-soft)'),
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                        }}
+                      >
+                        {fmtLoc(loc)}
+                        {hasBonus && <span style={{ fontSize: 9.5, fontWeight: 800, background: 'var(--lime)', color: 'var(--ink)', borderRadius: 999, padding: '2px 6px', border: '1px solid var(--ink)' }}>{'+10%'}</span>}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Input manual (mata uang aktif) */}
+                <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>{t('tu.custom')}</div>
+                <div className="input-ic">
+                  <span style={{ fontWeight: 700, fontSize: 15, paddingLeft: 12 }}>{CURRENCY[lang]?.symbol || 'Rp'}</span>
+                  <input
+                    className="input"
+                    type="number"
+                    min={0}
+                    placeholder={lang === 'id' ? 'Contoh: 25000' : 'e.g. 25000'}
+                    value={lang === 'id' ? tuBase : (tuBaseNum > 0 ? idrToLocale(tuBaseNum) : '')}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10) || 0
+                      setTuBase(v > 0 ? String(localeToIdr(v)) : '')
+                    }}
+                    style={{ paddingLeft: 4 }}
+                  />
+                </div>
+                {tuBaseNum > 0 && tuBaseNum < TU_MIN && (
+                  <div style={{ color: '#dc2626', fontWeight: 700, fontSize: 12.5, marginTop: 6 }}>
+                    {t('tu.minWarn').replace('{min}', formatCurrency(TU_MIN, 'id'))}
+                  </div>
+                )}
+
+                {/* Ringkasan bonus */}
+                {tuBaseNum >= TU_MIN && (
+                  <div style={{
+                    marginTop: 12, padding: '12px 16px', borderRadius: 12, background: 'var(--surface-2)',
+                    border: '1.5px solid var(--line-soft)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8,
+                  }}>
+                    <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>{t('tu.amount')}: <b style={{ color: 'var(--ink)' }}>{formatCurrency(tuBaseNum, 'id')}</b></span>
+                    {tuBonusPct > 0 && (
+                      <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 800 }}>
+                        {t('tu.bonus')} +{tuBonusPct}%: +{formatCurrency(tuBonus, 'id')}
+                      </span>
+                    )}
+                    <span style={{ fontSize: 13.5, fontWeight: 800 }}>
+                      {t('tu.total')}: <span style={{ color: 'var(--indigo)' }}>{formatCurrency(tuTotal, 'id')}</span>
+                    </span>
+                  </div>
+                )}
+
+                {/* Metode pembayaran */}
+                <label className="field-label" style={{ marginTop: 16 }}>{t('tu.method')}</label>
+                <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+                  {[['qris', t('balance.qris'), QrCode], ['alipay', t('tu.alipay'), Wallet], ['paygo', t('tu.paygo'), CreditCard], ['crypto', t('co.payCrypto') || 'Crypto', Coins]].map(([m, label, Icon]) => (
+                    <button
+                      key={m}
+                      onClick={() => setTuMethod(m)}
+                      style={{
+                        cursor: 'pointer', flex: '1 1 140px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        padding: '11px 12px', borderRadius: 12, fontWeight: 700, fontSize: 13,
+                        background: tuMethod === m ? 'var(--ink)' : 'var(--surface-2)',
+                        color: tuMethod === m ? '#fff' : 'var(--ink)',
+                        border: '1.5px solid ' + (tuMethod === m ? 'var(--ink)' : 'var(--line-soft)'),
+                      }}
+                    >
+                      <Icon size={16} /> {label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Detail per metode */}
+                {tuMethod === 'qris' && tuTotal >= TU_MIN && (
+                  <div style={{ marginTop: 14, display: 'grid', placeItems: 'center', gap: 8, padding: 16, background: '#fff', borderRadius: 14, border: '1.5px solid var(--line-soft)' }}>
+                    <QRCodeSVG value={QRIS.buildPayload(tuIdrEquiv)} size={170} level="M" bgColor="#ffffff" fgColor="#2b2b28" />
+                    <span className="display" style={{ fontSize: 14, color: '#2b2b28' }}>{QRIS.merchant}</span>
+                    <span style={{ fontSize: 12.5, color: '#2b2b28', fontWeight: 700 }}>{formatCurrency(tuTotal, 'id')}</span>
+                    <span style={{ fontSize: 11.5, color: '#6b6b66', textAlign: 'center' }}>{t('tu.qrisNote')}</span>
+                  </div>
+                )}
+                {tuMethod === 'alipay' && (
+                  <div className="text-muted" style={{ fontSize: 12.5, marginTop: 10 }}>
+                    Alipay: bayar ke merchant <b>Vercelex Community</b> sebesar <b>{formatCurrency(tuTotal, 'id')}</b>, lalu isi nomor referensi di bawah.
+                  </div>
+                )}
+                {tuMethod === 'paygo' && (
+                  <div className="text-muted" style={{ fontSize: 12.5, marginTop: 10 }}>
+                    Pay&Go: bayar sebesar <b>{formatCurrency(tuTotal, 'id')}</b>, lalu isi nomor referensi di bawah.
+                  </div>
+                )}
+                {tuMethod === 'crypto' && tuTotal >= TU_MIN && (
+                  <div style={{ marginTop: 12, padding: 14, borderRadius: 12, background: 'var(--surface-2)', border: '1.5px solid var(--line-soft)' }}>
+                    <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+                      {CRYPTO.assets.map((a) => (
+                        <button
+                          key={a.id}
+                          onClick={() => setTuAsset(a.id)}
+                          style={{
+                            cursor: 'pointer', borderRadius: 999, padding: '6px 13px', fontSize: 12.5, fontWeight: 800,
+                            background: tuAsset === a.id ? 'var(--indigo)' : 'transparent', color: tuAsset === a.id ? '#fff' : 'var(--ink)',
+                            border: '1.5px solid ' + (tuAsset === a.id ? 'var(--indigo)' : 'var(--line-soft)'),
+                          }}
+                        >{a.label}</button>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>{CRYPTO.network}</div>
+                    <div style={{
+                      fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all', marginTop: 6,
+                      padding: '9px 11px', background: 'var(--bg)', borderRadius: 9, border: '1.5px solid var(--line-soft)',
+                    }}>{tuAssetObj?.address}</div>
+                    <div style={{ marginTop: 8, fontSize: 15, fontWeight: 800 }}>
+                      {tuCryptoAmount} {tuAssetObj?.symbol}
+                      <span className="text-muted" style={{ fontSize: 12, fontWeight: 600 }}> ≈ {formatCurrency(tuTotal, 'id')}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Referensi / bukti */}
+                {tuMethod !== 'qris' ? (
+                  <div style={{ marginTop: 14 }}>
+                    <label className="field-label">{t('tu.txRef')}</label>
+                    <input
+                      className="input"
+                      type="text"
+                      value={tuTxRef}
+                      onChange={(e) => setTuTxRef(e.target.value)}
+                      placeholder={tuMethod === 'crypto' ? '0xabc123...' : 'Contoh: 20260911xxxx'}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ marginTop: 14 }}>
+                    <label className="field-label">{t('tu.uploadProof')}</label>
+                    <input
+                      ref={tuFileRef}
+                      className="input"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setTuProof(e.target.files?.[0] || null)}
+                    />
+                  </div>
+                )}
+
+                {tuMsg && (
+                  <div style={{
+                    padding: 10, borderRadius: 10, marginTop: 12, fontSize: 13.5,
+                    background: tuMsg.type === 'success' ? 'rgba(37,211,102,.1)' : 'rgba(255,77,77,.1)',
+                    color: tuMsg.type === 'success' ? '#16a34a' : '#dc2626',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                  }}>
+                    {tuMsg.type === 'success' ? <Check size={16} /> : <AlertCircle size={16} />} {tuMsg.text}
+                  </div>
+                )}
+
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={submitTopup}
+                  disabled={tuBusy || tuBaseNum < TU_MIN}
+                  style={{
+                    cursor: tuBusy || tuBaseNum < TU_MIN ? 'not-allowed' : 'pointer',
+                    marginTop: 16, width: '100%', background: tuBaseNum >= TU_MIN ? 'var(--ink)' : 'var(--surface-2)',
+                    color: tuBaseNum >= TU_MIN ? 'var(--lime)' : 'var(--muted)', border: '1.5px solid var(--ink)',
+                    borderRadius: 999, padding: '13px 20px', fontSize: 14.5, fontWeight: 800, opacity: tuBusy ? 0.6 : 1,
+                  }}
+                >
+                  {tuBusy ? '…' : `${t('tu.go')} ${tuTotal >= TU_MIN ? formatCurrency(tuTotal, 'id') : ''}`}
+                </motion.button>
+
+                {/* Riwayat top-up */}
+                {Array.isArray(tuHistory) && tuHistory.length > 0 && (
+                  <div style={{ marginTop: 20 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: '.04em', color: 'var(--ink-soft)', marginBottom: 8 }}>{t('tu.history')}</div>
+                    {tuHistory.slice(0, 5).map((r) => (
+                      <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '8px 0', borderBottom: '1.5px solid var(--line-soft)', fontSize: 13, flexWrap: 'wrap' }}>
+                        <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{r.id}</span>
+                        <span style={{ fontWeight: 700 }}>{formatCurrency(r.amount, 'id')}{r.bonusPct > 0 ? ` (+${r.bonusPct}%)` : ''}</span>
+                        <span style={{ fontWeight: 700, color: r.status === 'APPROVED' ? '#16a34a' : r.status === 'REJECTED' ? '#dc2626' : '#b45309' }}>
+                          {r.status === 'APPROVED' ? t('tu.approved') : r.status === 'REJECTED' ? t('tu.rejected') : t('tu.pending')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
 
       <div className="balance-grid">

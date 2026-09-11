@@ -23,6 +23,7 @@ import AdminOrderDetail from './pages/AdminOrderDetail.jsx'
 import AdminProducts from './pages/AdminProducts.jsx'
 import AdminFlashSale from './pages/AdminFlashSale.jsx'
 import AdminCoupons from './pages/AdminCoupons.jsx'
+import AdminTopups from './pages/AdminTopups.jsx'
 import NotFound from './pages/NotFound.jsx'
 
 function ScrollToTop() {
@@ -72,6 +73,7 @@ export default function App() {
             <Route path="/admin/products" element={<AdminLayout><AdminProducts /></AdminLayout>} />
             <Route path="/admin/flash-sale" element={<AdminLayout><AdminFlashSale /></AdminLayout>} />
             <Route path="/admin/coupons" element={<AdminLayout><AdminCoupons /></AdminLayout>} />
+            <Route path="/admin/topups" element={<AdminLayout><AdminTopups /></AdminLayout>} />
             <Route path="/admin/:id" element={<AdminLayout><AdminOrderDetail /></AdminLayout>} />
             <Route path="/about" element={<Page><About /></Page>} />
             <Route path="/login" element={<Page><Auth /></Page>} />

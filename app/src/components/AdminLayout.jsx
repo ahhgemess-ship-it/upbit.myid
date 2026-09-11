@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  LayoutDashboard, ShoppingBag, Users, Package, Tag, Zap,
+  LayoutDashboard, ShoppingBag, Users, Package, Tag, Zap, Wallet,
   Menu, X, ExternalLink, LogOut, ShieldCheck,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -14,6 +14,7 @@ const NAV = [
   { to: '/admin/products', label: 'Produk', icon: Package },
   { to: '/admin/flash-sale', label: 'Flash Sale', icon: Zap },
   { to: '/admin/coupons', label: 'Kupon', icon: Tag },
+  { to: '/admin/topups', label: 'Top Up', icon: Wallet },
 ]
 
 const TITLES = {
