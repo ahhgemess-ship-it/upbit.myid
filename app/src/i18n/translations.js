@@ -571,6 +571,7 @@ export const T = {
   'tu.approved': { en: 'Approved', zh: '已通过', ja: '承認済み', id: 'Disetujui', ru: 'Одобрено', ms: 'Diluluskan', hi: 'स्वीकृत', de: 'Genehmigt', vi: 'Đã duyệt' },
   'tu.rejected': { en: 'Rejected', zh: '已拒绝', ja: '却下', id: 'Ditolak', ru: 'Отклонено', ms: 'Ditolak', hi: 'अस्वीकृत', de: 'Abgelehnt', vi: 'Đã từ chối' },
   'tu.go': { en: 'Top Up', zh: '充值', ja: 'チャージ', id: 'Top Up', ru: 'Пополнить', ms: 'Tambah Nilai', hi: 'टॉप-अप', de: 'Aufladen', vi: 'Nạp tiền' },
+  'tu.backToWallet': { en: 'Back to Wallet', zh: '返回钱包', ja: 'ウォレットに戻る', id: 'Kembali ke Dompet', ru: 'Назад в кошелёк', ms: 'Kembali ke Dompet', hi: 'वॉलेट पर वापस', de: 'Zurück zur Wallet', vi: 'Về Ví' },
   'tu.alipay': { en: 'Alipay', zh: '支付宝', ja: 'Alipay', id: 'Alipay', ru: 'Alipay', ms: 'Alipay', hi: 'Alipay', de: 'Alipay', vi: 'Alipay' },
   'tu.paygo': { en: 'Pay&Go', zh: 'Pay&Go', ja: 'Pay&Go', id: 'Pay&Go', ru: 'Pay&Go', ms: 'Pay&Go', hi: 'Pay&Go', de: 'Pay&Go', vi: 'Pay&Go' },
   // ── Top-up wizard (3 langkah) ──

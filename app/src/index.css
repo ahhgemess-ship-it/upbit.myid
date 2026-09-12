@@ -545,6 +545,11 @@ ul { list-style: none; }
   gap: 24px;
   align-items: start;
 }
+/* Mode Top Up: wizard tampil solo selebar kolom */
+.balance-grid-solo { grid-template-columns: 1fr; }
+@media (max-width: 900px) {
+  .balance-grid-solo { grid-template-columns: 1fr; }
+}
 .balance-hero { position: relative; overflow: hidden; }
 .balance-hero-deco {
   position: absolute; border-radius: 999px; pointer-events: none;

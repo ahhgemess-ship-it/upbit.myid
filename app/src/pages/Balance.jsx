@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Wallet, ArrowUpRight, ArrowRight, Clock, AlertCircle, Check, History,
   QrCode, Landmark, RefreshCw, ShoppingBag, Banknote, Lock, Info, DollarSign,
-  Calendar, Gift, Star, Send, ExternalLink, Plus, CreditCard, Coins,
+  Calendar, Gift, Star, Send, ExternalLink, Plus, CreditCard, Coins, ArrowLeft,
 } from 'lucide-react'
 import Asterisk from '../components/Asterisk.jsx'
 import { useBalance } from '../context/BalanceContext.jsx'
@@ -60,6 +60,7 @@ export default function Balance() {
   const [tuBusy, setTuBusy] = useState(false)
   const [tuMsg, setTuMsg] = useState(null)
   const [tuHistory, setTuHistory] = useState(null)
+  const [tuView, setTuView] = useState(false)   // false: dompet · true: halaman Top Up
   const tuFileRef = useRef(null)
 
   useEffect(() => { fetchHistory() }, [fetchHistory])
@@ -171,11 +172,20 @@ export default function Balance() {
     : tuMethod === 'paygo' ? t('tu.paygo')
     : `${t('co.payCrypto') || 'Crypto'} · ${tuAssetObj?.symbol || ''}`
 
-  // Buka wizard top-up: muat riwayat + gulir ke kartu
+  // Buka halaman Top Up (tampilan berganti penuh) + muat riwayat
   const openTopup = async () => {
     setTuMsg(null)
     try { const rows = await api.topupHistory(); setTuHistory(rows) } catch { setTuHistory([]) }
-    setTimeout(() => document.getElementById('topup-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+    setTuView(true)
+    window.scrollTo({ top: 0 })
+  }
+
+  // Tutup halaman Top Up → kembali ke dompet
+  const closeTopup = () => {
+    setTuView(false)
+    setTuStep(1)
+    setTuMsg(null)
+    window.scrollTo({ top: 0 })
   }
 
   // Navigasi langkah wizard (dengan validasi minimum)
@@ -251,6 +261,17 @@ export default function Balance() {
 
   return (
     <div className="container section">
+      {tuView && (
+        <button
+          onClick={closeTopup}
+          className="btn-link"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13.5, padding: '6px 0', marginBottom: 12 }}
+        >
+          <ArrowLeft size={16} /> {t('tu.backToWallet')}
+        </button>
+      )}
+      {!tuView && (
+      <>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
         <div>
@@ -498,9 +519,12 @@ export default function Balance() {
           </div>
         </motion.div>
       </div>
+      </>
+      )}
 
-      <div className="balance-grid">
-        {/* ============ Top Up — Wizard 3 Langkah ============ */}
+      <div className={'balance-grid' + (tuView ? ' balance-grid-solo' : '')}>
+        {/* ============ Top Up — Wizard 3 Langkah (mode halaman) ============ */}
+        {tuView && (
         <motion.div
           id="topup-card"
           initial={{ opacity: 0, y: 16 }}
@@ -820,8 +844,9 @@ export default function Balance() {
             )}
           </div>
         </motion.div>
+        )}
 
-        {/* ============ Withdraw card (simplified) ============ */}
+        {!tuView && (
         <motion.div
           id="withdraw-card"
           initial={{ opacity: 0, y: 16 }}
@@ -998,8 +1023,11 @@ export default function Balance() {
             </div>
           ) : null}
         </motion.div>
+        )}
       </div>
 
+      {!tuView && (
+      <>
       {/* ============ Info: cara kerja ============ */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -1034,7 +1062,11 @@ export default function Balance() {
           </div>
         </div>
       </motion.div>
+      </>
+      )}
 
+      {!tuView && (
+      <>
       {/* ============ History ============ */}
       <div id="wallet-history" style={{ marginTop: 36, scrollMarginTop: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
@@ -1131,6 +1163,8 @@ export default function Balance() {
           )}
         </AnimatePresence>
       </div>
+      </>
+      )}
     </div>
   )
 }
