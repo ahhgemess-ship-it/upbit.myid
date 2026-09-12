@@ -573,6 +573,15 @@ export const T = {
   'tu.go': { en: 'Top Up', zh: '充值', ja: 'チャージ', id: 'Top Up', ru: 'Пополнить', ms: 'Tambah Nilai', hi: 'टॉप-अप', de: 'Aufladen', vi: 'Nạp tiền' },
   'tu.alipay': { en: 'Alipay', zh: '支付宝', ja: 'Alipay', id: 'Alipay', ru: 'Alipay', ms: 'Alipay', hi: 'Alipay', de: 'Alipay', vi: 'Alipay' },
   'tu.paygo': { en: 'Pay&Go', zh: 'Pay&Go', ja: 'Pay&Go', id: 'Pay&Go', ru: 'Pay&Go', ms: 'Pay&Go', hi: 'Pay&Go', de: 'Pay&Go', vi: 'Pay&Go' },
+  // ── Top-up wizard (3 langkah) ──
+  'tu.step1': { en: 'Amount', zh: '金额', ja: '金額', id: 'Nominal', ru: 'Сумма', ms: 'Amaun', hi: 'राशि', de: 'Betrag', vi: 'Số tiền' },
+  'tu.step2': { en: 'Pay', zh: '付款', ja: '支払い', id: 'Bayar', ru: 'Оплата', ms: 'Bayar', hi: 'भुगतान', de: 'Zahlen', vi: 'Thanh toán' },
+  'tu.step3': { en: 'Confirm', zh: '确认', ja: '確認', id: 'Konfirmasi', ru: 'Подтверждение', ms: 'Sahkan', hi: 'पुष्टि', de: 'Bestätigen', vi: 'Xác nhận' },
+  'tu.next': { en: 'Continue', zh: '继续', ja: '次へ', id: 'Lanjut', ru: 'Далее', ms: 'Seterusnya', hi: 'आगे बढ़ें', de: 'Weiter', vi: 'Tiếp tục' },
+  'tu.back': { en: 'Back', zh: '返回', ja: '戻る', id: 'Kembali', ru: 'Назад', ms: 'Kembali', hi: 'वापस', de: 'Zurück', vi: 'Quay lại' },
+  'tu.review': { en: 'Review your top-up', zh: '确认充值信息', ja: 'チャージ内容の確認', id: 'Periksa top-up kamu', ru: 'Проверьте пополнение', ms: 'Semak tambah nilai anda', hi: 'अपना टॉप-अप सत्यापित करें', de: 'Aufladung prüfen', vi: 'Xem lại yêu cầu nạp' },
+  'tu.reviewHint': { en: 'Enter the reference number / upload your receipt after paying — balance is credited after admin verification.', zh: '付款后填写参考号 / 上传凭证 — 管理员核实后到账。', ja: '支払い後に参照番号を入力 / 証明書をアップロード — 管理者確認後に反映されます。', id: 'Bayar dulu, lalu isi nomor referensi / upload bukti — saldo masuk setelah diverifikasi admin.', ru: 'После оплаты введите референс / загрузите подтверждение — баланс зачислят после проверки.', ms: 'Bayar dahulu, kemudian isi nombor rujukan / muat naik bukti — baki masuk selepas admin sahkan.', hi: 'भुगतान के बाद संदर्भ संख्या भरें / प्रमाण अपलोड करें — सत्यापन के बाद बैलेंस जुड़ेगा।', de: 'Nach der Zahlung Referenznummer eingeben / Beleg hochladen — Guthaben nach Prüfung.', vi: 'Sau khi thanh toán, nhập số tham chiếu / tải ảnh xác nhận — số dư được cộng sau khi admin duyệt.' },
+  'tu.sending': { en: 'Sending…', zh: '发送中…', ja: '送信中…', id: 'Mengirim…', ru: 'Отправка…', ms: 'Menghantar…', hi: 'भेज रहे हैं…', de: 'Senden…', vi: 'Đang gửi…' },
 
   // ─────── Stock check animation ───────
   'stock.searching': { en: 'Searching stock...', zh: '正在搜索库存...', ja: '在庫を検索中...', id: 'Mencari stok akun...', ru: 'Поиск запасов...', ms: 'Mencari stok...', hi: 'स्टॉक खोज रहे हैं...', de: 'Suche Bestand...', vi: 'Đang tìm hàng...' },

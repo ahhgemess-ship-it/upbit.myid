@@ -550,6 +550,128 @@ ul { list-style: none; }
   position: absolute; border-radius: 999px; pointer-events: none;
 }
 
+/* ─── Aksi dompet di hero (Top Up · Tarik · Riwayat) ─── */
+.wallet-actions {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+  margin-top: 22px;
+}
+
+/* ─── Check-in + Telegram berdampingan ─── */
+.wallet-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin: 24px 0;
+}
+
+/* ─── Top-up wizard: stepper ─── */
+.tu-steps {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 18px 0 16px;
+}
+.tu-step {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.tu-step-dot {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 800;
+  background: var(--surface-2);
+  color: var(--muted);
+  border: 1.5px solid var(--line-soft);
+  transition: background .18s ease, color .18s ease, border-color .18s ease;
+}
+.tu-step.active .tu-step-dot {
+  background: var(--ink);
+  color: var(--lime);
+  border-color: var(--ink);
+}
+.tu-step.done .tu-step-dot {
+  background: var(--lime);
+  color: var(--ink);
+  border-color: var(--ink);
+}
+.tu-step-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.tu-step.active .tu-step-label { color: var(--ink); }
+.tu-step.done .tu-step-label { color: var(--ink-soft); }
+.tu-step-line {
+  flex: 1;
+  height: 1.5px;
+  background: var(--line-soft);
+  min-width: 12px;
+}
+.tu-step-line.done { background: var(--lime-deep); }
+
+/* ─── Top-up wizard: konten ─── */
+.tu-templates {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 7px;
+  margin: 8px 0 12px;
+}
+.tu-methods {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 6px;
+}
+.tu-review {
+  border: 1.5px solid var(--line-soft);
+  border-radius: 12px;
+  background: var(--surface-2);
+  padding: 6px 16px;
+}
+.tu-review-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  font-size: 13.5px;
+  flex-wrap: wrap;
+}
+.tu-nav {
+  display: flex;
+  gap: 9px;
+  margin-top: 16px;
+}
+
+@media (max-width: 860px) {
+  .wallet-actions { gap: 7px; margin-top: 18px; }
+  .wallet-actions button { padding: 11px 8px !important; font-size: 12px !important; }
+  .wallet-cards { grid-template-columns: 1fr; gap: 16px; margin: 16px 0; }
+  .tu-steps { gap: 5px; margin: 14px 0 12px; }
+  .tu-step-dot { width: 24px; height: 24px; font-size: 11.5px; }
+  .tu-step-label { font-size: 11px; }
+  .tu-templates { grid-template-columns: repeat(3, 1fr); }
+  .tu-methods { grid-template-columns: repeat(2, 1fr); }
+  .tu-nav { position: sticky; bottom: 0; z-index: 5;
+    padding: 10px 0 max(10px, env(safe-area-inset-bottom));
+    background: linear-gradient(to top, var(--surface) 65%, transparent);
+  }
+}
+
 /* ─── Check‑in Card ─── */
 .checkin-card {
   background: linear-gradient(135deg, #fafaf9 0%, #f5f3f0 100%);

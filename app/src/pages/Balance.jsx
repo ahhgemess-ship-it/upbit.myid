@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Wallet, ArrowUpRight, Clock, AlertCircle, Check, History,
+  Wallet, ArrowUpRight, ArrowRight, Clock, AlertCircle, Check, History,
   QrCode, Landmark, RefreshCw, ShoppingBag, Banknote, Lock, Info, DollarSign,
   Calendar, Gift, Star, Send, ExternalLink, Plus, CreditCard, Coins,
 } from 'lucide-react'
@@ -50,8 +50,8 @@ export default function Balance() {
   const [tgLinked, setTgLinked] = useState(null)
   const [tgCode, setTgCode] = useState(null)
   const [tgBusy, setTgBusy] = useState(false)
-  // ── Top-up saldo ──
-  const [topupOpen, setTopupOpen] = useState(false)
+  // ── Top-up saldo (wizard 3 langkah) ──
+  const [tuStep, setTuStep] = useState(1)         // 1: nominal · 2: bayar · 3: konfirmasi
   const [tuBase, setTuBase] = useState('')        // nominal dasar (string input)
   const [tuMethod, setTuMethod] = useState('qris')
   const [tuAsset, setTuAsset] = useState(CRYPTO.assets[0]?.id || 'bnb')
@@ -166,21 +166,41 @@ export default function Balance() {
   const tuAssetObj = CRYPTO.assets.find((a) => a.id === tuAsset) || CRYPTO.assets[0]
   const tuCryptoAmount = tuAssetObj && tuTotal > 0 ? toCryptoAmount(tuTotal, tuAssetObj) : '0'
   const tuIdrEquiv = tuTotal // QRIS selalu IDR (merchant Indonesia)
+  const tuMethodLabel = tuMethod === 'qris' ? t('balance.qris')
+    : tuMethod === 'alipay' ? t('tu.alipay')
+    : tuMethod === 'paygo' ? t('tu.paygo')
+    : `${t('co.payCrypto') || 'Crypto'} · ${tuAssetObj?.symbol || ''}`
 
+  // Buka wizard top-up: muat riwayat + gulir ke kartu
   const openTopup = async () => {
-    setTopupOpen(true)
     setTuMsg(null)
     try { const rows = await api.topupHistory(); setTuHistory(rows) } catch { setTuHistory([]) }
-    // Mobile: gulir ke kartu top-up supaya formnya langsung terlihat
     setTimeout(() => document.getElementById('topup-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+  }
+
+  // Navigasi langkah wizard (dengan validasi minimum)
+  const goStep = (n) => {
+    if (n >= 2 && tuBaseNum < TU_MIN) {
+      setTuMsg({ type: 'error', text: t('tu.minWarn').replace('{min}', formatCurrency(TU_MIN, 'id')) })
+      return
+    }
+    setTuMsg(null)
+    setTuStep(n)
+  }
+
+  const scrollWithdraw = () => setTimeout(() => document.getElementById('withdraw-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+  const scrollHistory = () => {
+    setShowHistory(true)
+    fetchHistory()
+    setTimeout(() => document.getElementById('wallet-history')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
   }
 
   const submitTopup = async () => {
     setTuMsg(null)
     if (tuBaseNum < TU_MIN) { setTuMsg({ type: 'error', text: `Minimal top-up ${formatCurrency(TU_MIN, 'id')}` }); return }
-    if (tuMethod === 'qris' && !tuProof) { setTuMsg({ type: 'error', text: 'Upload bukti transfer dulu ya' }); return }
-    if (tuMethod === 'crypto' && tuTxRef.trim().length < 10) { setTuMsg({ type: 'error', text: 'Tx Hash tidak valid' }); return }
-    if (tuMethod !== 'qris' && tuMethod !== 'crypto' && tuTxRef.trim().length < 6) { setTuMsg({ type: 'error', text: 'Isi nomor referensi pembayaran' }); return }
+    if (tuMethod === 'qris' && !tuProof) { setTuMsg({ type: 'error', text: t('tu.uploadProof') }); return }
+    if (tuMethod === 'crypto' && tuTxRef.trim().length < 10) { setTuMsg({ type: 'error', text: t('tu.txRef') }); return }
+    if (tuMethod !== 'qris' && tuMethod !== 'crypto' && tuTxRef.trim().length < 6) { setTuMsg({ type: 'error', text: t('tu.txRef') }); return }
     setTuBusy(true)
     try {
       const fd = new FormData()
@@ -197,6 +217,7 @@ export default function Balance() {
       await api.createTopup(fd)
       setTuMsg({ type: 'success', text: t('tu.sent') })
       setTuBase(''); setTuTxRef(''); setTuProof(null); if (tuFileRef.current) tuFileRef.current.value = ''
+      setTuStep(1)
       const rows = await api.topupHistory(); setTuHistory(rows)
       fetchBalance()
     } catch (e) {
@@ -222,69 +243,139 @@ export default function Balance() {
     )
   }
 
+  const TU_STEPS = [
+    { n: 1, label: t('tu.step1') },
+    { n: 2, label: t('tu.step2') },
+    { n: 3, label: t('tu.step3') },
+  ]
+
   return (
     <div className="container section">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-        <Asterisk size={28} />
-        <span className="eyebrow">{t('balance.eyebrow')}</span>
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+            <Asterisk size={26} />
+            <span className="eyebrow">{t('balance.eyebrow')}</span>
+          </div>
+          <h1 className="display h-lg">{t('balance.title')}</h1>
+        </div>
+        <button onClick={refresh} className="btn-link" style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13.5, padding: '6px 0' }}>
+          <RefreshCw size={15} /> {t('balance.refresh')}
+        </button>
       </div>
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 28 }}>
-        <h1 className="display h-lg">{t('balance.title')}</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-          {/* Top Up: tombol pintasan selalu terlihat (mobile termasuk) */}
+
+      {/* ============ Hero Wallet Card ============ */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="card balance-hero"
+        style={{ padding: 'clamp(24px, 4vw, 38px)', background: 'var(--ink)', color: 'var(--bg)', borderColor: 'var(--ink)', marginBottom: 24 }}
+      >
+        <span className="balance-hero-deco" style={{ width: 190, height: 190, top: -80, right: -70, background: 'radial-gradient(circle, rgba(79,70,229,.45), transparent 65%)' }} />
+        <span className="balance-hero-deco" style={{ width: 130, height: 130, bottom: -60, left: -45, background: 'radial-gradient(circle, rgba(197,248,42,.22), transparent 65%)' }} />
+
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ display: 'grid', placeItems: 'center', width: 42, height: 42, borderRadius: 999, background: 'var(--lime)', border: '1.5px solid var(--bg)' }}>
+              <Wallet size={20} color="var(--ink)" />
+            </span>
+            <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: '.02em' }}>{t('balance.activeBalance')}</span>
+          </div>
+          <span className="chip" style={{
+            fontSize: 11, fontWeight: 700, padding: '5px 10px',
+            background: withdrawEligible ? 'var(--lime)' : 'rgba(255,255,255,.1)',
+            color: withdrawEligible ? 'var(--ink)' : 'rgba(255,255,255,.75)',
+            border: '1.5px solid ' + (withdrawEligible ? 'var(--bg)' : 'rgba(255,255,255,.25)'),
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+          }}>
+            {withdrawEligible
+              ? <><Check size={11} strokeWidth={3} /> {t('balance.withdrawOpen')}</>
+              : <><Lock size={11} /> {t('balance.withdrawLocked')}</>
+            }
+          </span>
+        </div>
+
+        <div className="display" style={{ position: 'relative', fontSize: 'clamp(2.3rem, 6vw, 3.6rem)', color: 'var(--lime)', lineHeight: 1.05, letterSpacing: '.01em' }}>
+          {loaded ? fmt(balance) : <span style={{ opacity: .4 }}>•••••</span>}
+        </div>
+        <div style={{ position: 'relative', fontSize: 13, color: '#c9c7bd', marginTop: 8 }}>
+          {t('balance.totalTx')}: <strong style={{ color: 'var(--bg)' }}>{fmt(totalSpent)}</strong>
+        </div>
+
+        {/* Aksi dompet: Top Up · Tarik · Riwayat */}
+        <div className="wallet-actions">
           <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => (topupOpen ? setTopupOpen(false) : openTopup())}
+            whileTap={{ scale: 0.96 }}
+            onClick={openTopup}
             style={{
               cursor: 'pointer', background: 'var(--lime)', color: 'var(--ink)',
-              border: '1.5px solid var(--ink)', borderRadius: 999, padding: '9px 18px',
-              fontSize: 13.5, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 7,
+              border: '1.5px solid var(--bg)', borderRadius: 999, padding: '12px 18px',
+              fontSize: 13.5, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
             }}
           >
-            <Wallet size={15} /> {t('tu.go')}
+            <Plus size={16} strokeWidth={2.8} /> {t('tu.go')}
           </motion.button>
-          <button onClick={refresh} className="btn-link" style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13.5, padding: '6px 0' }}>
-            <RefreshCw size={15} /> {t('balance.refresh')}
-          </button>
+          <motion.button
+            whileTap={{ scale: 0.96 }}
+            onClick={scrollWithdraw}
+            style={{
+              cursor: 'pointer', background: 'transparent', color: 'var(--bg)',
+              border: '1.5px solid rgba(255,255,255,.32)', borderRadius: 999, padding: '12px 18px',
+              fontSize: 13.5, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+            }}
+          >
+            <ArrowUpRight size={16} /> {t('balance.withdrawBtn')}
+          </motion.button>
+          <motion.button
+            whileTap={{ scale: 0.96 }}
+            onClick={scrollHistory}
+            style={{
+              cursor: 'pointer', background: 'transparent', color: 'var(--bg)',
+              border: '1.5px solid rgba(255,255,255,.32)', borderRadius: 999, padding: '12px 18px',
+              fontSize: 13.5, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+            }}
+          >
+            <History size={16} /> {t('balance.history')}
+          </motion.button>
         </div>
-      </div>
+      </motion.div>
 
-      {/* ============ Check-in Card ============ */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="card checkin-card"
-        style={{ marginBottom: 24, padding: 'clamp(18px, 3vw, 26px)', overflow: 'hidden', position: 'relative' }}
-      >
-        <span style={{ position: 'absolute', top: -30, right: -30, width: 140, height: 140, borderRadius: '50%', background: 'radial-gradient(circle, rgba(197,248,42,.15), transparent 70%)', pointerEvents: 'none' }} />
-        <span style={{ position: 'absolute', bottom: -20, left: -30, width: 100, height: 100, borderRadius: '50%', background: 'radial-gradient(circle, rgba(79,70,229,.12), transparent 70%)', pointerEvents: 'none' }} />
+      {/* ============ Check-in + Telegram (dua kartu ringkas) ============ */}
+      <div className="wallet-cards">
+        {/* Check-in */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card checkin-card"
+          style={{ padding: 'clamp(18px, 3vw, 24px)', overflow: 'hidden', position: 'relative' }}
+        >
+          <span style={{ position: 'absolute', top: -30, right: -30, width: 140, height: 140, borderRadius: '50%', background: 'radial-gradient(circle, rgba(197,248,42,.15), transparent 70%)', pointerEvents: 'none' }} />
 
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ display: 'grid', placeItems: 'center', width: 44, height: 44, borderRadius: 13, background: canCheckIn ? 'var(--lime)' : 'var(--surface-2)', border: '1.5px solid ' + (canCheckIn ? 'var(--ink)' : 'var(--line-soft)'), flexShrink: 0, position: 'relative' }}>
-              <Calendar size={20} color={canCheckIn ? 'var(--ink)' : 'var(--muted)'} />
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+            <span style={{ display: 'grid', placeItems: 'center', width: 42, height: 42, borderRadius: 13, background: canCheckIn ? 'var(--lime)' : 'var(--surface-2)', border: '1.5px solid ' + (canCheckIn ? 'var(--ink)' : 'var(--line-soft)'), flexShrink: 0, position: 'relative' }}>
+              <Calendar size={19} color={canCheckIn ? 'var(--ink)' : 'var(--muted)'} />
               {canCheckIn && <span style={{ position: 'absolute', top: -4, right: -4, width: 10, height: 10, borderRadius: 999, background: '#ef4444', border: '1.5px solid #fff' }} />}
             </span>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: 15, letterSpacing: '.01em' }}>{t('checkin.title')}</div>
-              <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 2 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 800, fontSize: 14.5 }}>{t('checkin.title')}</div>
+              <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 2 }}>
                 {canCheckIn ? `${t('checkin.todayReward')} ${fmt(checkInReward)} ${t('checkin.todaySuffix')}` : t('checkin.done')}
               </div>
             </div>
+            {checkInStreak >= checkInCycle - 1 && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                <Star size={11} fill="#16a34a" /> {fmtCompact(checkInBonus)}
+              </span>
+            )}
           </div>
 
           {/* Streak progress */}
-          <div style={{ flex: 1, minWidth: 180, maxWidth: 380 }}>
+          <div style={{ position: 'relative' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 7, gap: 8 }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-soft)', letterSpacing: '.03em' }}>
                 {t('checkin.day')}{checkInStreak} / {checkInCycle}
               </span>
-              {checkInStreak >= checkInCycle - 1 && (
-                <span style={{ fontSize: 11, fontWeight: 700, color: '#16a34a', display: 'flex', alignItems: 'center', gap: 3 }}>
-                  <Star size={11} fill="#16a34a" /> {t('checkin.tomorrowBonus')} {fmt(checkInBonus)}!
-                </span>
-              )}
             </div>
             <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
               {Array.from({ length: checkInCycle }, (_, i) => (
@@ -312,391 +403,432 @@ export default function Balance() {
             </div>
           </div>
 
-          {/* Button */}
-          <div style={{ flexShrink: 0 }}>
-            <AnimatePresence>
-              {checkInMsg && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-                  style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, color: checkInMsg.type === 'success' ? '#16a34a' : '#dc2626', textAlign: 'right' }}
-                >
-                  {checkInMsg.text}
-                </motion.div>
-              )}
-            </AnimatePresence>
-            <motion.button
-              whileTap={{ scale: canCheckIn ? 0.95 : 1 }}
-              onClick={handleCheckIn}
-              disabled={!canCheckIn}
-              style={{
-                cursor: canCheckIn ? 'pointer' : 'default',
-                background: canCheckIn ? 'var(--ink)' : 'var(--surface-2)',
-                color: canCheckIn ? 'var(--lime)' : 'var(--muted)',
-                border: '1.5px solid ' + (canCheckIn ? 'var(--ink)' : 'var(--line-soft)'),
-                borderRadius: 999, padding: '10px 22px', fontSize: 14, fontWeight: 800,
-                display: 'flex', alignItems: 'center', gap: 7, transition: 'background .15s ease, color .15s ease',
-              }}
-            >
-              <Gift size={16} />
-              {canCheckIn ? t('checkin.claim') : t('checkin.tomorrow')}
-            </motion.button>
-          </div>
-        </div>
-      </motion.div>
+          <AnimatePresence>
+            {checkInMsg && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+                style={{ fontSize: 12, fontWeight: 700, marginTop: 10, color: checkInMsg.type === 'success' ? '#16a34a' : '#dc2626' }}
+              >
+                {checkInMsg.text}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-      {/* ============ Telegram Link Card ============ */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="card"
-        style={{ marginBottom: 24, padding: 'clamp(16px, 2.5vw, 22px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ display: 'grid', placeItems: 'center', width: 44, height: 44, borderRadius: 13, background: tgLinked ? 'var(--lime)' : 'var(--surface-2)', border: '1.5px solid ' + (tgLinked ? 'var(--ink)' : 'var(--line-soft)'), flexShrink: 0 }}>
-            <Send size={19} color={tgLinked ? 'var(--ink)' : 'var(--muted)'} />
-          </span>
-          <div>
-            <div style={{ fontWeight: 800, fontSize: 14.5 }}>
-              {tgLinked ? t('tg.linked') : t('tg.link')}
-            </div>
-            <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 2 }}>
-              {tgLinked ? t('tg.synced') : t('tg.expired')}
+          <motion.button
+            whileTap={{ scale: canCheckIn ? 0.96 : 1 }}
+            onClick={handleCheckIn}
+            disabled={!canCheckIn}
+            style={{
+              cursor: canCheckIn ? 'pointer' : 'default', marginTop: 14, width: '100%',
+              background: canCheckIn ? 'var(--ink)' : 'var(--surface-2)',
+              color: canCheckIn ? 'var(--lime)' : 'var(--muted)',
+              border: '1.5px solid ' + (canCheckIn ? 'var(--ink)' : 'var(--line-soft)'),
+              borderRadius: 999, padding: '11px 20px', fontSize: 13.5, fontWeight: 800,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, transition: 'background .15s ease, color .15s ease',
+            }}
+          >
+            <Gift size={16} />
+            {canCheckIn ? t('checkin.claim') : t('checkin.tomorrow')}
+          </motion.button>
+        </motion.div>
+
+        {/* Telegram */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card"
+          style={{ padding: 'clamp(18px, 3vw, 24px)', display: 'flex', flexDirection: 'column', gap: 14 }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ display: 'grid', placeItems: 'center', width: 42, height: 42, borderRadius: 13, background: tgLinked ? 'var(--lime)' : 'var(--surface-2)', border: '1.5px solid ' + (tgLinked ? 'var(--ink)' : 'var(--line-soft)'), flexShrink: 0 }}>
+              <Send size={18} color={tgLinked ? 'var(--ink)' : 'var(--muted)'} />
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 800, fontSize: 14.5 }}>
+                {tgLinked ? t('tg.linked') : t('tg.link')}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 2 }}>
+                {tgLinked ? t('tg.synced') : t('tg.expired')}
+              </div>
             </div>
           </div>
-        </div>
 
-        {!tgLinked && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            {tgCode && !tgCode.error && (
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-soft)', letterSpacing: '.04em' }}>{t('tg.codeIs')}</div>
-                <div style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 20, letterSpacing: '.18em' }}>{tgCode.code}</div>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+            {!tgLinked && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', width: '100%' }}>
+                {tgCode && !tgCode.error && (
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-soft)', letterSpacing: '.04em' }}>{t('tg.codeIs')}</div>
+                    <div style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 22, letterSpacing: '.18em' }}>{tgCode.code}</div>
+                  </div>
+                )}
+                {tgCode && !tgCode.error
+                  ? (
+                    <a
+                      href={`https://t.me/${tgCode.botUsername || 'EvolusiAI_StoreBot'}`}
+                      target="_blank" rel="noreferrer"
+                      className="pill pill-indigo"
+                      style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: '10px 18px', fontSize: 13, fontWeight: 800, flex: 1, minWidth: 150 }}
+                    >
+                      <ExternalLink size={15} /> {t('tg.openBot')}
+                    </a>
+                  )
+                  : (
+                    <motion.button
+                      whileTap={{ scale: 0.96 }}
+                      onClick={handleTgLink}
+                      disabled={tgBusy}
+                      style={{
+                        cursor: tgBusy ? 'wait' : 'pointer', flex: 1, minWidth: 150,
+                        background: 'var(--ink)', color: 'var(--lime)', border: '1.5px solid var(--ink)',
+                        borderRadius: 999, padding: '11px 20px', fontSize: 13, fontWeight: 800,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, opacity: tgBusy ? 0.6 : 1,
+                      }}
+                    >
+                      <Send size={15} /> {t('tg.link')}
+                    </motion.button>
+                  )}
               </div>
             )}
-            {tgCode && !tgCode.error
-              ? (
-                <a
-                  href={`https://t.me/${tgCode.botUsername || 'EvolusiAI_StoreBot'}`}
-                  target="_blank" rel="noreferrer"
-                  className="pill pill-indigo"
-                  style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 7, padding: '10px 18px', fontSize: 13.5, fontWeight: 800 }}
-                >
-                  <ExternalLink size={15} /> {t('tg.openBot')}
-                </a>
-              )
-              : (
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleTgLink}
-                  disabled={tgBusy}
-                  style={{
-                    cursor: tgBusy ? 'wait' : 'pointer',
-                    background: 'var(--ink)', color: 'var(--lime)', border: '1.5px solid var(--ink)',
-                    borderRadius: 999, padding: '10px 20px', fontSize: 13.5, fontWeight: 800,
-                    display: 'flex', alignItems: 'center', gap: 7, opacity: tgBusy ? 0.6 : 1,
-                  }}
-                >
-                  <Send size={15} /> {t('tg.link')}
-                </motion.button>
-              )}
+            {tgLinked && (
+              <div className="text-muted" style={{ fontSize: 12.5 }}>
+                {t('tg.synced')}
+              </div>
+            )}
           </div>
-        )}
-      </motion.div>
+        </motion.div>
+      </div>
 
-      {/* ============ Top Up Card ============ */}
-      <motion.div
-        id="topup-card"
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="card"
-        style={{ marginBottom: 24, padding: 'clamp(18px, 3vw, 26px)', scrollMarginTop: 16 }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ display: 'grid', placeItems: 'center', width: 44, height: 44, borderRadius: 13, background: 'var(--lime)', border: '1.5px solid var(--ink)', flexShrink: 0 }}>
-              <Wallet size={20} color="var(--ink)" />
+      <div className="balance-grid">
+        {/* ============ Top Up — Wizard 3 Langkah ============ */}
+        <motion.div
+          id="topup-card"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.04 }}
+          className="card"
+          style={{ padding: 'clamp(18px, 3vw, 26px)', scrollMarginTop: 16 }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+            <span style={{ display: 'grid', placeItems: 'center', width: 42, height: 42, borderRadius: 13, background: 'var(--lime)', border: '1.5px solid var(--ink)', flexShrink: 0 }}>
+              <Wallet size={19} color="var(--ink)" />
             </span>
             <div>
               <div style={{ fontWeight: 800, fontSize: 15 }}>{t('tu.title')}</div>
-              <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 2 }}>
+              <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 2 }}>
                 {t('tu.subtitle').replace('{min}', '')}
               </div>
             </div>
           </div>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => (topupOpen ? setTopupOpen(false) : openTopup())}
-            style={{
-              cursor: 'pointer', background: topupOpen ? 'var(--surface-2)' : 'var(--ink)', color: topupOpen ? 'var(--ink)' : 'var(--lime)',
-              border: '1.5px solid var(--ink)', borderRadius: 999, padding: '10px 20px', fontSize: 13.5, fontWeight: 800,
-              display: 'flex', alignItems: 'center', gap: 7,
-            }}
-          >
-            <Plus size={15} style={{ transform: topupOpen ? 'rotate(45deg)' : 'none', transition: 'transform .2s' }} /> {t('tu.go')}
-          </motion.button>
-        </div>
 
-        <AnimatePresence>
-          {topupOpen && (
+          {/* Stepper */}
+          <div className="tu-steps" role="tablist" aria-label="Top-up steps">
+            {TU_STEPS.map((s, i) => (
+              <Fragment key={s.n}>
+                {i > 0 && <div className={'tu-step-line' + (tuStep > s.n ? ' done' : '')} />}
+                <button
+                  type="button" role="tab" aria-selected={tuStep === s.n}
+                  className={'tu-step' + (tuStep === s.n ? ' active' : tuStep > s.n ? ' done' : '')}
+                  onClick={() => goStep(s.n)}
+                >
+                  <span className="tu-step-dot">{tuStep > s.n ? <Check size={15} strokeWidth={3} /> : s.n}</span>
+                  <span className="tu-step-label">{s.label}</span>
+                </button>
+              </Fragment>
+            ))}
+          </div>
+
+          <AnimatePresence mode="wait">
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              style={{ overflow: 'hidden' }}
+              key={tuStep}
+              initial={{ opacity: 0, x: 16 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -16 }}
+              transition={{ duration: 0.18 }}
             >
-              <div style={{ paddingTop: 20 }}>
-                {/* Template nominal (dalam mata uang aktif) */}
-                <label className="field-label">{t('tu.amount')}</label>
-                <div style={{ display: 'flex', gap: 7, margin: '8px 0 10px', flexWrap: 'wrap' }}>
-                  {tuTemplates.map((tplIdr) => {
-                    const loc = idrToLocale(tplIdr)
-                    const active = tuBaseNum === tplIdr
-                    const hasBonus = tplIdr >= TU_BONUS_MIN
-                    return (
+              {/* ── LANGKAH 1: Nominal ── */}
+              {tuStep === 1 && (
+                <div>
+                  <label className="field-label">{t('tu.amount')}</label>
+                  <div className="tu-templates">
+                    {tuTemplates.map((tplIdr) => {
+                      const loc = idrToLocale(tplIdr)
+                      const active = tuBaseNum === tplIdr
+                      const hasBonus = tplIdr >= TU_BONUS_MIN
+                      return (
+                        <button
+                          key={tplIdr}
+                          onClick={() => setTuBase(String(tplIdr))}
+                          style={{
+                            cursor: 'pointer', borderRadius: 12, padding: '10px 8px', fontSize: 13, fontWeight: 800,
+                            background: active ? 'var(--indigo)' : 'var(--surface-2)',
+                            color: active ? '#fff' : 'var(--ink)',
+                            border: '1.5px solid ' + (active ? 'var(--indigo)' : 'var(--line-soft)'),
+                            display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 4, transition: 'background .15s ease, color .15s ease',
+                          }}
+                        >
+                          <span>{fmtLoc(loc)}</span>
+                          {hasBonus && <span style={{ fontSize: 9.5, fontWeight: 800, background: 'var(--lime)', color: 'var(--ink)', borderRadius: 999, padding: '2px 7px', border: '1px solid var(--ink)' }}>+10%</span>}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>{t('tu.custom')}</div>
+                  <div className="input-ic">
+                    <span style={{ fontWeight: 700, fontSize: 15, paddingLeft: 12 }}>{CURRENCY[lang]?.symbol || 'Rp'}</span>
+                    <input
+                      className="input"
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      placeholder={lang === 'id' ? 'Contoh: 25000' : 'e.g. 25000'}
+                      value={lang === 'id' ? tuBase : (tuBaseNum > 0 ? idrToLocale(tuBaseNum) : '')}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value, 10) || 0
+                        setTuBase(v > 0 ? String(localeToIdr(v)) : '')
+                      }}
+                      style={{ paddingLeft: 4 }}
+                    />
+                  </div>
+                  {tuBaseNum > 0 && tuBaseNum < TU_MIN && (
+                    <div style={{ color: '#dc2626', fontWeight: 700, fontSize: 12.5, marginTop: 6 }}>
+                      {t('tu.minWarn').replace('{min}', formatCurrency(TU_MIN, 'id'))}
+                    </div>
+                  )}
+
+                  {/* Ringkasan bonus */}
+                  {tuBaseNum >= TU_MIN && (
+                    <div style={{
+                      marginTop: 12, padding: '12px 16px', borderRadius: 12, background: 'var(--surface-2)',
+                      border: '1.5px solid var(--line-soft)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8,
+                    }}>
+                      <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>{t('tu.amount')}: <b style={{ color: 'var(--ink)' }}>{formatCurrency(tuBaseNum, 'id')}</b></span>
+                      {tuBonusPct > 0 && (
+                        <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 800 }}>
+                          {t('tu.bonus')} +{tuBonusPct}%: +{formatCurrency(tuBonus, 'id')}
+                        </span>
+                      )}
+                      <span style={{ fontSize: 13.5, fontWeight: 800 }}>
+                        {t('tu.total')}: <span style={{ color: 'var(--indigo)' }}>{formatCurrency(tuTotal, 'id')}</span>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── LANGKAH 2: Pembayaran ── */}
+              {tuStep === 2 && (
+                <div>
+                  <label className="field-label">{t('tu.method')}</label>
+                  <div className="tu-methods">
+                    {[['qris', t('balance.qris'), QrCode], ['alipay', t('tu.alipay'), Wallet], ['paygo', t('tu.paygo'), CreditCard], ['crypto', t('co.payCrypto') || 'Crypto', Coins]].map(([m, label, Icon]) => (
                       <button
-                        key={tplIdr}
-                        onClick={() => setTuBase(String(localeToIdr(loc)))}
+                        key={m}
+                        onClick={() => setTuMethod(m)}
                         style={{
-                          cursor: 'pointer', borderRadius: 12, padding: '8px 14px', fontSize: 13, fontWeight: 800,
-                          background: active ? 'var(--indigo)' : 'var(--surface-2)',
-                          color: active ? '#fff' : 'var(--ink)',
-                          border: '1.5px solid ' + (active ? 'var(--indigo)' : 'var(--line-soft)'),
-                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
+                          padding: '13px 10px', borderRadius: 12, fontWeight: 700, fontSize: 12.5,
+                          background: tuMethod === m ? 'var(--ink)' : 'var(--surface-2)',
+                          color: tuMethod === m ? '#fff' : 'var(--ink)',
+                          border: '1.5px solid ' + (tuMethod === m ? 'var(--ink)' : 'var(--line-soft)'),
+                          transition: 'background .15s ease, color .15s ease',
                         }}
                       >
-                        {fmtLoc(loc)}
-                        {hasBonus && <span style={{ fontSize: 9.5, fontWeight: 800, background: 'var(--lime)', color: 'var(--ink)', borderRadius: 999, padding: '2px 6px', border: '1px solid var(--ink)' }}>{'+10%'}</span>}
+                        <Icon size={18} /> {label}
                       </button>
-                    )
-                  })}
-                </div>
-
-                {/* Input manual (mata uang aktif) */}
-                <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>{t('tu.custom')}</div>
-                <div className="input-ic">
-                  <span style={{ fontWeight: 700, fontSize: 15, paddingLeft: 12 }}>{CURRENCY[lang]?.symbol || 'Rp'}</span>
-                  <input
-                    className="input"
-                    type="number"
-                    min={0}
-                    placeholder={lang === 'id' ? 'Contoh: 25000' : 'e.g. 25000'}
-                    value={lang === 'id' ? tuBase : (tuBaseNum > 0 ? idrToLocale(tuBaseNum) : '')}
-                    onChange={(e) => {
-                      const v = parseInt(e.target.value, 10) || 0
-                      setTuBase(v > 0 ? String(localeToIdr(v)) : '')
-                    }}
-                    style={{ paddingLeft: 4 }}
-                  />
-                </div>
-                {tuBaseNum > 0 && tuBaseNum < TU_MIN && (
-                  <div style={{ color: '#dc2626', fontWeight: 700, fontSize: 12.5, marginTop: 6 }}>
-                    {t('tu.minWarn').replace('{min}', formatCurrency(TU_MIN, 'id'))}
-                  </div>
-                )}
-
-                {/* Ringkasan bonus */}
-                {tuBaseNum >= TU_MIN && (
-                  <div style={{
-                    marginTop: 12, padding: '12px 16px', borderRadius: 12, background: 'var(--surface-2)',
-                    border: '1.5px solid var(--line-soft)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8,
-                  }}>
-                    <span style={{ fontSize: 13, color: 'var(--ink-soft)' }}>{t('tu.amount')}: <b style={{ color: 'var(--ink)' }}>{formatCurrency(tuBaseNum, 'id')}</b></span>
-                    {tuBonusPct > 0 && (
-                      <span style={{ fontSize: 13, color: '#16a34a', fontWeight: 800 }}>
-                        {t('tu.bonus')} +{tuBonusPct}%: +{formatCurrency(tuBonus, 'id')}
-                      </span>
-                    )}
-                    <span style={{ fontSize: 13.5, fontWeight: 800 }}>
-                      {t('tu.total')}: <span style={{ color: 'var(--indigo)' }}>{formatCurrency(tuTotal, 'id')}</span>
-                    </span>
-                  </div>
-                )}
-
-                {/* Metode pembayaran */}
-                <label className="field-label" style={{ marginTop: 16 }}>{t('tu.method')}</label>
-                <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
-                  {[['qris', t('balance.qris'), QrCode], ['alipay', t('tu.alipay'), Wallet], ['paygo', t('tu.paygo'), CreditCard], ['crypto', t('co.payCrypto') || 'Crypto', Coins]].map(([m, label, Icon]) => (
-                    <button
-                      key={m}
-                      onClick={() => setTuMethod(m)}
-                      style={{
-                        cursor: 'pointer', flex: '1 1 140px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        padding: '11px 12px', borderRadius: 12, fontWeight: 700, fontSize: 13,
-                        background: tuMethod === m ? 'var(--ink)' : 'var(--surface-2)',
-                        color: tuMethod === m ? '#fff' : 'var(--ink)',
-                        border: '1.5px solid ' + (tuMethod === m ? 'var(--ink)' : 'var(--line-soft)'),
-                      }}
-                    >
-                      <Icon size={16} /> {label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Detail per metode */}
-                {tuMethod === 'qris' && tuTotal >= TU_MIN && (
-                  <div style={{ marginTop: 14, display: 'grid', placeItems: 'center', gap: 8, padding: 16, background: '#fff', borderRadius: 14, border: '1.5px solid var(--line-soft)' }}>
-                    <QRCodeSVG value={QRIS.buildPayload(tuIdrEquiv)} size={170} level="M" bgColor="#ffffff" fgColor="#2b2b28" />
-                    <span className="display" style={{ fontSize: 14, color: '#2b2b28' }}>{QRIS.merchant}</span>
-                    <span style={{ fontSize: 12.5, color: '#2b2b28', fontWeight: 700 }}>{formatCurrency(tuTotal, 'id')}</span>
-                    <span style={{ fontSize: 11.5, color: '#6b6b66', textAlign: 'center' }}>{t('tu.qrisNote')}</span>
-                  </div>
-                )}
-                {tuMethod === 'alipay' && (
-                  <div className="text-muted" style={{ fontSize: 12.5, marginTop: 10 }}>
-                    Alipay: bayar ke merchant <b>Vercelex Community</b> sebesar <b>{formatCurrency(tuTotal, 'id')}</b>, lalu isi nomor referensi di bawah.
-                  </div>
-                )}
-                {tuMethod === 'paygo' && (
-                  <div className="text-muted" style={{ fontSize: 12.5, marginTop: 10 }}>
-                    Pay&Go: bayar sebesar <b>{formatCurrency(tuTotal, 'id')}</b>, lalu isi nomor referensi di bawah.
-                  </div>
-                )}
-                {tuMethod === 'crypto' && tuTotal >= TU_MIN && (
-                  <div style={{ marginTop: 12, padding: 14, borderRadius: 12, background: 'var(--surface-2)', border: '1.5px solid var(--line-soft)' }}>
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-                      {CRYPTO.assets.map((a) => (
-                        <button
-                          key={a.id}
-                          onClick={() => setTuAsset(a.id)}
-                          style={{
-                            cursor: 'pointer', borderRadius: 999, padding: '6px 13px', fontSize: 12.5, fontWeight: 800,
-                            background: tuAsset === a.id ? 'var(--indigo)' : 'transparent', color: tuAsset === a.id ? '#fff' : 'var(--ink)',
-                            border: '1.5px solid ' + (tuAsset === a.id ? 'var(--indigo)' : 'var(--line-soft)'),
-                          }}
-                        >{a.label}</button>
-                      ))}
-                    </div>
-                    <div style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>{CRYPTO.network}</div>
-                    <div style={{
-                      fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all', marginTop: 6,
-                      padding: '9px 11px', background: 'var(--bg)', borderRadius: 9, border: '1.5px solid var(--line-soft)',
-                    }}>{tuAssetObj?.address}</div>
-                    <div style={{ marginTop: 8, fontSize: 15, fontWeight: 800 }}>
-                      {tuCryptoAmount} {tuAssetObj?.symbol}
-                      <span className="text-muted" style={{ fontSize: 12, fontWeight: 600 }}> ≈ {formatCurrency(tuTotal, 'id')}</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Referensi / bukti */}
-                {tuMethod !== 'qris' ? (
-                  <div style={{ marginTop: 14 }}>
-                    <label className="field-label">{t('tu.txRef')}</label>
-                    <input
-                      className="input"
-                      type="text"
-                      value={tuTxRef}
-                      onChange={(e) => setTuTxRef(e.target.value)}
-                      placeholder={tuMethod === 'crypto' ? '0xabc123...' : 'Contoh: 20260911xxxx'}
-                    />
-                  </div>
-                ) : (
-                  <div style={{ marginTop: 14 }}>
-                    <label className="field-label">{t('tu.uploadProof')}</label>
-                    <input
-                      ref={tuFileRef}
-                      className="input"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setTuProof(e.target.files?.[0] || null)}
-                    />
-                  </div>
-                )}
-
-                {tuMsg && (
-                  <div style={{
-                    padding: 10, borderRadius: 10, marginTop: 12, fontSize: 13.5,
-                    background: tuMsg.type === 'success' ? 'rgba(37,211,102,.1)' : 'rgba(255,77,77,.1)',
-                    color: tuMsg.type === 'success' ? '#16a34a' : '#dc2626',
-                    display: 'flex', alignItems: 'center', gap: 8,
-                  }}>
-                    {tuMsg.type === 'success' ? <Check size={16} /> : <AlertCircle size={16} />} {tuMsg.text}
-                  </div>
-                )}
-
-                <motion.button
-                  whileTap={{ scale: 0.97 }}
-                  onClick={submitTopup}
-                  disabled={tuBusy || tuBaseNum < TU_MIN}
-                  style={{
-                    cursor: tuBusy || tuBaseNum < TU_MIN ? 'not-allowed' : 'pointer',
-                    marginTop: 16, width: '100%', background: tuBaseNum >= TU_MIN ? 'var(--ink)' : 'var(--surface-2)',
-                    color: tuBaseNum >= TU_MIN ? 'var(--lime)' : 'var(--muted)', border: '1.5px solid var(--ink)',
-                    borderRadius: 999, padding: '13px 20px', fontSize: 14.5, fontWeight: 800, opacity: tuBusy ? 0.6 : 1,
-                  }}
-                >
-                  {tuBusy ? '…' : `${t('tu.go')} ${tuTotal >= TU_MIN ? formatCurrency(tuTotal, 'id') : ''}`}
-                </motion.button>
-
-                {/* Riwayat top-up */}
-                {Array.isArray(tuHistory) && tuHistory.length > 0 && (
-                  <div style={{ marginTop: 20 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: '.04em', color: 'var(--ink-soft)', marginBottom: 8 }}>{t('tu.history')}</div>
-                    {tuHistory.slice(0, 5).map((r) => (
-                      <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '8px 0', borderBottom: '1.5px solid var(--line-soft)', fontSize: 13, flexWrap: 'wrap' }}>
-                        <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{r.id}</span>
-                        <span style={{ fontWeight: 700 }}>{formatCurrency(r.amount, 'id')}{r.bonusPct > 0 ? ` (+${r.bonusPct}%)` : ''}</span>
-                        <span style={{ fontWeight: 700, color: r.status === 'APPROVED' ? '#16a34a' : r.status === 'REJECTED' ? '#dc2626' : '#b45309' }}>
-                          {r.status === 'APPROVED' ? t('tu.approved') : r.status === 'REJECTED' ? t('tu.rejected') : t('tu.pending')}
-                        </span>
-                      </div>
                     ))}
                   </div>
-                )}
-              </div>
+
+                  {/* Detail per metode */}
+                  {tuMethod === 'qris' && tuTotal >= TU_MIN && (
+                    <div style={{ marginTop: 14, display: 'grid', placeItems: 'center', gap: 8, padding: 16, background: '#fff', borderRadius: 14, border: '1.5px solid var(--line-soft)' }}>
+                      <QRCodeSVG value={QRIS.buildPayload(tuIdrEquiv)} size={170} level="M" bgColor="#ffffff" fgColor="#2b2b28" />
+                      <span className="display" style={{ fontSize: 14, color: '#2b2b28' }}>{QRIS.merchant}</span>
+                      <span style={{ fontSize: 12.5, color: '#2b2b28', fontWeight: 700 }}>{formatCurrency(tuTotal, 'id')}</span>
+                      <span style={{ fontSize: 11.5, color: '#6b6b66', textAlign: 'center' }}>{t('tu.qrisNote')}</span>
+                    </div>
+                  )}
+                  {tuMethod === 'alipay' && (
+                    <div className="text-muted" style={{ fontSize: 12.5, marginTop: 10 }}>
+                      Alipay: bayar ke merchant <b>Vercelex Community</b> sebesar <b>{formatCurrency(tuTotal, 'id')}</b>, lalu isi nomor referensi di langkah berikutnya.
+                    </div>
+                  )}
+                  {tuMethod === 'paygo' && (
+                    <div className="text-muted" style={{ fontSize: 12.5, marginTop: 10 }}>
+                      Pay&Go: bayar sebesar <b>{formatCurrency(tuTotal, 'id')}</b>, lalu isi nomor referensi di langkah berikutnya.
+                    </div>
+                  )}
+                  {tuMethod === 'crypto' && tuTotal >= TU_MIN && (
+                    <div style={{ marginTop: 12, padding: 14, borderRadius: 12, background: 'var(--surface-2)', border: '1.5px solid var(--line-soft)' }}>
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
+                        {CRYPTO.assets.map((a) => (
+                          <button
+                            key={a.id}
+                            onClick={() => setTuAsset(a.id)}
+                            style={{
+                              cursor: 'pointer', borderRadius: 999, padding: '6px 13px', fontSize: 12.5, fontWeight: 800,
+                              background: tuAsset === a.id ? 'var(--indigo)' : 'transparent', color: tuAsset === a.id ? '#fff' : 'var(--ink)',
+                              border: '1.5px solid ' + (tuAsset === a.id ? 'var(--indigo)' : 'var(--line-soft)'),
+                            }}
+                          >{a.label}</button>
+                        ))}
+                      </div>
+                      <div style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>{CRYPTO.network}</div>
+                      <div style={{
+                        fontFamily: 'monospace', fontSize: 12, wordBreak: 'break-all', marginTop: 6,
+                        padding: '9px 11px', background: 'var(--bg)', borderRadius: 9, border: '1.5px solid var(--line-soft)',
+                      }}>{tuAssetObj?.address}</div>
+                      <div style={{ marginTop: 8, fontSize: 15, fontWeight: 800 }}>
+                        {tuCryptoAmount} {tuAssetObj?.symbol}
+                        <span className="text-muted" style={{ fontSize: 12, fontWeight: 600 }}> ≈ {formatCurrency(tuTotal, 'id')}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── LANGKAH 3: Konfirmasi ── */}
+              {tuStep === 3 && (
+                <div>
+                  <label className="field-label">{t('tu.review')}</label>
+                  <div className="tu-review" style={{ marginTop: 8 }}>
+                    <div className="tu-review-row">
+                      <span style={{ color: 'var(--ink-soft)' }}>{t('tu.amount')}</span>
+                      <b>{formatCurrency(tuBaseNum, 'id')}</b>
+                    </div>
+                    {tuBonusPct > 0 && (
+                      <div className="tu-review-row">
+                        <span style={{ color: 'var(--ink-soft)' }}>{t('tu.bonus')} +{tuBonusPct}%</span>
+                        <b style={{ color: '#16a34a' }}>+{formatCurrency(tuBonus, 'id')}</b>
+                      </div>
+                    )}
+                    <div className="tu-review-row" style={{ borderTop: '1.5px solid var(--line-soft)', paddingTop: 9 }}>
+                      <span style={{ color: 'var(--ink-soft)' }}>{t('tu.total')}</span>
+                      <b style={{ color: 'var(--indigo)', fontSize: 15 }}>{formatCurrency(tuTotal, 'id')}</b>
+                    </div>
+                    <div className="tu-review-row">
+                      <span style={{ color: 'var(--ink-soft)' }}>{t('tu.method')}</span>
+                      <b>{tuMethodLabel}</b>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: 12, color: 'var(--muted)', margin: '12px 0 0' }}>{t('tu.reviewHint')}</div>
+
+                  {tuMethod !== 'qris' ? (
+                    <div style={{ marginTop: 10 }}>
+                      <label className="field-label">{t('tu.txRef')}</label>
+                      <input
+                        className="input"
+                        type="text"
+                        value={tuTxRef}
+                        onChange={(e) => setTuTxRef(e.target.value)}
+                        placeholder={tuMethod === 'crypto' ? '0xabc123...' : (lang === 'id' ? 'Contoh: 20260911xxxx' : 'e.g. 20260911xxxx')}
+                      />
+                    </div>
+                  ) : (
+                    <div style={{ marginTop: 10 }}>
+                      <label className="field-label">{t('tu.uploadProof')}</label>
+                      <input
+                        ref={tuFileRef}
+                        className="input"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => setTuProof(e.target.files?.[0] || null)}
+                      />
+                    </div>
+                  )}
+
+                  {/* Riwayat top-up */}
+                  {Array.isArray(tuHistory) && tuHistory.length > 0 && (
+                    <div style={{ marginTop: 18 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: '.04em', color: 'var(--ink-soft)', marginBottom: 8 }}>{t('tu.history')}</div>
+                      {tuHistory.slice(0, 5).map((r) => (
+                        <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '8px 0', borderBottom: '1.5px solid var(--line-soft)', fontSize: 13, flexWrap: 'wrap' }}>
+                          <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{r.id}</span>
+                          <span style={{ fontWeight: 700 }}>{formatCurrency(r.amount, 'id')}{r.bonusPct > 0 ? ` (+${r.bonusPct}%)` : ''}</span>
+                          <span style={{ fontWeight: 700, color: r.status === 'APPROVED' ? '#16a34a' : r.status === 'REJECTED' ? '#dc2626' : '#b45309' }}>
+                            {r.status === 'APPROVED' ? t('tu.approved') : r.status === 'REJECTED' ? t('tu.rejected') : t('tu.pending')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
+          </AnimatePresence>
 
-      <div className="balance-grid">
-        {/* ============ Hero balance card ============ */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.04 }}
-          className="card balance-hero"
-          style={{ padding: 'clamp(26px, 4vw, 38px)', background: 'var(--ink)', color: 'var(--bg)', borderColor: 'var(--ink)' }}
-        >
-          <span className="balance-hero-deco" style={{ width: 190, height: 190, top: -80, right: -70, background: 'radial-gradient(circle, rgba(79,70,229,.45), transparent 65%)' }} />
-          <span className="balance-hero-deco" style={{ width: 130, height: 130, bottom: -60, left: -45, background: 'radial-gradient(circle, rgba(197,248,42,.22), transparent 65%)' }} />
-
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 18, flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ display: 'grid', placeItems: 'center', width: 42, height: 42, borderRadius: 999, background: 'var(--lime)', border: '1.5px solid var(--bg)' }}>
-                <Wallet size={20} color="var(--ink)" />
-              </span>
-              <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: '.02em' }}>{t('balance.activeBalance')}</span>
-            </div>
-            <span className="chip" style={{
-              fontSize: 11, fontWeight: 700, padding: '5px 10px',
-              background: withdrawEligible ? 'var(--lime)' : 'rgba(255,255,255,.1)',
-              color: withdrawEligible ? 'var(--ink)' : 'rgba(255,255,255,.75)',
-              border: '1.5px solid ' + (withdrawEligible ? 'var(--bg)' : 'rgba(255,255,255,.25)'),
-              display: 'inline-flex', alignItems: 'center', gap: 5,
+          {tuMsg && (
+            <div style={{
+              padding: 10, borderRadius: 10, marginTop: 12, fontSize: 13.5,
+              background: tuMsg.type === 'success' ? 'rgba(37,211,102,.1)' : 'rgba(255,77,77,.1)',
+              color: tuMsg.type === 'success' ? '#16a34a' : '#dc2626',
+              display: 'flex', alignItems: 'center', gap: 8,
             }}>
-              {withdrawEligible
-                ? <><Check size={11} strokeWidth={3} /> {t('balance.withdrawOpen')}</>
-                : <><Lock size={11} /> {t('balance.withdrawLocked')}</>
-              }
-            </span>
-          </div>
+              {tuMsg.type === 'success' ? <Check size={16} /> : <AlertCircle size={16} />} {tuMsg.text}
+            </div>
+          )}
 
-          <div className="display" style={{ position: 'relative', fontSize: 'clamp(2.2rem, 5.5vw, 3.4rem)', color: 'var(--lime)', lineHeight: 1.05, letterSpacing: '.01em' }}>
-            {loaded ? fmt(balance) : <span style={{ opacity: .4 }}>•••••</span>}
-          </div>
-          <div style={{ position: 'relative', fontSize: 13, color: '#c9c7bd', marginTop: 8 }}>
-            {t('balance.totalTx')}: <strong style={{ color: 'var(--bg)' }}>{fmt(totalSpent)}</strong>
+          {/* Navigasi wizard */}
+          <div className="tu-nav">
+            {tuStep > 1 && (
+              <button
+                type="button"
+                onClick={() => goStep(tuStep - 1)}
+                style={{
+                  cursor: 'pointer', flexShrink: 0, background: 'var(--surface-2)', color: 'var(--ink)',
+                  border: '1.5px solid var(--line-soft)', borderRadius: 999, padding: '12px 20px',
+                  fontSize: 13.5, fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: 6,
+                }}
+              >
+                {t('tu.back')}
+              </button>
+            )}
+            {tuStep < 3 ? (
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => goStep(tuStep + 1)}
+                disabled={tuStep === 1 && tuBaseNum < TU_MIN}
+                style={{
+                  cursor: tuStep === 1 && tuBaseNum < TU_MIN ? 'not-allowed' : 'pointer', flex: 1,
+                  background: tuStep === 1 && tuBaseNum < TU_MIN ? 'var(--surface-2)' : 'var(--ink)',
+                  color: tuStep === 1 && tuBaseNum < TU_MIN ? 'var(--muted)' : 'var(--lime)',
+                  border: '1.5px solid ' + (tuStep === 1 && tuBaseNum < TU_MIN ? 'var(--line-soft)' : 'var(--ink)'),
+                  borderRadius: 999, padding: '12px 20px', fontSize: 14, fontWeight: 800,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                }}
+              >
+                {t('tu.next')} <ArrowRight size={16} />
+              </motion.button>
+            ) : (
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={submitTopup}
+                disabled={tuBusy || tuBaseNum < TU_MIN}
+                style={{
+                  cursor: tuBusy || tuBaseNum < TU_MIN ? 'not-allowed' : 'pointer', flex: 1,
+                  background: tuBaseNum >= TU_MIN ? 'var(--ink)' : 'var(--surface-2)',
+                  color: tuBaseNum >= TU_MIN ? 'var(--lime)' : 'var(--muted)',
+                  border: '1.5px solid ' + (tuBaseNum >= TU_MIN ? 'var(--ink)' : 'var(--line-soft)'),
+                  borderRadius: 999, padding: '12px 20px', fontSize: 14, fontWeight: 800, opacity: tuBusy ? 0.6 : 1,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+                }}
+              >                {tuBusy ? t('tu.sending') : `${t('tu.go')} · ${formatCurrency(tuTotal, 'id')}`}
+                <ArrowRight size={16} />
+              </motion.button>
+            )}
           </div>
         </motion.div>
 
         {/* ============ Withdraw card (simplified) ============ */}
         <motion.div
+          id="withdraw-card"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.08 }}
           className="card"
-          style={{ padding: 'clamp(22px, 3vw, 30px)' }}
+          style={{ padding: 'clamp(22px, 3vw, 30px)', scrollMarginTop: 16 }}
         >
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
             <h3 className="display" style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 9 }}>
@@ -904,7 +1036,7 @@ export default function Balance() {
       </motion.div>
 
       {/* ============ History ============ */}
-      <div style={{ marginTop: 36 }}>
+      <div id="wallet-history" style={{ marginTop: 36, scrollMarginTop: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <button
             onClick={() => { setShowHistory(!showHistory); if (!showHistory) fetchHistory() }}
