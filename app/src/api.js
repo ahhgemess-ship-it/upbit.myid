@@ -168,6 +168,15 @@ export const api = {
   withdrawBalance: withFallback(_real.withdrawBalance, demoApi.withdrawBalance),
   checkInStatus: withFallback(_real.checkInStatus, demoApi.checkInStatus),
   checkIn: withFallback(_real.checkIn, demoApi.checkIn),
+  // Telegram link (butuh backend)
+  telegramStatus: withFallback(_real.telegramStatus, () => Promise.resolve({ linked: false })),
+  telegramLinkCode: withFallback(_real.telegramLinkCode, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
+  // Top-up (butuh backend)
+  createTopup: withFallback(_real.createTopup, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
+  topupHistory: withFallback(_real.topupHistory, () => Promise.resolve([])),
+  adminTopups: withFallback(_real.adminTopups, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
+  adminApproveTopup: withFallback(_real.adminApproveTopup, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
+  adminRejectTopup: withFallback(_real.adminRejectTopup, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
   adminUsers: withFallback(_real.adminUsers, demoApi.adminUsers),
   adminGetUser: withFallback(_real.adminGetUser, demoApi.adminGetUser),
   adminUpdateUser: withFallback(_real.adminUpdateUser, demoApi.adminUpdateUser),
