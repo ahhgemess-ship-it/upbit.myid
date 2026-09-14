@@ -641,6 +641,64 @@ ul { list-style: none; }
   gap: 8px;
   margin-top: 6px;
 }
+/* Header langkah 2: label + total di kanan */
+.tu-step2-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
+}
+.tu-total-chip {
+  font-size: 13.5px;
+  font-weight: 800;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1.5px solid var(--line-soft);
+  white-space: nowrap;
+}
+/* Detail metode: QRIS di kolom kanan (desktop) biar langsung terlihat tanpa scroll */
+.tu-side {
+  margin-top: 14px;
+}
+@media (min-width: 861px) {
+  .tu-side {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) 195px;
+    gap: 16px;
+    align-items: start;
+  }
+  .tu-side > div:not(.tu-qris) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .tu-qris {
+    position: sticky;
+    top: 16px;
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+.tu-qris {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  padding: 12px;
+  background: #fff;
+  border-radius: 14px;
+  border: 1.5px solid var(--line-soft);
+}
+.tu-qris svg {
+  width: 100%;
+  max-width: 150px;
+  height: auto;
+}
+@media (max-width: 860px) {
+  .tu-side > div:not(.tu-qris) { order: 2; margin-top: 12px; }
+  .tu-qris { order: 1; }
+  .tu-qris svg { max-width: 130px; }
+}
 .tu-review {
   border: 1.5px solid var(--line-soft);
   border-radius: 12px;
@@ -659,7 +717,7 @@ ul { list-style: none; }
 .tu-nav {
   display: flex;
   gap: 9px;
-  margin-top: 16px;
+  margin-top: 20px;
 }
 
 @media (max-width: 860px) {

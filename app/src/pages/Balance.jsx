@@ -52,6 +52,7 @@ export default function Balance() {
   const [tgBusy, setTgBusy] = useState(false)
   // ── Top-up saldo (wizard 3 langkah) ──
   const [tuStep, setTuStep] = useState(1)         // 1: nominal · 2: bayar · 3: konfirmasi
+  const [tuDir, setTuDir] = useState(1)           // arah animasi antar langkah: 1 maju · -1 mundur
   const [tuBase, setTuBase] = useState('')        // nominal dasar (string input)
   const [tuMethod, setTuMethod] = useState('qris')
   const [tuAsset, setTuAsset] = useState(CRYPTO.assets[0]?.id || 'bnb')
@@ -62,6 +63,24 @@ export default function Balance() {
   const [tuHistory, setTuHistory] = useState(null)
   const [tuView, setTuView] = useState(false)   // false: dompet · true: halaman Top Up
   const tuFileRef = useRef(null)
+
+  // Draf top-up: keluar halaman tidak mengulang dari awal
+  const TU_DRAFT_KEY = 'upbit_topup_draft_v1'
+  const [tuDraftLoaded, setTuDraftLoaded] = useState(false)
+  useEffect(() => {
+    try {
+      const d = JSON.parse(localStorage.getItem(TU_DRAFT_KEY) || 'null')
+      if (d) {
+        if (typeof d.step === 'number' && d.step >= 1 && d.step <= 3) setTuStep(d.step)
+        if (typeof d.base === 'string') setTuBase(d.base)
+        if (typeof d.method === 'string') setTuMethod(d.method)
+        if (typeof d.asset === 'string') setTuAsset(d.asset)
+        if (typeof d.txRef === 'string') setTuTxRef(d.txRef)
+      }
+    } catch { /* draf korup → abaikan */ }
+    setTuDraftLoaded(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => { fetchHistory() }, [fetchHistory])
 
@@ -167,6 +186,19 @@ export default function Balance() {
   const tuAssetObj = CRYPTO.assets.find((a) => a.id === tuAsset) || CRYPTO.assets[0]
   const tuCryptoAmount = tuAssetObj && tuTotal > 0 ? toCryptoAmount(tuTotal, tuAssetObj) : '0'
   const tuIdrEquiv = tuTotal // QRIS selalu IDR (merchant Indonesia)
+
+  // Simpan draf top-up (setiap perubahan, selama nominal valid)
+  useEffect(() => {
+    if (!tuDraftLoaded) return
+    try {
+      if (tuBaseNum >= TU_MIN) {
+        localStorage.setItem(TU_DRAFT_KEY, JSON.stringify({ step: tuStep, base: tuBase, method: tuMethod, asset: tuAsset, txRef: tuTxRef }))
+      } else {
+        localStorage.removeItem(TU_DRAFT_KEY)
+      }
+    } catch { /* kuota penuh → abaikan */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tuDraftLoaded, tuStep, tuBase, tuMethod, tuAsset, tuTxRef, tuBaseNum])
   const tuMethodLabel = tuMethod === 'qris' ? t('balance.qris')
     : tuMethod === 'alipay' ? t('tu.alipay')
     : tuMethod === 'paygo' ? t('tu.paygo')
@@ -180,21 +212,22 @@ export default function Balance() {
     window.scrollTo({ top: 0 })
   }
 
-  // Tutup halaman Top Up → kembali ke dompet
+  // Tutup halaman Top Up → kembali ke dompet (draf TIDAK direset,
+  // biar masuk lagi lanjut dari langkah terakhir sesuai permintaan)
   const closeTopup = () => {
     setTuView(false)
-    setTuStep(1)
     setTuMsg(null)
     window.scrollTo({ top: 0 })
   }
 
-  // Navigasi langkah wizard (dengan validasi minimum)
+  // Navigasi langkah wizard (dengan validasi minimum + arah animasi)
   const goStep = (n) => {
     if (n >= 2 && tuBaseNum < TU_MIN) {
       setTuMsg({ type: 'error', text: t('tu.minWarn').replace('{min}', formatCurrency(TU_MIN, 'id')) })
       return
     }
     setTuMsg(null)
+    setTuDir(n >= tuStep ? 1 : -1)
     setTuStep(n)
   }
 
@@ -225,6 +258,7 @@ export default function Balance() {
       }
       if (tuProof) fd.append('proof', tuProof)
       await api.createTopup(fd)
+      try { localStorage.removeItem(TU_DRAFT_KEY) } catch { /* abaikan */ }
       setTuMsg({ type: 'success', text: t('tu.sent') })
       setTuBase(''); setTuTxRef(''); setTuProof(null); if (tuFileRef.current) tuFileRef.current.value = ''
       setTuStep(1)
@@ -562,13 +596,13 @@ export default function Balance() {
             ))}
           </div>
 
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={tuStep}
-              initial={{ opacity: 0, x: 16 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -16 }}
-              transition={{ duration: 0.18 }}
+              initial={{ opacity: 0, x: tuDir * 26, scale: 0.995 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: tuDir * -26, scale: 0.995 }}
+              transition={{ duration: 0.22, ease: [0.3, 0.9, 0.35, 1] }}
             >
               {/* ── LANGKAH 1: Nominal ── */}
               {tuStep === 1 && (
@@ -644,15 +678,18 @@ export default function Balance() {
               {/* ── LANGKAH 2: Pembayaran ── */}
               {tuStep === 2 && (
                 <div>
-                  <label className="field-label">{t('tu.method')}</label>
+                  <div className="tu-step2-head">
+                    <label className="field-label" style={{ marginBottom: 0 }}>{t('tu.method')}</label>
+                    <span className="tu-total-chip">{formatCurrency(tuTotal, 'id')}</span>
+                  </div>
                   <div className="tu-methods">
                     {[['qris', t('balance.qris'), QrCode], ['alipay', t('tu.alipay'), Wallet], ['paygo', t('tu.paygo'), CreditCard], ['crypto', t('co.payCrypto') || 'Crypto', Coins]].map(([m, label, Icon]) => (
                       <button
                         key={m}
                         onClick={() => setTuMethod(m)}
                         style={{
-                          cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
-                          padding: '13px 10px', borderRadius: 12, fontWeight: 700, fontSize: 12.5,
+                          cursor: 'pointer', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+                          padding: '10px 8px', borderRadius: 12, fontWeight: 700, fontSize: 12.5,
                           background: tuMethod === m ? 'var(--ink)' : 'var(--surface-2)',
                           color: tuMethod === m ? '#fff' : 'var(--ink)',
                           border: '1.5px solid ' + (tuMethod === m ? 'var(--ink)' : 'var(--line-soft)'),
@@ -664,27 +701,28 @@ export default function Balance() {
                     ))}
                   </div>
 
-                  {/* Detail per metode */}
-                  {tuMethod === 'qris' && tuTotal >= TU_MIN && (
-                    <div style={{ marginTop: 14, display: 'grid', placeItems: 'center', gap: 8, padding: 16, background: '#fff', borderRadius: 14, border: '1.5px solid var(--line-soft)' }}>
-                      <QRCodeSVG value={QRIS.buildPayload(tuIdrEquiv)} size={170} level="M" bgColor="#ffffff" fgColor="#2b2b28" />
-                      <span className="display" style={{ fontSize: 14, color: '#2b2b28' }}>{QRIS.merchant}</span>
-                      <span style={{ fontSize: 12.5, color: '#2b2b28', fontWeight: 700 }}>{formatCurrency(tuTotal, 'id')}</span>
-                      <span style={{ fontSize: 11.5, color: '#6b6b66', textAlign: 'center' }}>{t('tu.qrisNote')}</span>
-                    </div>
-                  )}
-                  {tuMethod === 'alipay' && (
-                    <div className="text-muted" style={{ fontSize: 12.5, marginTop: 10 }}>
-                      Alipay: bayar ke merchant <b>Vercelex Community</b> sebesar <b>{formatCurrency(tuTotal, 'id')}</b>, lalu isi nomor referensi di langkah berikutnya.
-                    </div>
-                  )}
-                  {tuMethod === 'paygo' && (
-                    <div className="text-muted" style={{ fontSize: 12.5, marginTop: 10 }}>
-                      Pay&Go: bayar sebesar <b>{formatCurrency(tuTotal, 'id')}</b>, lalu isi nomor referensi di langkah berikutnya.
-                    </div>
-                  )}
-                  {tuMethod === 'crypto' && tuTotal >= TU_MIN && (
-                    <div style={{ marginTop: 12, padding: 14, borderRadius: 12, background: 'var(--surface-2)', border: '1.5px solid var(--line-soft)' }}>
+                  {/* Detail per metode — QRIS langsung terlihat tanpa scroll */}
+                  <div className="tu-side">
+                    {tuMethod === 'qris' && tuTotal >= TU_MIN && (
+                      <div className="tu-qris">
+                        <QRCodeSVG value={QRIS.buildPayload(tuIdrEquiv)} size={150} level="M" bgColor="#ffffff" fgColor="#2b2b28" style={{ width: '100%', height: 'auto' }} />
+                        <span className="display" style={{ fontSize: 12.5, color: '#2b2b28' }}>{QRIS.merchant}</span>
+                        <span style={{ fontSize: 13, color: '#2b2b28', fontWeight: 800 }}>{formatCurrency(tuTotal, 'id')}</span>
+                        <span style={{ fontSize: 10.5, color: '#6b6b66', textAlign: 'center', lineHeight: 1.45 }}>{t('tu.qrisNote')}</span>
+                      </div>
+                    )}
+                    {tuMethod === 'alipay' && (
+                      <div className="text-muted" style={{ fontSize: 12.5, padding: '2px 4px' }}>
+                        Alipay: bayar ke merchant <b>Vercelex Community</b> sebesar <b>{formatCurrency(tuTotal, 'id')}</b>, lalu isi nomor referensi di langkah berikutnya.
+                      </div>
+                    )}
+                    {tuMethod === 'paygo' && (
+                      <div className="text-muted" style={{ fontSize: 12.5, padding: '2px 4px' }}>
+                        Pay&Go: bayar sebesar <b>{formatCurrency(tuTotal, 'id')}</b>, lalu isi nomor referensi di langkah berikutnya.
+                      </div>
+                    )}
+                    {tuMethod === 'crypto' && tuTotal >= TU_MIN && (
+                      <div style={{ padding: 14, borderRadius: 12, background: 'var(--surface-2)', border: '1.5px solid var(--line-soft)' }}>
                       <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
                         {CRYPTO.assets.map((a) => (
                           <button
@@ -708,7 +746,8 @@ export default function Balance() {
                         <span className="text-muted" style={{ fontSize: 12, fontWeight: 600 }}> ≈ {formatCurrency(tuTotal, 'id')}</span>
                       </div>
                     </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -838,7 +877,8 @@ export default function Balance() {
                   borderRadius: 999, padding: '12px 20px', fontSize: 14, fontWeight: 800, opacity: tuBusy ? 0.6 : 1,
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
                 }}
-              >                {tuBusy ? t('tu.sending') : `${t('tu.go')} · ${formatCurrency(tuTotal, 'id')}`}
+              >
+                {tuBusy ? t('tu.sending') : `${t('tu.go')} · ${formatCurrency(tuTotal, 'id')}`}
                 <ArrowRight size={16} />
               </motion.button>
             )}
