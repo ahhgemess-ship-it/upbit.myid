@@ -615,6 +615,11 @@ export const T = {
   'ao.save': { en: 'Save changes', zh: '保存', ja: '保存', id: 'Simpan', ru: 'Сохранить', ms: 'Simpan', hi: 'सहेजें', de: 'Speichern', vi: 'Lưu' },
   'ao.created': { en: 'Order created', zh: '订单已创建', ja: '注文を作成しました', id: 'Pesanan dibuat', ru: 'Заказ создан', ms: 'Pesanan dibuat', hi: 'ऑर्डर बनाया गया', de: 'Bestellung erstellt', vi: 'Đã tạo đơn' },
   'ao.updated': { en: 'Changes saved', zh: '已保存', ja: '保存しました', id: 'Perubahan disimpan', ru: 'Изменения сохранены', ms: 'Perubahan disimpan', hi: 'परिवर्तन सहेजे गए', de: 'Änderungen gespeichert', vi: 'Đã lưu' },
+  'ao.payMethod': { en: 'Payment method (receipt)', zh: '付款方式（收据）', ja: '支払い方法（領収書）', id: 'Metode pembayaran (struk)', ru: 'Способ оплаты (квитанция)', ms: 'Kaedah bayaran (resit)', hi: 'भुगतान विधि (रसीद)', de: 'Zahlungsmethode (Beleg)', vi: 'Phương thức (hóa đơn)' },
+  'ao.payManual': { en: 'Manual', zh: '手动', ja: '手動', id: 'Manual', ru: 'Вручную', ms: 'Manual', hi: 'मैन्युअल', de: 'Manuell', vi: 'Thủ công' },
+  'ao.payAsset': { en: 'Asset', zh: '资产', ja: '資産', id: 'Aset', ru: 'Актив', ms: 'Aset', hi: 'संपत्ति', de: 'Asset', vi: 'Tài sản' },
+  'ao.payRef': { en: 'Reference / Tx Hash', zh: '参考号 / 交易哈希', ja: '参照 / Txハッシュ', id: 'Referensi / Tx Hash', ru: 'Референс / Tx Hash', ms: 'Rujukan / Tx Hash', hi: 'संदर्भ / Tx हैश', de: 'Referenz / Tx-Hash', vi: 'Tham chiếu / Tx Hash' },
+  'ao.payDate': { en: 'Transaction date', zh: '交易日期', ja: '取引日', id: 'Tanggal transaksi', ru: 'Дата транзакции', ms: 'Tarikh transaksi', hi: 'लेनदेन तिथि', de: 'Transaktionsdatum', vi: 'Ngày giao dịch' },
   'tu.alipay': { en: 'Alipay', zh: '支付宝', ja: 'Alipay', id: 'Alipay', ru: 'Alipay', ms: 'Alipay', hi: 'Alipay', de: 'Alipay', vi: 'Alipay' },
   'tu.paygo': { en: 'Pay&Go', zh: 'Pay&Go', ja: 'Pay&Go', id: 'Pay&Go', ru: 'Pay&Go', ms: 'Pay&Go', hi: 'Pay&Go', de: 'Pay&Go', vi: 'Pay&Go' },
   // ── Top-up wizard (3 langkah) ──

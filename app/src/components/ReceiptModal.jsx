@@ -26,7 +26,7 @@ export default function ReceiptModal({ order, onClose }) {
 
   if (!order) return null
 
-  const dateStr = new Date(order.createdAt).toLocaleString('id-ID', {
+  const dateStr = new Date(order.paidAt || order.createdAt).toLocaleString('id-ID', {
     day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit',
   })
   const methodLabel = order.payment?.method === 'crypto'

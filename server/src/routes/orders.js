@@ -51,6 +51,7 @@ export function formatOrder(order, { admin = false } = {}) {
     refundReason: order.refundReason,
     refundNote: order.refundNote,
     refundAt: order.refundAt,
+    paidAt: order.paidAt,
     createdAt: order.createdAt,
     payment: {
       method: order.paymentMethod,

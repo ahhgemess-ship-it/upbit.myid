@@ -25,7 +25,7 @@ const STATUS = {
 export default function AdminOrderDetail() {
   const { id } = useParams()
   const { isAdmin, ready } = useAuth()
-  const { t } = useLang()
+  const { t, lang } = useLang()
   const { toast } = useToast()
   const [order, setOrder] = useState(null)
   const [state, setState] = useState('loading')
@@ -35,7 +35,16 @@ export default function AdminOrderDetail() {
   const [proofUrl, setProofUrl] = useState('')
   const [showReceipt, setShowReceipt] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
-  const [editForm, setEditForm] = useState({ deliveryEmail: '', adminNote: '', status: 'PROCESSING' })
+  const [editForm, setEditForm] = useState({ deliveryEmail: '', adminNote: '', status: 'PROCESSING', paymentMethod: 'qris', paymentAsset: '', paymentTxHash: '', paidAt: '' })
+
+  // Format DateTime → nilai untuk <input type=datetime-local> (waktu lokal)
+  const toLocalInput = (iso) => {
+    if (!iso) return ''
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return ''
+    const p = (n) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+  }
 
   const load = () => {
     api.adminOrder(id)
@@ -131,7 +140,15 @@ export default function AdminOrderDetail() {
             <Printer size={15} /> {t('ao.receipt')}
           </button>
           <button className="pill" onClick={() => {
-            setEditForm({ deliveryEmail: order.deliveryEmail, adminNote: order.adminNote || '', status: order.status })
+            setEditForm({
+              deliveryEmail: order.deliveryEmail,
+              adminNote: order.adminNote || '',
+              status: order.status,
+              paymentMethod: order.payment?.method || 'qris',
+              paymentAsset: order.payment?.asset || '',
+              paymentTxHash: order.payment?.txHash || '',
+              paidAt: toLocalInput(order.paidAt || order.createdAt),
+            })
             setShowEdit(true)
           }} title={t('ao.edit')}>
             <Pencil size={15} /> {t('ao.edit')}
@@ -156,6 +173,44 @@ export default function AdminOrderDetail() {
             <label className="field-label" style={{ marginTop: 10 }}>{t('ao.note')}</label>
             <textarea className="input" rows={2} value={editForm.adminNote}
               onChange={(e) => setEditForm((f) => ({ ...f, adminNote: e.target.value }))} style={{ resize: 'vertical' }} />
+
+            {/* ── Data transaksi untuk struk: metode + tanggal ── */}
+            <div style={{ borderTop: '1.5px solid var(--line-soft)', margin: '14px 0 12px' }} />
+            <label className="field-label">{t('ao.payMethod')}</label>
+            <div className="seg" style={{ marginBottom: 10 }}>
+              {[['qris', 'QRIS'], ['crypto', 'Crypto'], ['manual', t('ao.payManual')]].map(([m, label]) => (
+                <button key={m} type="button" className={`seg-btn ${editForm.paymentMethod === m ? 'is-active' : ''}`}
+                  onClick={() => setEditForm((f) => ({ ...f, paymentMethod: m }))}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {editForm.paymentMethod === 'crypto' && (
+              <div style={{ display: 'grid', gap: 8, gridTemplateColumns: '110px 1fr' }}>
+                <div>
+                  <label className="field-label">{t('ao.payAsset')}</label>
+                  <select className="input" value={editForm.paymentAsset} onChange={(e) => setEditForm((f) => ({ ...f, paymentAsset: e.target.value }))}>
+                    <option value="">—</option>
+                    {CRYPTO.assets.map((a) => <option key={a.symbol} value={a.symbol}>{a.symbol}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="field-label">{t('ao.payRef')}</label>
+                  <input className="input" value={editForm.paymentTxHash} onChange={(e) => setEditForm((f) => ({ ...f, paymentTxHash: e.target.value }))}
+                    placeholder="0x…" style={{ fontFamily: 'monospace', fontSize: 12.5 }} />
+                </div>
+              </div>
+            )}
+            {editForm.paymentMethod === 'qris' && (
+              <div>
+                <label className="field-label">{t('ao.payRef')}</label>
+                <input className="input" value={editForm.paymentTxHash} onChange={(e) => setEditForm((f) => ({ ...f, paymentTxHash: e.target.value }))}
+                  placeholder={lang === 'id' ? 'No. referensi (opsional)' : 'Reference no. (optional)'} />
+              </div>
+            )}
+            <label className="field-label" style={{ marginTop: 10 }}>{t('ao.payDate')}</label>
+            <input className="input" type="datetime-local" value={editForm.paidAt}
+              onChange={(e) => setEditForm((f) => ({ ...f, paidAt: e.target.value }))} />
             {order.status !== 'COMPLETED' && (
               <>
                 <label className="field-label" style={{ marginTop: 10 }}>Status</label>
@@ -175,7 +230,11 @@ export default function AdminOrderDetail() {
                 onClick={async () => {
                   setBusy(true)
                   try {
-                    const { order: updated } = await api.adminEditOrder(order.id, editForm)
+                    const payload = {
+                      ...editForm,
+                      paidAt: editForm.paidAt ? new Date(editForm.paidAt).toISOString() : null,
+                    }
+                    const { order: updated } = await api.adminEditOrder(order.id, payload)
                     setOrder(updated)
                     setShowEdit(false)
                     toast(t('ao.updated'), 'success')

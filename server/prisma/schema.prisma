@@ -62,6 +62,7 @@ model Order {
   refundReason  String?
   refundNote    String? // catatan admin saat memproses
   refundAt      DateTime?
+  paidAt        DateTime? // tanggal transaksi/pembayaran (bisa diedit admin untuk struk)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

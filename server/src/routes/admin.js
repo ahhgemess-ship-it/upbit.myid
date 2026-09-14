@@ -328,8 +328,9 @@ router.post('/orders', async (req, res) => {
   }
 })
 
-// PATCH /api/admin/orders/:id — edit pesanan (email kirim, catatan, status).
-// Pesanan COMPLETED dikunci: hanya catatan yang boleh diubah (audit aman).
+// PATCH /api/admin/orders/:id — edit pesanan (email kirim, catatan, status,
+// metode pembayaran + referensi, dan tanggal transaksi untuk struk).
+// Pesanan COMPLETED dikunci: hanya catatan & data struk yang boleh diubah (audit aman).
 router.patch('/orders/:id', async (req, res) => {
   try {
     const cur = await prisma.order.findUnique({ where: { id: req.params.id } })
@@ -337,6 +338,20 @@ router.patch('/orders/:id', async (req, res) => {
     const b = req.body || {}
     const data = {}
     if (b.adminNote !== undefined) data.adminNote = (b.adminNote || '').trim() || null
+    // Data struk/transaksi: boleh diedit kapan pun (termasuk pesanan selesai)
+    if (b.paymentMethod !== undefined && ['qris', 'crypto', 'manual'].includes(b.paymentMethod)) data.paymentMethod = b.paymentMethod
+    if (b.paymentAsset !== undefined) data.paymentAsset = (b.paymentAsset || '').trim() || null
+    if (b.paymentTxHash !== undefined) data.paymentTxHash = (b.paymentTxHash || '').trim() || null
+    if (b.paymentAmount !== undefined) data.paymentAmount = (b.paymentAmount || '').trim() || null
+    if (b.paidAt !== undefined) {
+      if (!b.paidAt) {
+        data.paidAt = null
+      } else {
+        const d = new Date(b.paidAt)
+        if (isNaN(d.getTime())) return res.status(400).json({ error: 'Tanggal transaksi tidak valid' })
+        data.paidAt = d
+      }
+    }
     if (cur.status !== 'COMPLETED') {
       if (b.deliveryEmail !== undefined) {
         const em = (b.deliveryEmail || '').trim()
