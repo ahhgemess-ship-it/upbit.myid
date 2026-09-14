@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Check, X, Wallet, RefreshCw, Ban } from 'lucide-react'
 import { api } from '../api.js'
+import { useAuth } from '../context/AuthContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import AdminGate from '../components/AdminGate.jsx'
 
@@ -14,6 +15,7 @@ const TABS = [
 ]
 
 export default function AdminTopups() {
+  const { isAdmin } = useAuth()
   const { toast } = useToast()
   const [tab, setTab] = useState('PENDING')
   const [rows, setRows] = useState(null)
@@ -52,8 +54,10 @@ export default function AdminTopups() {
     }
   }
 
+  if (!isAdmin) return <AdminGate />
+
   return (
-    <AdminGate>
+    <>
       <h1 className="display" style={{ fontSize: 'clamp(1.6rem, 3vw, 2.2rem)' }}>Top Up Saldo</h1>
       <p className="text-muted" style={{ marginTop: 6, fontSize: 14 }}>
         Verifikasi pembayaran top-up user — saldo dikreditkan saat disetujui.
@@ -145,6 +149,6 @@ export default function AdminTopups() {
           ))}
         </div>
       )}
-    </AdminGate>
+    </>
   )
 }
