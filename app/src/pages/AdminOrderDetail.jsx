@@ -3,7 +3,9 @@ import { Link, useParams } from 'react-router-dom'
 import {
   ShieldCheck, CheckCircle2, XCircle, Clock, ExternalLink, UserCog,
   KeyRound, AtSign, Lock, Save, Send, FileImage, RotateCcw,
+  Printer, Pencil,
 } from 'lucide-react'
+import ReceiptModal from '../components/ReceiptModal.jsx'
 import BrandLogo from '../components/BrandLogo.jsx'
 import AdminGate from '../components/AdminGate.jsx'
 import { formatIDR } from '../data/products.js'
@@ -31,6 +33,9 @@ export default function AdminOrderDetail() {
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [proofUrl, setProofUrl] = useState('')
+  const [showReceipt, setShowReceipt] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
+  const [editForm, setEditForm] = useState({ deliveryEmail: '', adminNote: '', status: 'PROCESSING' })
 
   const load = () => {
     api.adminOrder(id)
@@ -120,8 +125,68 @@ export default function AdminOrderDetail() {
             {order.user?.name} · {order.user?.email} · {new Date(order.createdAt).toLocaleString('id-ID')}
           </div>
         </div>
-        <div className="display" style={{ fontSize: 20 }}>{formatPrice(order.total, order.currency)}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <div className="display" style={{ fontSize: 20 }}>{formatPrice(order.total, order.currency)}</div>
+          <button className="pill" onClick={() => setShowReceipt(true)} title={t('ao.receipt')}>
+            <Printer size={15} /> {t('ao.receipt')}
+          </button>
+          <button className="pill" onClick={() => {
+            setEditForm({ deliveryEmail: order.deliveryEmail, adminNote: order.adminNote || '', status: order.status })
+            setShowEdit(true)
+          }} title={t('ao.edit')}>
+            <Pencil size={15} /> {t('ao.edit')}
+          </button>
+        </div>
       </div>
+
+      {showReceipt && <ReceiptModal order={order} onClose={() => setShowReceipt(false)} />}
+
+      {showEdit && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 80, background: 'rgba(20,20,18,.62)', display: 'grid', placeItems: 'center', padding: 18 }} onClick={() => setShowEdit(false)}>
+          <div className="card" style={{ width: 'min(440px, 100%)', padding: 22 }} onClick={(e) => e.stopPropagation()}>
+            <h3 className="display" style={{ fontSize: 16, marginBottom: 14 }}>{t('ao.editTitle')} — {order.id}</h3>
+            {order.status === 'COMPLETED' && (
+              <div style={{ fontSize: 12.5, color: '#b45309', background: 'rgba(255,193,7,.12)', border: '1px solid rgba(255,193,7,.3)', borderRadius: 10, padding: '9px 12px', marginBottom: 12 }}>
+                {t('ao.lockedNote')}
+              </div>
+            )}
+            <label className="field-label">{t('ao.deliveryEmail')}</label>
+            <input className="input" type="email" disabled={order.status === 'COMPLETED'} value={editForm.deliveryEmail}
+              onChange={(e) => setEditForm((f) => ({ ...f, deliveryEmail: e.target.value }))} />
+            <label className="field-label" style={{ marginTop: 10 }}>{t('ao.note')}</label>
+            <textarea className="input" rows={2} value={editForm.adminNote}
+              onChange={(e) => setEditForm((f) => ({ ...f, adminNote: e.target.value }))} style={{ resize: 'vertical' }} />
+            {order.status !== 'COMPLETED' && (
+              <>
+                <label className="field-label" style={{ marginTop: 10 }}>Status</label>
+                <div className="seg" style={{ marginBottom: 14 }}>
+                  {['PROCESSING', 'CANCELLED'].map((s) => (
+                    <button key={s} type="button" className={`seg-btn ${editForm.status === s ? 'is-active' : ''}`}
+                      onClick={() => setEditForm((f) => ({ ...f, status: s }))}>
+                      {s === 'PROCESSING' ? 'Diproses' : 'Dibatalkan'}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="pill" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setShowEdit(false)}>Batal</button>
+              <button className="pill pill-indigo" style={{ flex: 1, justifyContent: 'center' }} disabled={busy}
+                onClick={async () => {
+                  setBusy(true)
+                  try {
+                    const { order: updated } = await api.adminEditOrder(order.id, editForm)
+                    setOrder(updated)
+                    setShowEdit(false)
+                    toast(t('ao.updated'), 'success')
+                  } catch (e) { toast(e.message || 'Gagal', 'error') } finally { setBusy(false) }
+                }}>
+                <Save size={15} /> {t('ao.save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="order-detail-grid">
         {/* LEFT: item + form kredensial */}

@@ -259,6 +259,101 @@ function parseProductBody(b, { partial = false } = {}) {
 }
 const slugify = (s) => (s || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)
 
+// ══════════════════ ORDER MANAGEMENT: tambah & edit manual ══════════════════
+
+// POST /api/admin/orders — tambah pesanan manual (offline/walk-in): tanpa pembayaran,
+// langsung masuk sebagai pesanan yang bisa dikelola & dicetak struknya.
+router.post('/orders', async (req, res) => {
+  try {
+    const { userId, deliveryEmail, items, adminNote, markCompleted } = req.body || {}
+    if (!userId) return res.status(400).json({ error: 'Pilih pembeli (user)' })
+    const emailOk = (deliveryEmail || '').trim()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailOk)) return res.status(400).json({ error: 'Email pengiriman tidak valid' })
+    const list = Array.isArray(items) ? items : []
+    if (!list.length) return res.status(400).json({ error: 'Minimal satu produk' })
+
+    const buyer = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true } })
+    if (!buyer) return res.status(404).json({ error: 'User pembeli tidak ditemukan' })
+
+    const catalog = await prisma.product.findMany()
+    const byId = Object.fromEntries(catalog.map((p) => [p.id, p]))
+
+    let subtotal = 0
+    let estimate = null
+    const rows = []
+    for (const raw of list) {
+      const prod = byId[raw.id]
+      if (!prod) return res.status(400).json({ error: `Produk tidak dikenal: ${raw.id}` })
+      const tiers = JSON.parse(prod.tiers || '[]')
+      const idx = Math.max(0, parseInt(raw.tierIndex, 10) || 0)
+      const tier = tiers[idx] || tiers[0]
+      if (!tier) return res.status(400).json({ error: `Produk ${prod.name} tidak punya tier harga` })
+      const qty = Math.max(1, Math.min(99, parseInt(raw.qty, 10) || 1))
+      const price = Math.max(0, Math.round(Number(tier.price) || 0))
+      subtotal += price * qty
+      if (prod.estimate) estimate = prod.estimate
+      rows.push({
+        productId: prod.id, name: prod.name, vendor: prod.vendor,
+        logo: prod.logo || null, brand: prod.brand || null,
+        tierLabel: tier.label, price, qty,
+      })
+    }
+    const total = subtotal
+    const t = new Date()
+    const stamp = String(t.getFullYear()).slice(2) + String(t.getMonth() + 1).padStart(2, '0') + String(t.getDate()).padStart(2, '0')
+    const id = `EVO-${stamp}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`
+
+    const order = await prisma.order.create({
+      data: {
+        id,
+        userId: buyer.id,
+        deliveryEmail: emailOk,
+        activation: 'new',
+        status: markCompleted ? 'COMPLETED' : 'PROCESSING',
+        estimate,
+        currency: 'IDR',
+        subtotal,
+        discount: 0,
+        total,
+        paymentMethod: 'manual', // bukan qris/crypto → tidak dianggap butuh verifikasi pembayaran
+        adminNote: (adminNote || '').trim() || null,
+        items: { create: rows },
+      },
+      include: { items: true, user: true },
+    })
+    res.json({ order: formatOrder(order, { admin: true }) })
+  } catch (e) {
+    console.error('admin create order:', e.message)
+    res.status(500).json({ error: 'Gagal membuat pesanan' })
+  }
+})
+
+// PATCH /api/admin/orders/:id — edit pesanan (email kirim, catatan, status).
+// Pesanan COMPLETED dikunci: hanya catatan yang boleh diubah (audit aman).
+router.patch('/orders/:id', async (req, res) => {
+  try {
+    const cur = await prisma.order.findUnique({ where: { id: req.params.id } })
+    if (!cur) return res.status(404).json({ error: 'Pesanan tidak ditemukan' })
+    const b = req.body || {}
+    const data = {}
+    if (b.adminNote !== undefined) data.adminNote = (b.adminNote || '').trim() || null
+    if (cur.status !== 'COMPLETED') {
+      if (b.deliveryEmail !== undefined) {
+        const em = (b.deliveryEmail || '').trim()
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return res.status(400).json({ error: 'Email tidak valid' })
+        data.deliveryEmail = em
+      }
+      if (b.status && ['PROCESSING', 'CANCELLED'].includes(b.status)) data.status = b.status
+    }
+    if (!Object.keys(data).length) return res.status(400).json({ error: 'Tidak ada perubahan yang diizinkan' })
+    const order = await prisma.order.update({ where: { id: cur.id }, data, include: { items: true, user: true } })
+    res.json({ order: formatOrder(order, { admin: true }) })
+  } catch (e) {
+    console.error('admin edit order:', e.message)
+    res.status(500).json({ error: 'Gagal mengedit pesanan' })
+  }
+})
+
 // GET /api/admin/orders/:id/proof — bukti transaksi (akses admin saja)
 router.get('/orders/:id/proof', async (req, res) => {
   const order = await prisma.order.findUnique({ where: { id: req.params.id } })

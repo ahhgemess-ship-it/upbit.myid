@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Package, ChevronRight, Inbox, Wallet, Clock, ListChecks, RotateCcw } from 'lucide-react'
+import { Package, ChevronRight, Inbox, Wallet, Clock, ListChecks, RotateCcw, Plus, ReceiptText } from 'lucide-react'
 import { formatIDR } from '../data/products.js'
 import { formatPrice } from '../i18n/pricing.js'
 import { api } from '../api.js'
@@ -9,6 +9,8 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 import AdminGate from '../components/AdminGate.jsx'
 import Pager from '../components/Pager.jsx'
+import ReceiptModal from '../components/ReceiptModal.jsx'
+import AdminAddOrder from './AdminAddOrder.jsx'
 
 const TABS = [
   { key: '', label: 'Semua' },
@@ -30,6 +32,8 @@ export default function AdminOrders() {
   const [page, setPage] = useState(1)
   const [data, setData] = useState(null)
   const [stats, setStats] = useState(null)
+  const [showAdd, setShowAdd] = useState(false)
+  const [receiptOrder, setReceiptOrder] = useState(null)
 
   // Reset ke halaman 1 saat ganti filter
   useEffect(() => { setPage(1) }, [filter])
@@ -61,7 +65,12 @@ export default function AdminOrders() {
 
   return (
     <div className="container section">
-      <h1 className="display h-lg">KELOLA PESANAN</h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <h1 className="display h-lg">KELOLA PESANAN</h1>
+        <button className="pill pill-indigo" onClick={() => setShowAdd(true)}>
+          <Plus size={15} /> Tambah Pesanan
+        </button>
+      </div>
 
       {/* Statistik */}
       {stats && (
@@ -132,9 +141,19 @@ export default function AdminOrders() {
                       {o.user?.email} · {o.items.length} item · {o.payment?.method === 'crypto' ? `Crypto ${o.payment.asset}` : t('co.payQrisChip')} · {o.activation === 'own' ? 'akun sendiri' : 'akun baru'}
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div className="display" style={{ fontSize: 16 }}>{formatPrice(o.total, o.currency)}</div>
-                    <ChevronRight size={18} style={{ color: 'var(--muted)', marginLeft: 'auto' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div className="display" style={{ fontSize: 16 }}>{formatPrice(o.total, o.currency)}</div>
+                      <ChevronRight size={18} style={{ color: 'var(--muted)', marginLeft: 'auto' }} />
+                    </div>
+                    <button
+                      className="chip"
+                      title="Cetak / unduh struk"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setReceiptOrder(o) }}
+                      style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 800 }}
+                    >
+                      <ReceiptText size={13} /> Struk
+                    </button>
                   </div>
                 </Link>
               </motion.div>
@@ -144,6 +163,20 @@ export default function AdminOrders() {
       )}
 
       <Pager page={data?.page || 1} totalPages={data?.totalPages || 1} onChange={changePage} />
+
+      {showAdd && (
+        <AdminAddOrder
+          onClose={() => setShowAdd(false)}
+          onCreated={(order) => {
+            setShowAdd(false)
+            setFilter('')
+            setPage(1)
+            api.adminOrders('page=1').then((d) => setData(d)).catch(() => {})
+            setReceiptOrder(order)
+          }}
+        />
+      )}
+      {receiptOrder && <ReceiptModal order={receiptOrder} onClose={() => setReceiptOrder(null)} />}
     </div>
   )
 }
