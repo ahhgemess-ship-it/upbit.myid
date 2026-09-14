@@ -590,7 +590,6 @@ export const T = {
   'rc.stCancelled': { en: 'Cancelled', zh: '已取消', ja: 'キャンセル', id: 'Dibatalkan', ru: 'Отменено', ms: 'Dibatalkan', hi: 'रद्द', de: 'Storniert', vi: 'Đã hủy' },
   'rc.stPending': { en: 'Awaiting verification', zh: '等待验证', ja: '確認待ち', id: 'Menunggu verifikasi', ru: 'Ожидает проверки', ms: 'Menunggu verifikasi', hi: 'सत्यापन प्रतीक्षित', de: 'Wartet auf Prüfung', vi: 'Chờ xác minh' },
   'rc.thanks': { en: 'Thank you for your purchase!', zh: '感谢您的购买！', ja: 'ご購入ありがとうございます！', id: 'Terima kasih atas pembelian Anda!', ru: 'Спасибо за покупку!', ms: 'Terima kasih atas pembelian anda!', hi: 'आपकी खरीद के लिए धन्यवाद!', de: 'Vielen Dank für Ihren Kauf!', vi: 'Cảm ơn bạn đã mua hàng!' },
-  'rc.noSignature': { en: 'This receipt is valid without signature', zh: '此收据无需签名即有效', ja: 'この領収書は署名なしで有効です', id: 'Struk ini sah tanpa tanda tangan', ru: 'Квитанция действительна без подписи', ms: 'Resit ini sah tanpa tandatangan', hi: 'यह रसीद बिना हस्ताक्षर मान्य है', de: 'Dieser Beleg ist ohne Unterschrift gültig', vi: 'Hóa đơn có hiệu lực không cần chữ ký' },
   'rc.printedAt': { en: 'Printed', zh: '打印于', ja: '印刷日', id: 'Dicetak', ru: 'Напечатано', ms: 'Dicetak', hi: 'मुद्रित', de: 'Gedruckt', vi: 'In lúc' },
   'rc.print': { en: 'Print', zh: '打印', ja: '印刷', id: 'Cetak', ru: 'Печать', ms: 'Cetak', hi: 'प्रिंट', de: 'Drucken', vi: 'In' },
   'rc.close': { en: 'Close', zh: '关闭', ja: '閉じる', id: 'Tutup', ru: 'Закрыть', ms: 'Tutup', hi: 'बंद करें', de: 'Schließen', vi: 'Đóng' },

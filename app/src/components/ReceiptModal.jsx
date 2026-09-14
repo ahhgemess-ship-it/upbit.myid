@@ -135,8 +135,6 @@ export default function ReceiptModal({ order, onClose }) {
       doc.setFontSize(9); doc.setTextColor(110)
       doc.text(t('rc.thanks'), 40, y)
       y += 12
-      doc.text(t('rc.noSignature'), 40, y)
-      y += 12
       doc.setTextColor(20)
 
       doc.save(`struk-${order.id}.pdf`)
@@ -212,7 +210,6 @@ export default function ReceiptModal({ order, onClose }) {
         {/* Kaki struk */}
         <div style={{ textAlign: 'center', fontSize: 10.5, color: '#6f6f68', lineHeight: 1.55 }}>
           <div style={{ fontWeight: 800, color: '#1c1c19' }}>{t('rc.thanks')}</div>
-          <div>{t('rc.noSignature')}</div>
           <div style={{ marginTop: 3, fontSize: 9.5 }}>
             {t('rc.printedAt')} {new Date().toLocaleString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
           </div>
