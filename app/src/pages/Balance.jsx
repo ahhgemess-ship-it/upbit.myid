@@ -713,7 +713,7 @@ export default function Balance() {
                     )}
                     {tuMethod === 'alipay' && (
                       <div className="text-muted" style={{ fontSize: 12.5, padding: '2px 4px' }}>
-                        Alipay: bayar ke merchant <b>Vercelex Community</b> sebesar <b>{formatCurrency(tuTotal, 'id')}</b>, lalu isi nomor referensi di langkah berikutnya.
+                        Alipay: bayar ke merchant <b>EvolusiAi Store</b> sebesar <b>{formatCurrency(tuTotal, 'id')}</b>, lalu isi nomor referensi di langkah berikutnya.
                       </div>
                     )}
                     {tuMethod === 'paygo' && (
