@@ -33,8 +33,8 @@ export function CartProvider({ children }) {
         ...prev,
         {
           key,
-          // Kirim ID produk INDUK ke server (`_srcId` diisi splitFamily): katalog
-          // tampilan dipecah per durasi, tapi checkout tetap mengenali produk DB-nya.
+          // Kirim id produk ke server: produk multi-durasi kini satu kartu, jadi id
+          // produk = id keluarga di database; durasi dipilih lewat `tierLabel`.
           id: product._srcId || product.id,
           name: product.name,
           vendor: product.vendor,

@@ -5,8 +5,7 @@ import { products as staticProducts, splitCatalog } from '../data/products.js'
 // Katalog dari database (sumber tunggal). Memakai katalog statis sebagai
 // tampilan awal/fallback supaya halaman langsung terisi & tetap jalan bila
 // backend mati. Begitu /api/products merespons, data DB menimpa.
-// Katalog DB dipecah per durasi (splitCatalog) supaya tiap pilihan durasi tampil
-// sebagai produk sendiri — bukan satu produk dengan dropdown opsi.
+// Produk multi-durasi tampil SATU kartu — durasi dipilih via dropdown di kartu.
 const CatalogContext = createContext(null)
 
 export function CatalogProvider({ children }) {
@@ -16,7 +15,7 @@ export function CatalogProvider({ children }) {
   const refresh = useCallback(async () => {
     try {
       const list = await api.products()
-      if (Array.isArray(list) && list.length) setProducts(splitCatalog(list))
+      if (Array.isArray(list) && list.length) setProducts(splitCatalog(list)) // identitas — tidak dipecah
     } catch { /* backend mati → pakai fallback statis */ } finally {
       setLoaded(true)
     }

@@ -16,25 +16,11 @@ const withIntl = (p) => ({
   tiers: (p.tiers || []).map((t) => ({ ...t, priceIntl: t.priceIntl ?? toIntlCents(t.price) })),
 })
 
-// Pecah tiap "family" (produk multi-tier) menjadi produk-produk terpisah per tier,
-// supaya katalog tampil lebih ramai & tiap varian jadi kartu sendiri.
-const slug = (s) => (s || '').toLowerCase().replace(/\+/g, 'plus').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+// Produk multi-durasi (1 Bulan/3 Bulan/1 Tahun, dst.) tetap SATU kartu — durasi
+// dipilih lewat dropdown di kartu katalog & halaman detail, bukan dipecah jadi
+// kartu terpisah. Fungsi dipertahankan (identitas) agar pemanggil lama tetap jalan.
 function splitFamily(p) {
-  // SEMUA produk dipecah per durasi: 1 tier = 1 produk tersendiri (kartu, halaman
-  // detail, dan keranjang masing-masing) — tidak ada lagi dropdown opsi durasi
-  // dalam satu produk. `_srcId` + label tier asli dipertahankan agar checkout
-  // tetap mengenali produk induknya di database.
-  if (!p.tiers || p.tiers.length <= 1) return [{ ...p, _srcId: p.id }]
-  return p.tiers.map((tier, i) => ({
-    ...p,
-    _srcId: p.id,
-    id: `${p.id}-${slug(tier.label)}`,
-    price: tier.price,
-    priceIntl: tier.priceIntl,
-    // Harga flash hanya milik tier utama (pertama); durasi lain memakai harga katalognya.
-    ...(i === 0 ? {} : { flashPrice: null, flashPriceIntl: null }),
-    tiers: [tier],
-  }))
+  return [{ ...p, _srcId: p.id }]
 }
 
 const FAMILIES = [
@@ -544,10 +530,11 @@ const FAMILIES = [
   },
 ]
 
-// Katalog final: harga internasional terisi, lalu dipecah per tier jadi produk terpisah.
+// Katalog final: harga internasional terisi. Produk multi-durasi utuh sebagai satu
+// kartu (pilihan durasi via dropdown di UI).
 export const products = FAMILIES.flatMap((p) => splitFamily(withIntl(p)))
 
-// Pecah daftar produk apa pun (statik ATAU dari DB) jadi satu produk per durasi.
+// Kompat: dulu memecah daftar produk per durasi; kini identitas (sudah tidak dipecah).
 export const splitCatalog = (list) => (list || []).flatMap(splitFamily)
 
 export const formatIDR = (n) =>
