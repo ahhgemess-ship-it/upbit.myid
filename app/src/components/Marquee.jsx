@@ -1,19 +1,28 @@
-import Asterisk from './Asterisk.jsx'
-import { useLang } from '../context/LanguageContext.jsx'
+const BRANDS = [
+  { name: 'Gemini', src: '/logos/gemini-white.png' },
+  { name: 'Claude', src: '/logos/claude-white.png' },
+  { name: 'Kiro', src: '/logos/kiro-white.png' },
+  { name: 'OpenAI', src: '/logos/openai-white.png' },
+  { name: 'Higgsfield', src: '/logos/higgsfield-white.png' },
+  { name: 'Spotify', src: '/logos/spotify-white.svg' },
+  { name: 'Viu', src: '/logos/viu-white.svg' },
+  { name: 'Netflix', src: '/logos/netflix-white.svg' },
+  { name: 'Duolingo', src: '/logos/duolingo-white.svg' },
+  { name: 'DeepSeek', src: '/logos/deepseek-white.png' },
+  { name: 'Leonardo AI', src: '/logos/leonardo-white.png' },
+  { name: 'Alight Motion', src: '/logos/alightmotion-white.svg' },
+  { name: 'CapCut', src: '/logos/capcut-white.svg' },
+]
 
-const defaultKeys = ['mq.warranty', 'mq.instant', 'mq.legal', 'mq.support', 'mq.bestPrice', 'mq.securePay']
-
-export default function Marquee({ items }) {
-  const { t } = useLang()
-  const base = items || defaultKeys.map((k) => t(k))
-  const loop = [...base, ...base]
+export default function Marquee() {
+  // Diduplikasi agar loop animasi translateX(-50%) mulus tanpa lompatan.
+  const loop = [...BRANDS, ...BRANDS]
   return (
     <div className="marquee" aria-hidden="true">
       <div className="marquee-track">
-        {loop.map((t, i) => (
+        {loop.map((b, i) => (
           <span className="marquee-item" key={i}>
-            <Asterisk size={16} color="var(--lime)" />
-            {t}
+            <img className="marquee-logo" src={b.src} alt="" draggable="false" />
           </span>
         ))}
       </div>

@@ -168,6 +168,12 @@ ul { list-style: none; }
   font-weight: 600; text-transform: uppercase; letter-spacing: .04em; font-size: 18px;
   white-space: nowrap;
 }
+.marquee-logo {
+  height: 30px; width: auto; max-width: 110px; object-fit: contain;
+  opacity: .8; transition: opacity .2s ease, transform .2s ease;
+  user-select: none; pointer-events: none;
+}
+.marquee-item:hover .marquee-logo { opacity: 1; transform: scale(1.08); }
 
 /* ============ Grid ============ */
 .product-grid {

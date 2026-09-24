@@ -483,14 +483,6 @@ export const T = {
   'tier.powerUser': { en: 'Power user', zh: '高级用户', ja: 'パワーユーザー', id: 'Power user', ru: 'Профи', ms: 'Pengguna kuasa', hi: 'पावर यूज़र', de: 'Power-User', vi: 'Người dùng nâng cao' },
   'tier.perMonthSave': { en: 'Per month, save 20%', zh: '每月，省 20%', ja: '月あたり、20%お得', id: 'Per bln, hemat 20%', ru: 'В месяц, экономия 20%', ms: 'Sebulan, jimat 20%', hi: 'प्रति माह, 20% बचत', de: 'Pro Monat, 20% sparen', vi: 'Mỗi tháng, tiết kiệm 20%' },
 
-  // ---------- Marquee ----------
-  'mq.warranty': { en: 'Full Warranty', zh: '全面保障', ja: '完全保証', id: 'Garansi Penuh', ru: 'Полная гарантия', ms: 'Jaminan Penuh', hi: 'पूर्ण वारंटी', de: 'Volle Garantie', vi: 'Bảo hành đầy đủ' },
-  'mq.instant': { en: 'Instant Delivery', zh: '即时交付', ja: '即時配信', id: 'Proses Instan', ru: 'Моментально', ms: 'Proses Segera', hi: 'तुरंत डिलीवरी', de: 'Sofortlieferung', vi: 'Giao tức thì' },
-  'mq.legal': { en: 'Legal Accounts', zh: '合法账户', ja: '正規アカウント', id: 'Akun Legal', ru: 'Легальные аккаунты', ms: 'Akaun Sah', hi: 'वैध खाते', de: 'Legale Konten', vi: 'Tài khoản hợp pháp' },
-  'mq.support': { en: 'Support 24/7', zh: '全天候支持', ja: '24時間サポート', id: 'Support 24/7', ru: 'Поддержка 24/7', ms: 'Sokongan 24/7', hi: 'सहायता 24/7', de: 'Support 24/7', vi: 'Hỗ trợ 24/7' },
-  'mq.bestPrice': { en: 'Best Price', zh: '最优价格', ja: '最安値', id: 'Harga Terbaik', ru: 'Лучшая цена', ms: 'Harga Terbaik', hi: 'सर्वोत्तम मूल्य', de: 'Bestpreis', vi: 'Giá tốt nhất' },
-  'mq.securePay': { en: 'Secure Payment', zh: '安全支付', ja: '安全な支払い', id: 'Pembayaran Aman', ru: 'Безопасная оплата', ms: 'Pembayaran Selamat', hi: 'सुरक्षित भुगतान', de: 'Sichere Zahlung', vi: 'Thanh toán an toàn' },
-
   // ─────── Balance / Saldo ───────
   'balance.eyebrow': { en: 'My Balance', zh: '我的余额', ja: '残高', id: 'Saldo Saya', ru: 'Мой баланс', ms: 'Baki Saya', hi: 'मेरा बैलेंस', de: 'Mein Guthaben', vi: 'Số dư của tôi' },
   'balance.title': { en: 'Digital Wallet', zh: '数字钱包', ja: 'デジタルウォレット', id: 'Dompet Digital', ru: 'Цифровой кошелёк', ms: 'Dompet Digital', hi: 'डिजिटल वॉलेट', de: 'Digitale Geldbörse', vi: 'Ví điện tử' },
