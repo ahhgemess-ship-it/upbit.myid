@@ -1,17 +1,17 @@
 const BRANDS = [
   { name: 'Gemini', src: '/logos/gemini-color.svg' },
   { name: 'Claude', src: '/logos/claude-color.svg' },
-  { name: 'Kiro', src: '/logos/kiro-white.png' },
-  { name: 'OpenAI', src: '/logos/openai-white.png' },
-  { name: 'Higgsfield', src: '/logos/higgsfield-white.png' },
+  { name: 'Kiro', src: '/logos/kiro-dark.png' },
+  { name: 'OpenAI', src: '/logos/openai-dark.png' },
+  { name: 'Higgsfield', src: '/logos/higgsfield-dark.png' },
   { name: 'Spotify', src: '/logos/spotify-green.svg' },
   { name: 'Viu', src: '/logos/viu-color.svg', wide: true },
   { name: 'Netflix', src: '/logos/netflix-color.svg' },
   { name: 'Duolingo', src: '/logos/duolingo-color.svg' },
   { name: 'DeepSeek', src: '/logos/deepseek-color.svg' },
-  { name: 'Leonardo AI', src: '/logos/leonardo-white.png' },
-  { name: 'Alight Motion', src: '/logos/alightmotion-white.svg' },
-  { name: 'CapCut', src: '/logos/capcut-white.svg' },
+  { name: 'Leonardo AI', src: '/logos/leonardo-dark.png' },
+  { name: 'Alight Motion', src: '/logos/alightmotion-dark.svg' },
+  { name: 'CapCut', src: '/logos/capcut-dark.svg' },
 ]
 
 export default function Marquee() {
