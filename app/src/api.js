@@ -94,6 +94,7 @@ const _real = {
   adminUpdate: (id, data) => req(`/api/admin/orders/${id}`, { method: 'PATCH', body: data }),
   adminCreateOrder: (payload) => req('/api/admin/orders', { method: 'POST', body: payload }),
   adminEditOrder: (id, data) => req(`/api/admin/orders/${id}`, { method: 'PATCH', body: data }),
+  adminDeleteOrder: (id) => req(`/api/admin/orders/${id}`, { method: 'DELETE' }),
   adminDeliver: (id, items, complete = true) => req(`/api/admin/orders/${id}/deliver`, { method: 'POST', body: { items, complete } }),
   adminProcessRefund: (id, action, note) => req(`/api/admin/orders/${id}/refund`, { method: 'POST', body: { action, note } }),
   adminProofBlob: async (id) => {
@@ -163,6 +164,7 @@ export const api = {
   adminUpdate: withFallback(_real.adminUpdate, demoApi.adminUpdate),
   adminCreateOrder: withFallback(_real.adminCreateOrder, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
   adminEditOrder: withFallback(_real.adminEditOrder, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
+  adminDeleteOrder: withFallback(_real.adminDeleteOrder, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
   adminDeliver: withFallback(_real.adminDeliver, demoApi.adminDeliver),
   adminProcessRefund: withFallback(_real.adminProcessRefund, demoApi.adminProcessRefund),
   adminProofBlob: withFallback(_real.adminProofBlob, demoApi.adminProofBlob),

@@ -229,8 +229,9 @@ function parseProductBody(b, { partial = false } = {}) {
   if (b.features !== undefined) d.features = JSON.stringify(Array.isArray(b.features) ? b.features : [])
   set('logo', b.logo ?? undefined)
   set('brand', b.brand ?? undefined)
-  set('badge', b.badge ?? undefined)
-  set('badgeColor', b.badgeColor ?? undefined)
+  // badge & warna bisa dikosongkan lewat null/'' (mis. admin menghapus badge Private/Sharing)
+  if (b.badge !== undefined) d.badge = (b.badge || '').trim() || null
+  if (b.badgeColor !== undefined) d.badgeColor = (b.badgeColor || '').trim() || null
   set('period', b.period ?? undefined)
   if (b.rating !== undefined) d.rating = Number(b.rating) || 0
   if (b.sold !== undefined) d.sold = parseInt(b.sold, 10) || 0
@@ -352,6 +353,16 @@ router.patch('/orders/:id', async (req, res) => {
         data.paidAt = d
       }
     }
+    // Nama & email pembeli (user) — tampil di struk & daftar pesanan.
+    // Kosong = tidak diubah (bagian dari payload selalu dikirim frontend).
+    if (b.buyerName !== undefined && String(b.buyerName).trim() !== '') data.user = { update: { name: String(b.buyerName).trim() } }
+    if (b.buyerEmail !== undefined && String(b.buyerEmail).trim() !== '') {
+      const em = String(b.buyerEmail).trim()
+      if (!/^\S+@\S+\.\S+$/.test(em)) return res.status(400).json({ error: 'Email pembeli tidak valid' })
+      const clash = await prisma.user.findUnique({ where: { email: em }, select: { id: true } })
+      if (clash && clash.id !== cur.userId) return res.status(409).json({ error: 'Email sudah dipakai akun lain' })
+      data.user = { ...(data.user || {}), update: { ...(data.user?.update || {}), email: em } }
+    }
     if (cur.status !== 'COMPLETED') {
       if (b.deliveryEmail !== undefined) {
         const em = (b.deliveryEmail || '').trim()
@@ -366,6 +377,18 @@ router.patch('/orders/:id', async (req, res) => {
   } catch (e) {
     console.error('admin edit order:', e.message)
     res.status(500).json({ error: 'Gagal mengedit pesanan' })
+  }
+})
+
+// DELETE /api/admin/orders/:id — hapus transaksi permanen (semua status).
+// Item pesanan terhapus otomatis (cascade). Dipakai untuk membereskan pesanan
+// uji/tes yang tidak seharusnya masuk laporan & statistik.
+router.delete('/orders/:id', async (req, res) => {
+  try {
+    await prisma.order.delete({ where: { id: req.params.id } })
+    res.json({ ok: true })
+  } catch {
+    res.status(404).json({ error: 'Pesanan tidak ditemukan' })
   }
 })
 

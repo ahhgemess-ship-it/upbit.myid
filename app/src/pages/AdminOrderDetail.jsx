@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ShieldCheck, CheckCircle2, XCircle, Clock, ExternalLink, UserCog,
   KeyRound, AtSign, Lock, Save, Send, FileImage, RotateCcw,
-  Printer, Pencil,
+  Printer, Pencil, Trash2,
 } from 'lucide-react'
 import ReceiptModal from '../components/ReceiptModal.jsx'
 import BrandLogo from '../components/BrandLogo.jsx'
@@ -24,6 +24,7 @@ const STATUS = {
 
 export default function AdminOrderDetail() {
   const { id } = useParams()
+  const nav = useNavigate()
   const { isAdmin, ready } = useAuth()
   const { t, lang } = useLang()
   const { toast } = useToast()
@@ -35,7 +36,8 @@ export default function AdminOrderDetail() {
   const [proofUrl, setProofUrl] = useState('')
   const [showReceipt, setShowReceipt] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
-  const [editForm, setEditForm] = useState({ deliveryEmail: '', adminNote: '', status: 'PROCESSING', paymentMethod: 'qris', paymentAsset: '', paymentTxHash: '', paidAt: '' })
+  const [editForm, setEditForm] = useState({ buyerName: '', buyerEmail: '', deliveryEmail: '', adminNote: '', status: 'PROCESSING', paymentMethod: 'qris', paymentAsset: '', paymentTxHash: '', paidAt: '' })
+  const [showDelete, setShowDelete] = useState(false)
 
   // Format DateTime → nilai untuk <input type=datetime-local> (waktu lokal)
   const toLocalInput = (iso) => {
@@ -141,6 +143,8 @@ export default function AdminOrderDetail() {
           </button>
           <button className="pill" onClick={() => {
             setEditForm({
+              buyerName: order.user?.name || '',
+              buyerEmail: order.user?.email || '',
               deliveryEmail: order.deliveryEmail,
               adminNote: order.adminNote || '',
               status: order.status,
@@ -152,6 +156,10 @@ export default function AdminOrderDetail() {
             setShowEdit(true)
           }} title={t('ao.edit')}>
             <Pencil size={15} /> {t('ao.edit')}
+          </button>
+          <button className="pill" style={{ borderColor: '#d4452f', color: '#d4452f' }}
+            onClick={() => setShowDelete(true)} title="Hapus transaksi permanen">
+            <Trash2 size={15} /> Hapus
           </button>
         </div>
       </div>
@@ -167,7 +175,13 @@ export default function AdminOrderDetail() {
                 {t('ao.lockedNote')}
               </div>
             )}
-            <label className="field-label">{t('ao.deliveryEmail')}</label>
+            <label className="field-label">Nama pembeli</label>
+            <input className="input" value={editForm.buyerName}
+              onChange={(e) => setEditForm((f) => ({ ...f, buyerName: e.target.value }))} placeholder="Nama di struk" />
+            <label className="field-label" style={{ marginTop: 10 }}>Email pembeli (akun)</label>
+            <input className="input" type="email" value={editForm.buyerEmail}
+              onChange={(e) => setEditForm((f) => ({ ...f, buyerEmail: e.target.value }))} />
+            <label className="field-label" style={{ marginTop: 10 }}>{t('ao.deliveryEmail')}</label>
             <input className="input" type="email" disabled={order.status === 'COMPLETED'} value={editForm.deliveryEmail}
               onChange={(e) => setEditForm((f) => ({ ...f, deliveryEmail: e.target.value }))} />
             <label className="field-label" style={{ marginTop: 10 }}>{t('ao.note')}</label>
@@ -241,6 +255,32 @@ export default function AdminOrderDetail() {
                   } catch (e) { toast(e.message || 'Gagal', 'error') } finally { setBusy(false) }
                 }}>
                 <Save size={15} /> {t('ao.save')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDelete && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 90, background: 'rgba(20,20,18,.62)', display: 'grid', placeItems: 'center', padding: 18 }} onClick={() => setShowDelete(false)}>
+          <div className="card" style={{ width: 'min(420px, 100%)', padding: 22 }} onClick={(e) => e.stopPropagation()}>
+            <h3 className="display" style={{ fontSize: 16, marginBottom: 10, color: '#d4452f' }}>HAPUS TRANSAKSI?</h3>
+            <p style={{ fontSize: 13.5, lineHeight: 1.55 }}>
+              Pesanan <b>{order.id}</b> beserta item & datanya akan dihapus permanen.
+              Tindakan ini tidak bisa dibatalkan dan mengurangi statistik omzet.
+            </p>
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button className="pill" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setShowDelete(false)}>Batal</button>
+              <button className="pill" style={{ flex: 1, justifyContent: 'center', background: '#d4452f', borderColor: '#d4452f', color: '#fff' }}
+                disabled={busy} onClick={async () => {
+                  setBusy(true)
+                  try {
+                    await api.adminDeleteOrder(order.id)
+                    toast('Transaksi dihapus', 'success')
+                    nav('/admin/orders')
+                  } catch (e) { toast(e.message || 'Gagal', 'error'); setBusy(false) }
+                }}>
+                <Trash2 size={15} /> {busy ? 'Menghapus…' : 'Ya, Hapus'}
               </button>
             </div>
           </div>
