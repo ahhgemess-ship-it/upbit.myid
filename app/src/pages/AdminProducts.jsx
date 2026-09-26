@@ -297,6 +297,11 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
             <Field label="Periode (satuan harga)"><input className="input" value={f.period} onChange={(e) => set('period', e.target.value)} placeholder="bln / 12 bln / paket" /></Field>
           </div>
 
+          <div className="form-section-title">Deskripsi produk</div>
+          <Field label="Deskripsi — tampil di halaman detail produk">
+            <textarea className="input" rows={3} value={f.description} onChange={(e) => set('description', e.target.value)} style={{ resize: 'vertical' }} placeholder="Jelaskan isi produk, keunggulan, dan ketentuan garansi…" />
+          </Field>
+
           {/* Gambar produk — via upload, bukan URL */}
           <div className="field">
             <span className="field-label">Gambar / logo produk</span>
@@ -361,7 +366,6 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
             </summary>
             <div style={{ marginTop: 12 }}>
               <Field label="Tagline"><input className="input" value={f.tagline} onChange={(e) => set('tagline', e.target.value)} /></Field>
-              <Field label="Deskripsi"><textarea className="input" rows={3} value={f.description} onChange={(e) => set('description', e.target.value)} style={{ resize: 'vertical' }} /></Field>
               <div className="form-grid">
                 <Field label="Rating"><input className="input" type="number" step="0.1" value={f.rating} onChange={(e) => set('rating', e.target.value)} /></Field>
                 <Field label="Estimasi proses"><input className="input" value={f.estimate} onChange={(e) => set('estimate', e.target.value)} placeholder="10–20 menit" /></Field>
