@@ -18,7 +18,11 @@ export default function Home() {
   // Flash sale baca dari katalog DB (via CatalogContext) — edit produk Promo
   // di admin panel langsung tampil. Fallback awal = katalog statis.
   const flashList = sortFlashNeat(flashFrom(products))
-  const flashItems = flashList.slice(0, 6)
+  // Home menampilkan yang TERBARU dulu (produk baru dibuat/diedit admin langsung
+  // terlihat), bukan urutan vendor seperti halaman /flash-sale.
+  const flashItems = [...flashList]
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))
+    .slice(0, 6)
   const maxDiscount = flashList.length ? Math.max(...flashList.map((p) => p.discount)) : 0
   const benefits = [
     { icon: Zap, title: t('home.benefit1Title'), desc: t('home.benefit1Desc') },
@@ -26,7 +30,10 @@ export default function Home() {
     { icon: BadgeCheck, title: t('home.benefit3Title'), desc: t('home.benefit3Desc') },
     { icon: Headphones, title: t('home.benefit4Title'), desc: t('home.benefit4Desc') },
   ]
-  const featured = products.slice(0, 6)
+  // Produk unggulan: yang terbaru dibuat/diedit dulu (bukan 6 terlama).
+  const featured = [...products]
+    .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0))
+    .slice(0, 6)
 
   return (
     <div>

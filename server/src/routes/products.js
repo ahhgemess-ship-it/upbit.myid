@@ -48,6 +48,9 @@ export function formatProduct(p, { admin = false } = {}) {
     flashPrice: p.flashPrice,
     flashPriceIntl: p.flashPriceIntl,
     discountPercent: pct,
+    // Dipakai frontend (Home) untuk menampilkan produk terbaru/teredit dulu.
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
     ...(admin
       ? {
           active: p.active,

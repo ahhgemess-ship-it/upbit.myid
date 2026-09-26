@@ -57,7 +57,11 @@ export default function ProductDetail() {
   const percent = isFlashSale ? 0 : discountFor(product.id)
   // Produk flash sale: harga official (katalog reguler, durasi sama) jadi harga
   // dicoret — diskon reguler tidak berlaku di produk flash sale.
-  const official = isFlashSale ? officialOf(product) : null
+  // Katalog LIVE (DB) dikirim agar produk baru langsung cocok; bila tidak ada
+  // produk reguler sejenis, jatuh ke harga normal produk itu sendiri.
+  const official = isFlashSale
+    ? (officialOf(product, products) || { price: product.price, priceIntl: product.priceIntl })
+    : null
   const flashOff = official && official.price > effectiveTier.price
     ? Math.max(0, Math.round((1 - effectiveTier.price / official.price) * 100))
     : 0

@@ -97,6 +97,11 @@ export default function AdminFlashSale() {
     setSavingId(p.id)
     try {
       const badgeDef = BADGES.find((b) => b.value === (d.badge || ''))
+      // Harga normal baru harus sinkron dengan tier utama (dropdown durasi di
+      // halaman detail memakai tiers[].price) — jangan biarkan basi.
+      const nextTiers = (Array.isArray(p.tiers) && p.tiers.length
+        ? [{ ...p.tiers[0], price, priceIntl: Math.max(1, Math.round((price * 100) / USD_TO_IDR)) }, ...p.tiers.slice(1)]
+        : [{ label: 'Produk', price, priceIntl: Math.max(1, Math.round((price * 100) / USD_TO_IDR)) }])
       const { product } = await api.adminUpdateProduct(p.id, {
         flashPrice,
         // USD mengikuti harga Rp (flash) yang baru — jangan pakai nilai lama yang basi.
@@ -110,6 +115,7 @@ export default function AdminFlashSale() {
         badgeColor: badgeDef?.color || null,
         stock,
         stockOut: !!d.stockOut,
+        tiers: nextTiers,
       })
       setRows((rs) => rs.map((r) => (r.id === p.id ? { ...r, ...product } : r)))
       setDraft(p.id, 'flashPrice', product.flashPrice ?? product.price)
