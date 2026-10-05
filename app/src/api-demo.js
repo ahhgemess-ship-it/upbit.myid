@@ -371,10 +371,6 @@ export const demoApi = {
   adminUploadProductImage: async () => { throw new Error('Tidak tersedia di mode lokal') },
   adminUpdateProduct: async () => { throw new Error('Tidak tersedia di mode lokal') },
   adminDeleteProduct: async () => { throw new Error('Tidak tersedia di mode lokal') },
-  purchasedProducts: async () => {
-    const raw = localStorage.getItem('upbit_purchased')
-    try { return { ids: JSON.parse(raw || '[]') } } catch { return { ids: [] } }
-  },
   adminCoupons: async () => [],
   adminCreateCoupon: async () => { throw new Error('Tidak tersedia di mode lokal') },
   adminUpdateCoupon: async () => { throw new Error('Tidak tersedia di mode lokal') },

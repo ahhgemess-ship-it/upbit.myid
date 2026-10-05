@@ -15,7 +15,6 @@ import { useBalance } from '../context/BalanceContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 import { localizeTier } from '../i18n/productContent.js'
-import { usePurchased } from '../context/usePurchased.js'
 
 export default function OrderDetail() {
   const { id } = useParams()
@@ -25,7 +24,6 @@ export default function OrderDetail() {
   const { t } = useLang()
   const [order, setOrder] = useState(null)
   const [state, setState] = useState('loading') // loading | ok | missing
-  const { markPurchased } = usePurchased()
   const [stockAnimation, setStockAnimation] = useState('searching') // searching | found | done
   const [copied, setCopied] = useState('')
 
@@ -42,12 +40,8 @@ export default function OrderDetail() {
       setStockAnimation('found')
       localStorage.setItem(animKey, '1')
     }, 3000)
-    // Tandai produk sebagai dibeli (stok habis per user)
-    for (const it of order.items) {
-      if (it.productId) markPurchased(it.productId)
-    }
     return () => clearTimeout(t1)
-  }, [order?.id, showStockAnim, markPurchased])
+  }, [order?.id, showStockAnim])
 
   useEffect(() => {
     if (!ready) return

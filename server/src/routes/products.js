@@ -1,6 +1,5 @@
 import { Router } from 'express'
 import { prisma } from '../db.js'
-import { requireAuth } from '../auth.js'
 import { effectiveDiscount } from '../discount.js'
 
 const router = Router()
@@ -69,15 +68,6 @@ router.get('/', async (req, res) => {
     orderBy: { createdAt: 'asc' },
   })
   res.json(products.map((p) => formatProduct(p)))
-})
-
-// GET /api/products/purchased — produk yang sudah dibeli/stok habis per user
-router.get('/purchased', requireAuth, async (req, res) => {
-  const rows = await prisma.userProductStock.findMany({
-    where: { userId: req.user.id },
-    select: { productId: true },
-  })
-  res.json({ ids: rows.map((r) => r.productId) })
 })
 
 export default router

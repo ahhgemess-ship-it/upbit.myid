@@ -17,6 +17,7 @@ const empty = {
   logo: '', brand: '#4f46e5', period: 'bln', price: 0, priceIntl: 0, estimate: '', rating: 5, sold: 0,
   stock: -1, active: true, discountPercent: 0, discountStart: '', discountEnd: '',
   flashSale: false, stockOut: false, flashPrice: null, flashPriceIntl: null,
+  badge: '', badgeColor: '',
   tiers: [newTier()], features: [''],
 }
 
@@ -28,6 +29,14 @@ const durId = (label) => {
   const m = String(label || '').match(/(\d+(?:[.,]\d+)?)\s*(bulan|tahun|bln|thn)/i)
   return m ? m[1] + (/^(tahun|thn)$/i.test(m[2]) ? 'thn' : 'bln') : null
 }
+
+// Opsi badge produk (sama dengan panel flash sale) — pill berwarna di kartu.
+const BADGES = [
+  { value: '', label: 'Tanpa badge' },
+  { value: 'PRIVATE', color: '#16a34a' },
+  { value: 'SHARING', color: '#d97706' },
+]
+const badgeColorOf = (v) => BADGES.find((b) => b.value === v)?.color || null
 
 const toLocalInput = (iso) => {
   if (!iso) return ''
@@ -57,6 +66,31 @@ export default function AdminProducts() {
     try { await api.adminDeleteProduct(p.id); toast('Produk dihapus', 'success'); load(); refresh() }
     catch (e) { toast(e.message, 'error') }
   }
+
+  // ── Edit cepat langsung dari daftar: harga jual & badge tanpa buka form ──
+  const quickSave = async (p, payload, okMsg) => {
+    try { await api.adminUpdateProduct(p.id, payload); toast(okMsg, 'success', 1400); load(); refresh() }
+    catch (e) { toast(e.message || 'Gagal menyimpan', 'error') }
+  }
+  const quickPrice = (p, val) => {
+    const n = parseInt(val, 10) || 0
+    if (!n) return
+    if (isFlash(p)) {
+      quickSave(p, { flashPrice: n, flashPriceIntl: Math.round(n * 100 / USD_TO_IDR) }, 'Harga flash diperbarui')
+      return
+    }
+    const base = parseInt(p.price, 10) || 0
+    const intl = Math.round(n * 100 / USD_TO_IDR)
+    if (base > 0 && n < base) {
+      quickSave(p, { discountPercent: Math.max(0, Math.min(90, Math.round((1 - n / base) * 100))) }, 'Diskon diperbarui')
+    } else {
+      // Harga naik/sama → ubah harga normal + sinkronkan tier utama agar dropdown detail tidak basi.
+      const tiers = (p.tiers || []).map((t, i) => (i === 0 ? { ...t, price: n, priceIntl: intl } : t))
+      quickSave(p, { price: n, priceIntl: intl, discountPercent: 0, ...(tiers.length ? { tiers } : {}) }, 'Harga diperbarui')
+    }
+  }
+  const quickBadge = (p, badge) =>
+    quickSave(p, { badge: badge || null, badgeColor: badge ? badgeColorOf(badge) : null }, badge ? `Badge ${badge} dipasang` : 'Badge dihapus')
 
   // Flash sale dulu di daftar supaya gampang dibedakan, lalu urut nama.
   const sorted = [...(rows || [])].sort((a, b) => (isFlash(b) ? 1 : 0) - (isFlash(a) ? 1 : 0) || a.name.localeCompare(b.name))
@@ -100,11 +134,10 @@ export default function AdminProducts() {
         <div className="disc-table" style={{ marginTop: 22 }}>
           {shown.map((p) => {
             const flash = isFlash(p)
-            const cur = flash ? (p.flashPrice ?? p.price) : applyDiscount(p.price, p.discountPercent)
             // Harga coret yang TAMPIL di kartu flash = official resolver (sumber sama dgn flashOf).
             const official = flash ? officialOf(p, rows || []) : null
             const orig = flash
-              ? (official && official.price > cur ? official.price : (p.price > cur ? p.price : null))
+              ? (official && official.price > (p.flashPrice ?? p.price) ? official.price : (p.price > (p.flashPrice ?? p.price) ? p.price : null))
               : (p.discountPercent > 0 ? p.price : null)
             const durs = (p.tiers || []).map((x) => durId(x.label)).filter(Boolean).join(' / ')
             return (
@@ -130,13 +163,15 @@ export default function AdminProducts() {
                     <span className="text-muted" style={{ fontSize: 12.5 }}>
                       {p.vendor} · {p.category}
                       {durs ? ` · ${durs}` : ''}
-                      {' · '}{flash ? 'flash ' : ''}{formatIDR(cur)}
                       {orig ? <> · normal <s>{formatIDR(orig)}</s></> : null}
                       {' · '}{p.stock === -1 ? 'stok ∞' : p.stockOut ? 'stok habis' : `stok ${p.stock}`}
                     </span>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 6 }}>
+                {/* Edit cepat: badge + harga jual langsung dari daftar, tanpa buka form */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <QuickBadge p={p} onChange={quickBadge} />
+                  <PriceCell p={p} onSave={quickPrice} />
                   <button className="icon-btn" onClick={() => setEditing(p)} aria-label="Edit"><Pencil size={16} /></button>
                   <button className="icon-btn danger" onClick={() => del(p)} aria-label="Hapus"><Trash2 size={16} /></button>
                 </div>
@@ -171,6 +206,7 @@ function normalize(p) {
     discountStart: toLocalInput(p.discountStart), discountEnd: toLocalInput(p.discountEnd),
     flashSale: !!p.flashSale, stockOut: !!p.stockOut,
     flashPrice: p.flashPrice ?? null, flashPriceIntl: p.flashPriceIntl ?? null, // Rp & sen — internal
+    badge: p.badge || '', badgeColor: p.badgeColor || '',
     tiers: p.tiers?.length
       ? p.tiers.map((t) => ({ _uid: uid(), label: t.label, price: t.price, priceIntl: fromCents(t.priceIntl), note: t.note || '' }))
       : [{ _uid: uid(), label: p.period || 'Produk', price: p.price || 0, priceIntl: fromCents(p.priceIntl), note: '' }],
@@ -269,6 +305,8 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
       discountEnd: f.discountEnd ? new Date(f.discountEnd).toISOString() : null,
       flashSale: !!f.flashSale,
       stockOut: !!f.stockOut,
+      badge: f.badge || null,
+      badgeColor: f.badge ? badgeColorOf(f.badge) : null,
       flashPrice: f.flashSale ? (parseInt(nowInput, 10) || null) : null,
       flashPriceIntl: f.flashSale ? (parseInt(f.flashPriceIntl, 10) || null) : null,
       tiers, features,
@@ -294,7 +332,6 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
             <Field label="Nama"><input className="input" value={f.name} onChange={(e) => set('name', e.target.value)} /></Field>
             <Field label="Vendor"><input className="input" value={f.vendor} onChange={(e) => set('vendor', e.target.value)} /></Field>
             <Field label="Kategori"><input className="input" value={f.category} onChange={(e) => set('category', e.target.value)} placeholder="AI Assistant / API / Developer…" /></Field>
-            <Field label="Periode (satuan harga)"><input className="input" value={f.period} onChange={(e) => set('period', e.target.value)} placeholder="bln / 12 bln / paket" /></Field>
           </div>
 
           <div className="form-section-title">Deskripsi produk</div>
@@ -322,7 +359,7 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
             </div>
           </div>
 
-          <div className="form-section-title">Jenis produk / durasi (tier)</div>
+          <div className="form-section-title">Paket / durasi (tier)</div>
           {f.tiers.map((t, i) => (
             <div key={t._uid || i} className="tier-edit-row">
               <input className="input" placeholder="Label (mis. 1 Bulan / 3 Bulan / 1 Tahun)" value={t.label} onChange={(e) => setTier(i, 'label', e.target.value)} />
@@ -335,23 +372,31 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
             Tier = varian/jenis produk (1bln, 3bln, 1thn…), jadi badge durasi di katalog. USD otomatis mengikuti harga Rp.
           </p>
 
-          <div className="form-section-title">Harga & diskon</div>
+          <div className="form-section-title">Harga</div>
           <label className="check-row" style={{ paddingTop: 0 }}>
             <input type="checkbox" checked={f.flashSale} onChange={(e) => onToggleFlash(e.target.checked)} />
-            <Zap size={14} /> Produk Flash Sale — "harga saat ini" jadi harga flash
+            <Zap size={14} /> Produk Flash Sale — "harga jual" jadi harga flash
           </label>
           <div className="form-grid">
             <Field label="Harga normal — dicoret (Rp)"><input className="input" type="number" value={f.price} onChange={(e) => setRpPrice(e.target.value)} /></Field>
-            <Field label={f.flashSale ? 'Harga saat ini — flash (Rp)' : 'Harga saat ini (Rp)'}>
+            <Field label={f.flashSale ? 'Harga jual — flash (Rp)' : 'Harga jual (Rp)'}>
               <input className="input" type="number" value={nowInput} onChange={(e) => setPriceNow(e.target.value)} />
             </Field>
           </div>
           <p className="text-muted" style={{ fontSize: 12, marginTop: -4 }}>{hint}</p>
 
-          <div className="form-section-title">Stok & penjualan</div>
+          <div className="form-section-title">Badge (opsional)</div>
+          <div className="form-grid">
+            <Field label="Badge tampil di kartu produk">
+              <select className="input" style={{ cursor: 'pointer' }} value={f.badge} onChange={(e) => set('badge', e.target.value)}>
+                {BADGES.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
+              </select>
+            </Field>
+          </div>
+
+          <div className="form-section-title">Stok & status</div>
           <div className="form-grid">
             <Field label="Stok (kosong = ∞)"><input className="input" type="number" value={f.stock} onChange={(e) => set('stock', e.target.value)} /></Field>
-            <Field label="Terjual"><input className="input" type="number" value={f.sold} onChange={(e) => set('sold', e.target.value)} /></Field>
           </div>
           <label className="check-row"><input type="checkbox" checked={f.active} onChange={(e) => set('active', e.target.checked)} /> Aktif (tampil di toko)</label>
           <label className="check-row" style={{ paddingTop: 0 }}>
@@ -367,6 +412,8 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
             <div style={{ marginTop: 12 }}>
               <Field label="Tagline"><input className="input" value={f.tagline} onChange={(e) => set('tagline', e.target.value)} /></Field>
               <div className="form-grid">
+                <Field label="Periode (satuan harga)"><input className="input" value={f.period} onChange={(e) => set('period', e.target.value)} placeholder="bln / 12 bln / paket" /></Field>
+                <Field label="Terjual"><input className="input" type="number" value={f.sold} onChange={(e) => set('sold', e.target.value)} /></Field>
                 <Field label="Rating"><input className="input" type="number" step="0.1" value={f.rating} onChange={(e) => set('rating', e.target.value)} /></Field>
                 <Field label="Estimasi proses"><input className="input" value={f.estimate} onChange={(e) => set('estimate', e.target.value)} placeholder="10–20 menit" /></Field>
                 <Field label="Brand warna"><input className="input" value={f.brand} onChange={(e) => set('brand', e.target.value)} placeholder="#4f46e5" /></Field>
@@ -390,6 +437,48 @@ function Field({ label, children }) {
     <label className="field">
       <span className="field-label">{label}</span>
       {children}
+    </label>
+  )
+}
+
+// Edit cepat badge langsung di baris daftar — pilih → tersimpan otomatis.
+function QuickBadge({ p, onChange }) {
+  return (
+    <select
+      className="input"
+      style={{ width: 'auto', padding: '6px 10px', fontSize: 12.5, cursor: 'pointer' }}
+      value={p.badge || ''}
+      onChange={(e) => onChange(p, e.target.value)}
+      title="Badge produk"
+    >
+      {BADGES.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
+    </select>
+  )
+}
+
+// Edit cepat harga jual langsung di baris daftar — ubah lalu Enter / klik luar.
+function PriceCell({ p, onSave }) {
+  const flash = isFlash(p)
+  const cur = flash ? (p.flashPrice ?? p.price) : applyDiscount(p.price, p.discountPercent)
+  const [val, setVal] = useState(String(cur))
+  useEffect(() => { setVal(String(cur)) }, [cur])
+  const commit = () => {
+    const n = parseInt(val, 10) || 0
+    if (n && n !== cur) onSave(p, val)
+    else setVal(String(cur))
+  }
+  return (
+    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }} title="Harga jual saat ini — ubah lalu tekan Enter">
+      <input
+        className="input"
+        type="number"
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
+        style={{ width: 112, padding: '6px 10px', fontSize: 12.5, textAlign: 'right' }}
+      />
+      <span className="text-muted" style={{ fontSize: 11 }}>Rp</span>
     </label>
   )
 }

@@ -6,7 +6,7 @@ import multer from 'multer'
 import { fileURLToPath } from 'node:url'
 import { prisma } from '../db.js'
 import { requireAuth, requireAdmin } from '../auth.js'
-import { formatOrder, refundableAmount } from './orders.js'
+import { formatOrder, refundableAmount, triggerStockOutForOrder } from './orders.js'
 import { formatProduct } from './products.js'
 import { encrypt } from '../crypto.js'
 import { sendOrderCompleted } from '../mailer.js'
@@ -322,6 +322,8 @@ router.post('/orders', async (req, res) => {
       },
       include: { items: true, user: true },
     })
+    // Pesanan manual yang langsung selesai → produk band 30k–80k ikut stok habis.
+    if (markCompleted) await triggerStockOutForOrder(order)
     res.json({ order: formatOrder(order, { admin: true }) })
   } catch (e) {
     console.error('admin create order:', e.message)
@@ -733,6 +735,7 @@ router.post('/orders/:id/deliver', async (req, res) => {
       }),
     ),
   )
+  const before = await prisma.order.findUnique({ where: { id: req.params.id }, select: { status: true } })
   const order = await prisma.order.update({
     where: { id: req.params.id },
     data: complete ? { status: 'COMPLETED' } : {},
@@ -740,6 +743,8 @@ router.post('/orders/:id/deliver', async (req, res) => {
   })
   const formatted = formatOrder(order, { admin: true })
   if (complete && order.status === 'COMPLETED') {
+    // Pembayaran diverifikasi → produk band 30k–80k langsung "stok habis" global.
+    if (before?.status !== 'COMPLETED') await triggerStockOutForOrder(order)
     sendOrderCompleted(formatted)
     notify(order.userId, { type: 'order_completed', title: `Pesanan ${order.id} selesai`, body: 'Akses kamu sudah siap. Cek detail pesanan.', orderId: order.id })
     sendTelegramToUser(order.userId, 'notifCompleted', { id: order.id })

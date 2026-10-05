@@ -46,7 +46,9 @@ export default function ProductDetail() {
 
   const tier = product.tiers[tierIdx]
   const isFlashSale = product.flashSale === true && Number(product.flashPrice) > 0
-  const flashSoldOut = isFlashSale && (product.stockOut || product.stock === 0)
+  // Stok habis (global): ditandai admin atau ter-trigger pembayaran berhasil.
+  // Produk terkunci untuk semua user — tidak bisa dibuka/dibeli sampai di-restock.
+  const stockHabis = !!product.stockOut || product.stock === 0
   // Harga flash hanya berlaku untuk tier utama (pertama). Tier lain tetap memakai
   // harga katalognya — edit harga flash di panel admin tidak menyamakan semua durasi.
   const isFlashTier = isFlashSale && tierIdx === 0
@@ -239,8 +241,8 @@ export default function ProductDetail() {
           </div>}
 
           {/* price + add */}
-          {flashSoldOut && (
-            <p className="text-muted" style={{ color: '#dc2626', fontWeight: 700, margin: '18px 0 -4px' }}>Stok Flash Sale sedang habis.</p>
+          {stockHabis && (
+            <p className="text-muted" style={{ color: '#dc2626', fontWeight: 700, margin: '18px 0 -4px' }}>{t('pd.stockOut')}</p>
           )}
           <div className="card pd-buy-card">
             <div className="pd-price-block">
@@ -261,7 +263,7 @@ export default function ProductDetail() {
               </div>
             </div>
             <div className="pd-actions">
-              <motion.button whileTap={{ scale: 0.97 }} onClick={handleBuy} disabled={flashSoldOut} className="pill pill-indigo pd-buy">
+              <motion.button whileTap={{ scale: 0.97 }} onClick={handleBuy} disabled={stockHabis} className="pill pill-indigo pd-buy">
                 {t('product.buyNow')}
                 <span className="pill-ic"><ArrowUpRight size={16} strokeWidth={2.6} /></span>
               </motion.button>
@@ -269,7 +271,7 @@ export default function ProductDetail() {
                 whileTap={{ scale: 0.88 }}
                 onClick={handleAdd}
                 className="pd-cart-btn"
-                disabled={flashSoldOut}
+                disabled={stockHabis}
                 aria-label={t('pd.addToCart')}
                 animate={added ? { scale: [1, 1.18, 1] } : {}}
                 transition={{ duration: 0.4 }}

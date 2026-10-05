@@ -10,7 +10,6 @@ import { useDiscount } from '../context/CatalogContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 import { localizedProduct, localizeTier, localizePeriod, durationBadge } from '../i18n/productContent.js'
 import { usePricing } from '../i18n/pricing.js'
-import { usePurchased } from '../context/usePurchased.js'
 
 export default function ProductCard({ product: rawProduct, index = 0 }) {
   const { addItem } = useCart()
@@ -21,8 +20,11 @@ export default function ProductCard({ product: rawProduct, index = 0 }) {
   const product = localizedProduct(rawProduct, lang)
   const navigate = useNavigate()
   const [added, setAdded] = useState(false)
-  const { isPurchased } = usePurchased()
-  const purchased = isPurchased(product._srcId || product.id)
+  // Stok habis (global): admin menandai stockOut / trigger pembayaran berhasil /
+  // stok terbatas habis. Kartu terkunci — semua user bisa membeli berkali-kali
+  // selama produk belum stok habis; tidak ada penandaan "sudah dibeli" per user.
+  const stockNum = Number.isFinite(product.stock) ? product.stock : -1
+  const habis = !!product.stockOut || stockNum === 0
   // Produk flash sale dibedakan visualnya dari produk reguler (badge + aksen).
   const isFlash = product.flashSale === true || (product.flashSale == null && product.category === 'Promo')
   // Kartu katalog = PREVIEW produk: selalu durasi utama (tier pertama).
@@ -54,7 +56,7 @@ export default function ProductCard({ product: rawProduct, index = 0 }) {
   const handleAdd = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    if (purchased) return
+    if (habis) return
     addItem(product, chosenTier())
     setAdded(true)
     toast(`${product.name} ${t('product.addToCart')}`, 'success', 1800)
@@ -64,7 +66,7 @@ export default function ProductCard({ product: rawProduct, index = 0 }) {
   const handleBuy = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    if (purchased) return
+    if (habis) return
     addItem(product, chosenTier())
     navigate('/cart')
   }
@@ -78,22 +80,22 @@ export default function ProductCard({ product: rawProduct, index = 0 }) {
       whileHover={{ y: -6 }}
     >
       <Link
-        to={purchased ? '#' : `/product/${product.id}`}
+        to={habis ? '#' : `/product/${product.id}`}
         className="card product-card"
-        onClick={(e) => purchased && e.preventDefault()}
+        onClick={(e) => habis && e.preventDefault()}
         style={{
           display: 'flex', flexDirection: 'column', height: '100%',
           padding: 18, gap: 16,
-          opacity: purchased ? 0.45 : 1,
-          pointerEvents: purchased ? 'none' : 'auto',
-          filter: purchased ? 'grayscale(0.85)' : 'none',
+          opacity: habis ? 0.45 : 1,
+          pointerEvents: habis ? 'none' : 'auto',
+          filter: habis ? 'grayscale(0.85)' : 'none',
           position: 'relative',
           overflow: 'hidden',
-          ...(isFlash && !purchased ? { border: '1.5px solid var(--lime-deep)' } : {}),
+          ...(isFlash && !habis ? { border: '1.5px solid var(--lime-deep)' } : {}),
         }}
       >
         {/* Overlay Stok Habis */}
-        {purchased && (
+        {habis && (
           <div style={{
             position: 'absolute', inset: 0, display: 'grid', placeItems: 'center',
             background: 'rgba(255,255,255,.55)', zIndex: 2, borderRadius: 18,
@@ -101,7 +103,7 @@ export default function ProductCard({ product: rawProduct, index = 0 }) {
             <div style={{ textAlign: 'center' }}>
               <Ban size={36} style={{ color: 'var(--muted)', margin: '0 auto 8px' }} />
               <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--muted)', display: 'block' }}>Stok Habis</span>
-              <span style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 2 }}>Produk sudah dibeli</span>
+              <span style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 2 }}>Tunggu restock berikutnya</span>
             </div>
           </div>
         )}
@@ -123,6 +125,14 @@ export default function ProductCard({ product: rawProduct, index = 0 }) {
             )}
             {tier.label && (
               <span className="chip chip-lime" style={{ fontSize: 11, fontWeight: 700 }}>{durBadge || localizeTier(tier.label, t)}</span>
+            )}
+            {product.badge && product.badgeColor && (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center',
+                background: product.badgeColor, color: '#fff',
+                fontSize: 10, fontWeight: 800, letterSpacing: '.07em', lineHeight: 1,
+                padding: '5px 9px', borderRadius: 999,
+              }}>{product.badge}</span>
             )}
           </div>
           <h3 className="display pc-name" style={{ fontSize: 20, marginTop: 12 }}>{product.name}</h3>

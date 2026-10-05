@@ -95,6 +95,30 @@ const STOCK_OUT_MAX = 80000
 // Cek stock-out berdasarkan harga IDR produk (tier.price selalu IDR) — berlaku semua mata uang.
 const isStockOutPrice = (tierPriceIdr) => tierPriceIdr >= STOCK_OUT_MIN && tierPriceIdr <= STOCK_OUT_MAX
 
+// Trigger STOK HABIS GLOBAL saat pembayaran berhasil (pesanan COMPLETED):
+// produk yang di-order yang masuk band 30k–80k IDR langsung ditandai stockOut
+// sehingga tidak bisa dibeli lagi siapa pun (kartu & detail tampil "Stok Habis").
+// Idempoten — produk yang sudah stockOut di-skip.
+export async function triggerStockOutForOrder(order) {
+  try {
+    const items = order.items || []
+    const ids = [...new Set(items.map((it) => it.productId).filter(Boolean))]
+    if (!ids.length) return []
+    const prods = await prisma.product.findMany({ where: { id: { in: ids } } })
+    const hit = []
+    for (const p of prods) {
+      if (p.stockOut) continue
+      const tiers = JSON.parse(p.tiers || '[]')
+      if (tiers.some((t) => isStockOutPrice(t.price))) hit.push(p.id)
+    }
+    if (hit.length) await prisma.product.updateMany({ where: { id: { in: hit } }, data: { stockOut: true } })
+    return hit
+  } catch (e) {
+    console.error('trigger stock-out error:', e)
+    return []
+  }
+}
+
 // POST /api/orders (multipart) — buat pesanan baru.
 // Rate limit 8 order/menit/user: memperlambat farming otomatis via script.
 router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message: 'Terlalu banyak pesanan. Tunggu sebentar.' }), upload.single('proof'), async (req, res) => {
@@ -272,79 +296,17 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       throw e
     }
 
-    // ───────── Auto stock-out: produk harga 30.000–80.000 IDR → refund otomatis ─────────
-    // ───────── Juga: mark SEMUA produk yang di-order sebagai "dibeli" (stok habis per user) ─────────
-    const hasStockOutItem = validatedItems.some((it) => {
-      const prod = byId[it.productId]
-      if (!prod) return false
-      const tier = prod.tiers.find((t) => t.label === it.tierLabel) || prod.tiers[0]
-      return isStockOutPrice(tier.price)
-    })
-
-    // Mark semua produk yang di-order sebagai dibeli (UserProductStock) — untuk stok habis per user
-    try {
-      const orderedProductIds = validatedItems.map((it) => it.productId).filter(Boolean)
-      // Juga mark SEMUA produk 30k-80k sebagai stok habis (untuk konsistensi cross-tier)
-      const allStockOutIds = catalog
-        .filter((p) => {
-          const tiers = JSON.parse(p.tiers || '[]')
-          return tiers.some((t) => isStockOutPrice(t.price))
-        })
-        .map((p) => p.id)
-      const allIds = [...new Set([...orderedProductIds, ...allStockOutIds])]
-      for (const productId of allIds) {
-        await prisma.userProductStock.upsert({
-          where: { userId_productId: { userId: req.user.id, productId } },
-          create: { userId: req.user.id, productId },
-          update: {},
-        }).catch(() => {})
-      }
-    } catch (e) {
-      console.error('mark purchased error:', e)
-    }
-
-    let stockOut = false
-    if (hasStockOutItem) {
-      try {
-        // ANTI-REFUND-FARMING: order ini baru dibuat & pembayaran eksternal (QRIS/crypto) belum
-        // diverifikasi admin. Yang boleh dikembalikan hanya saldo internal yang dipakai —
-        // bukan total pesanan, kalau tidak user bisa mencetak saldo gratis tanpa bayar.
-        const refundAmount = Math.min(refundableAmount(order, balanceUsed), balanceUsed)
-        await prisma.$transaction(async (tx) => {
-          await tx.order.update({
-            where: { id: order.id },
-            data: { status: 'CANCELLED', refundStatus: 'APPROVED', refundReason: 'Stok habis', refundAt: new Date() },
-          })
-          for (const r of reserved) await tx.product.update({ where: { id: r.id }, data: { stock: { increment: r.qty } } }).catch(() => {})
-          if (couponOk) await tx.coupon.update({ where: { code: couponRes.code }, data: { usedCount: { decrement: 1 } } }).catch(() => {})
-          if (refundAmount > 0) {
-            await tx.user.update({ where: { id: req.user.id }, data: { balance: { increment: refundAmount } } })
-            await tx.balanceTransaction.create({
-              data: { userId: req.user.id, amount: refundAmount, type: 'refund', note: `Refund otomatis: stok habis — ${order.id}`, orderId: order.id },
-            })
-          }
-        })
-        order.status = 'CANCELLED'
-        order.refundStatus = 'APPROVED'
-        order.refundReason = 'Stok habis'
-        order.refundAt = new Date()
-        stockOut = true
-      } catch (e) {
-        console.error('stock-out refund error:', e)
-      }
-    }
-
     const formatted = formatOrder(order)
     const totalLabel =
       currency === 'USD' ? `$${(total / 100).toFixed(2)}`
         : currency === 'CNY' ? `¥${(total / 100).toFixed(2)}`
           : `Rp ${total.toLocaleString('id-ID')}`
-    const msg = stockOut ? 'stok habis — otomatis refund' : 'Pembayaran sedang kami verifikasi.'
+    const msg = 'Pembayaran sedang kami verifikasi.'
     sendOrderCreated(formatted) // email (mode log bila SMTP kosong)
     notify(req.user.id, { type: 'order_created', title: `Pesanan ${order.id} diterima`, body: msg, orderId: order.id })
     sendTelegramToUser(req.user.id, 'notifCreated', { id: order.id, total: totalLabel })
     notifyAdmins({ type: 'admin_new_order', title: `Pesanan baru ${order.id}`, body: `${formatted.items.length} item · ${totalLabel}`, orderId: order.id })
-    res.status(201).json({ order: formatted, stockOut })
+    res.status(201).json({ order: formatted })
   } catch (e) {
     console.error('create order error:', e)
     if (e.message === 'Saldo tidak mencukupi') {

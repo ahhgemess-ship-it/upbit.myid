@@ -7,7 +7,6 @@ import { durationBadge } from '../i18n/productContent.js'
 import { useCart } from '../context/CartContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 import { usePricing, amountFor } from '../i18n/pricing.js'
-import { usePurchased } from '../context/usePurchased.js'
 
 // Hash FNV-1a sederhana → angka deterministik per id produk (stabil antar refresh).
 const hashId = (s) => {
@@ -22,8 +21,6 @@ export default function FlashSaleCard({ product, index = 0 }) {
   const { fmt, region } = usePricing()
   const navigate = useNavigate()
   const [added, setAdded] = useState(false)
-  const { isPurchased } = usePurchased()
-  const purchased = isPurchased(product._srcId || product.id)
   const stockOut = !!product.stockOut
   // Kartu flash = PREVIEW produk: selalu durasi utama (tier pertama) dengan harga
   // flash. Pilihan durasi lengkap ada di halaman detail produk.
@@ -47,7 +44,7 @@ export default function FlashSaleCard({ product, index = 0 }) {
   const left = realStock ? Math.max(0, stock) : 5 + (hashId(product.id) % 16)
   const pct = left === 0 ? 100 : Math.min(95, Math.max(5, Math.round(100 - (left / Math.max(left + sold, 1)) * 100)))
   const soldOutByStock = realStock && left === 0
-  const unavailable = purchased || stockOut || soldOutByStock
+  const unavailable = stockOut || soldOutByStock
   const almostGone = realStock && left > 0 && left <= Math.max(3, Math.ceil((left + sold) * 0.2))
 
   const sale = amountFor({ price: selTier.price, priceIntl: selTier.priceIntl }, region)
@@ -92,7 +89,7 @@ export default function FlashSaleCard({ product, index = 0 }) {
           }}>
             <div style={{ textAlign: 'center' }}>
               <Ban size={36} style={{ color: 'var(--muted)', margin: '0 auto 8px' }} />
-              <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--muted)', display: 'block' }}>{stockOut || soldOutByStock ? 'Stok Habis' : 'Sudah Dibeli'}</span>
+              <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--muted)', display: 'block' }}>Stok Habis</span>
             </div>
           </div>
         )}

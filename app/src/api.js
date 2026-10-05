@@ -128,8 +128,6 @@ const _real = {
   // admin settings (pengaturan global toko)
   adminGetSettings: () => req('/api/admin/settings'),
   adminUpdateSettings: (data) => req('/api/admin/settings', { method: 'PUT', body: data }),
-  // purchased products (per-user stock)
-  purchasedProducts: () => req('/api/products/purchased'),
 }
 
 // API publik: auto fallback ke API lokal saat backend mati
@@ -189,5 +187,4 @@ export const api = {
   adminSetBalance: withFallback(_real.adminSetBalance, demoApi.adminSetBalance),
   adminGetSettings: withFallback(_real.adminGetSettings, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
   adminUpdateSettings: withFallback(_real.adminUpdateSettings, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
-  purchasedProducts: withFallback(_real.purchasedProducts, demoApi.purchasedProducts),
 }
