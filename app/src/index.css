@@ -1777,3 +1777,38 @@ select.input { appearance: none; cursor: pointer; }
   .admin-kpis { grid-template-columns: 1fr; }
   .admin-dash-greet { font-size: 20px; }
 }
+
+/* ---- Kontrol cepat & grid tambah pesanan (kelas pengganti inline style agar bisa responsive) ---- */
+.quick-select { width: auto; padding: 6px 10px; font-size: 12.5px; cursor: pointer; }
+.quick-price { width: 112px; padding: 6px 10px; font-size: 12.5px; text-align: right; }
+.add-order-grid { display: grid; gap: 8px; grid-template-columns: 1fr auto auto auto; align-items: end; }
+
+/* ---- Refine admin mobile: baris daftar, kontrol, modal ---- */
+@media (max-width: 820px) {
+  /* 16px mencegah iOS auto-zoom saat input fokus */
+  .admin-shell .input { font-size: 16px; }
+  .admin-burger { width: 44px; height: 44px; }
+  .admin-title { font-size: 17px; }
+}
+@media (max-width: 640px) {
+  /* Baris produk/kupon/flash: nama di atas, kontrol di bawah — tidak berebut lebar */
+  .prod-row { flex-direction: column; align-items: stretch; gap: 12px; padding: 14px; }
+  .order-row { flex-wrap: wrap; row-gap: 10px; }
+  .order-row > div:last-child { flex-wrap: wrap; }
+  .quick-select, .quick-price { padding: 10px 12px; font-size: 16px; }
+  .quick-price { width: 118px; }
+  .prod-row .icon-btn { width: 42px; height: 42px; }
+  .admin-content { padding: 16px 14px; }
+  .admin-topbar { padding: 12px 14px; }
+}
+@media (max-width: 560px) {
+  /* Label tier memenuhi baris; harga + tombol hapus di baris kedua */
+  .tier-edit-row .input:first-child { flex-basis: 100%; }
+  .modal-overlay { padding: 10px; }
+  .modal-card { border-radius: 16px; }
+  .modal-head { padding: 14px 16px; }
+  .modal-body { padding: 16px; max-height: calc(100vh - 120px); }
+  .modal-foot { padding: 14px 16px; }
+  .modal-foot .pill { flex: 1; justify-content: center; }
+  .add-order-grid { grid-template-columns: 1fr auto; }
+}

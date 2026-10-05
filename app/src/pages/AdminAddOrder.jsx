@@ -106,7 +106,7 @@ export default function AdminAddOrder({ onClose, onCreated }) {
 
         {/* Produk */}
         <label className="field-label">{t('ao.products')}</label>
-        <div style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr auto auto auto', alignItems: 'end' }}>
+        <div className="add-order-grid">
           <div>
             <select className="input" value={pid} onChange={(e) => { setPid(e.target.value); setTierIdx(0) }}>
               <option value="">{t('ao.pickProduct')}</option>

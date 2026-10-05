@@ -169,7 +169,7 @@ export default function AdminProducts() {
                   </div>
                 </div>
                 {/* Edit cepat: badge + harga jual langsung dari daftar, tanpa buka form */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <QuickBadge p={p} onChange={quickBadge} />
                   <PriceCell p={p} onSave={quickPrice} />
                   <button className="icon-btn" onClick={() => setEditing(p)} aria-label="Edit"><Pencil size={16} /></button>
@@ -445,8 +445,7 @@ function Field({ label, children }) {
 function QuickBadge({ p, onChange }) {
   return (
     <select
-      className="input"
-      style={{ width: 'auto', padding: '6px 10px', fontSize: 12.5, cursor: 'pointer' }}
+      className="input quick-select"
       value={p.badge || ''}
       onChange={(e) => onChange(p, e.target.value)}
       title="Badge produk"
@@ -470,13 +469,12 @@ function PriceCell({ p, onSave }) {
   return (
     <label style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }} title="Harga jual saat ini — ubah lalu tekan Enter">
       <input
-        className="input"
+        className="input quick-price"
         type="number"
         value={val}
         onChange={(e) => setVal(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur() }}
-        style={{ width: 112, padding: '6px 10px', fontSize: 12.5, textAlign: 'right' }}
       />
       <span className="text-muted" style={{ fontSize: 11 }}>Rp</span>
     </label>
