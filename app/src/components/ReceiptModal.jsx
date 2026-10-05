@@ -41,6 +41,7 @@ export default function ReceiptModal({ order, onClose }) {
       : '—'
   const subtotal = order.subtotal ?? order.total
   const discount = order.discount || 0
+  const fee = order.fee || 0
 
   const buildPdf = async () => {
     setPdfBusy(true)
@@ -113,6 +114,10 @@ export default function ReceiptModal({ order, onClose }) {
       if (discount > 0) {
         y += 13
         doc.text(`${t('rc.discount')} -${formatPrice(discount, order.currency || 'IDR')}`, W - 40, y, { align: 'right' })
+      }
+      if (fee > 0) {
+        y += 13
+        doc.text(`${t('cart.serviceFee')} ${formatPrice(fee, order.currency || 'IDR')}`, W - 40, y, { align: 'right' })
       }
       y += 24
       doc.setFont('helvetica', 'bold'); doc.setFontSize(12)
@@ -193,6 +198,7 @@ export default function ReceiptModal({ order, onClose }) {
         {/* Ringkasan */}
         <RCRow label={t('rc.subtotalLbl')} value={formatPrice(subtotal, order.currency || 'IDR')} />
         {discount > 0 && <RCRow label={t('rc.discount')} value={`-${formatPrice(discount, order.currency || 'IDR')}`} />}
+        {fee > 0 && <RCRow label={t('cart.serviceFee')} value={formatPrice(fee, order.currency || 'IDR')} />}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '6px 0 2px' }}>
           <span style={{ fontWeight: 900, fontSize: 13, letterSpacing: '.06em' }}>{t('rc.total')}</span>
           <b style={{ fontSize: 16 }}>{formatPrice(order.total, order.currency || 'IDR')}</b>

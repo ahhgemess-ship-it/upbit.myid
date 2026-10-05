@@ -51,6 +51,7 @@ model Order {
   discount      Int      @default(0)
   couponCode    String?
   total         Int
+  fee           Int      @default(0) // fee pembayaran (payment gateway), mata uang pesanan
   paymentMethod String // qris | crypto
   paymentAsset  String?
   paymentAmount String?

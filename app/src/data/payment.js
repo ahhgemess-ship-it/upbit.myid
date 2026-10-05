@@ -1,6 +1,9 @@
 // Konfigurasi pembayaran EvolusiAI.
 // Dua metode: QRIS & Crypto (BNB / USDT on BNB Smart Chain).
 
+// Fee pembayaran (payment gateway) — flat Rupiah, ditambahkan ke total saat checkout.
+export const PAYMENT_FEE_IDR = 455
+
 // Payload QRIS statis (EvolusiAi Store / DANA) — hasil decode dari QR terbaru.
 const QRIS_STATIC =
   '00020101021126570011ID.DANA.WWW011893600915303397767602090339776760303UMI51440014ID.CO.QRIS.WWW0215ID10265685152290303UMI5204599953033605802ID5915EvolusiAi Store6015Kota Jakarta Se6105121106304D121'

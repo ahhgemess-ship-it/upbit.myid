@@ -335,6 +335,7 @@ export default function OrderDetail() {
           <div className="co-divider" />
           <SumRow label={t('cart.subtotal')} value={formatPrice(order.subtotal, order.currency)} />
           {order.discount > 0 && <SumRow label={`${t('od.coupon')} ${order.coupon}`} value={`− ${formatPrice(order.discount, order.currency)}`} accent />}
+          {order.fee > 0 && <SumRow label={t('cart.serviceFee')} value={formatPrice(order.fee, order.currency)} />}
           <div className="co-divider" />
           <div className="co-total">
             <span style={{ fontWeight: 600 }}>{t('cart.total')}</span>

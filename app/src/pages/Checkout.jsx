@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import Asterisk from '../components/Asterisk.jsx'
 import { getProduct } from '../data/products.js'
-import { QRIS, CRYPTO, toCryptoAmount } from '../data/payment.js'
+import { QRIS, CRYPTO, toCryptoAmount, PAYMENT_FEE_IDR } from '../data/payment.js'
 import { api } from '../api.js'
 import { useCart } from '../context/CartContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -60,13 +60,15 @@ export default function Checkout() {
   // Kupon nominal tetap (fixed) hanya untuk IDR; persen berlaku semua.
   const couponActive = coupon && !(currency !== 'IDR' && coupon.type === 'fixed')
   const discount = couponActive ? (coupon?.discount || 0) : 0
-  const payable = Math.max(0, total - discount)
   // Saldo disimpan dalam IDR di backend — konversi ke mata uang pesanan untuk tampil & hitung.
   const toCur = (idr) =>
     currency === 'USD' ? Math.round((idr * 100) / USD_TO_IDR)
       : currency === 'CNY' ? Math.round((idr * USD_TO_CNY * 100) / USD_TO_IDR)
         : currency === 'MYR' ? Math.round((idr * 100) / MYR_RATE)
           : idr
+  // Fee pembayaran (payment gateway) — flat Rp 455, ikut total sebelum potongan saldo.
+  const paymentFee = toCur(PAYMENT_FEE_IDR)
+  const payable = Math.max(0, total - discount) + paymentFee
   const balanceInCur = toCur(balance)
   // Balance discount — harus setelah payable (fix TDZ crash), dalam mata uang pesanan.
   const balanceDiscount = useSaldo ? Math.min(balanceInCur, payable) : 0
@@ -562,7 +564,7 @@ export default function Checkout() {
                   <Row label={t('cart.subtotal')} value={fmt(total)} />
                   {discount > 0 && <Row label={t('co.couponDiscount')} value={`− ${fmt(discount)}`} accent />}
                   {useSaldo && balanceDiscount > 0 && <Row label={t('co.balanceUsed')} value={`− ${fmt(balanceDiscount)}`} accent />}
-                  <Row label={t('cart.serviceFee')} value={t('cart.free')} />
+                  <Row label={t('cart.serviceFee')} value={fmt(paymentFee)} />
                   <div className="co-divider" />
                   <div className="co-total">
                     <span style={{ fontWeight: 600 }}>{t('co.totalShopping')}</span>

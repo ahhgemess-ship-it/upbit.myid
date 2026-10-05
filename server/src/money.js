@@ -8,6 +8,9 @@ export const USD_TO_IDR = 17650
 export const USD_TO_CNY = 6.72
 export const MYR_RATE = 4370   // 1 MYR ≈ Rp 4.370
 
+// Fee pembayaran (payment gateway/QRIS) — flat Rupiah, ditambahkan ke total tiap pesanan.
+export const PAYMENT_FEE_IDR = 455
+
 // Mata uang pesanan → IDR rupiah.
 export function toIDR(amount, currency) {
   const n = amount || 0

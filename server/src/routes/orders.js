@@ -10,7 +10,7 @@ import { sendOrderCreated } from '../mailer.js'
 import { effectiveDiscount, salePrice } from '../discount.js'
 import { notify, notifyAdmins } from '../notify.js'
 import { saveUpload } from '../storage.js'
-import { toIDR, fromIDR, USD_TO_CNY, MYR_RATE } from '../money.js'
+import { toIDR, fromIDR, USD_TO_CNY, MYR_RATE, PAYMENT_FEE_IDR } from '../money.js'
 import { userRateLimit } from '../rateLimit.js'
 import { sendTelegramToUser } from '../telegramBot.js'
 
@@ -46,6 +46,7 @@ export function formatOrder(order, { admin = false } = {}) {
     discount: order.discount,
     coupon: order.couponCode,
     total: order.total,
+    fee: order.fee || 0,
     adminNote: order.adminNote,
     refundStatus: order.refundStatus,
     refundReason: order.refundReason,
@@ -189,7 +190,9 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
     if (couponOk) couponOk = await consumeCoupon(couponRes.code)
 
     const discount = couponOk ? couponRes.discount : 0
-    const totalBeforeBalance = Math.max(0, subtotal - discount)
+    // Fee pembayaran (payment gateway) — flat Rupiah, dikonversi ke mata uang pesanan.
+    // Ikut total sebelum potongan saldo, sama seperti tampilan checkout.
+    const totalBeforeBalance = Math.max(0, subtotal - discount) + fromIDR(PAYMENT_FEE_IDR, currency)
 
     // Pakai Saldo — potong saldo user ATOMIK bersama pembuatan order (bukan di frontend).
     // useBalance dikirim dalam IDR (saldo selalu IDR); totalBeforeBalance dalam mata uang pesanan.
@@ -233,6 +236,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
             discount,
             couponCode: couponOk ? couponRes.code : null,
             total,
+            fee: fromIDR(PAYMENT_FEE_IDR, currency),
             paymentMethod: method,
             paymentAsset: method === 'crypto' ? (b.asset || null) : null,
             paymentAmount: method === 'crypto' ? (b.amount || null) : null,
