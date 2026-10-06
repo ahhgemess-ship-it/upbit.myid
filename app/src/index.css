@@ -1777,7 +1777,6 @@ select.input { appearance: none; cursor: pointer; }
   .admin-kpis { grid-template-columns: 1fr; }
   .admin-dash-greet { font-size: 20px; }
 }
-
 /* ---- Kontrol cepat & grid tambah pesanan (kelas pengganti inline style agar bisa responsive) ---- */
 .quick-select { width: auto; padding: 6px 10px; font-size: 12.5px; cursor: pointer; }
 .quick-price { width: 112px; padding: 6px 10px; font-size: 12.5px; text-align: right; }
@@ -1789,6 +1788,9 @@ select.input { appearance: none; cursor: pointer; }
   .admin-shell .input { font-size: 16px; }
   .admin-burger { width: 44px; height: 44px; }
   .admin-title { font-size: 17px; }
+  /* Konten admin dibatasi lebar & dipusatkan: kotak tidak memenuhi layar
+     di HP besar/tablet — ada ruang kosong di kiri-kanan. */
+  .admin-content { max-width: 600px; margin-inline: auto; width: 100%; }
 }
 @media (max-width: 640px) {
   /* Baris produk/kupon/flash: nama di atas, kontrol di bawah — tidak berebut lebar */
@@ -1798,7 +1800,8 @@ select.input { appearance: none; cursor: pointer; }
   .quick-select, .quick-price { padding: 10px 12px; font-size: 16px; }
   .quick-price { width: 118px; }
   .prod-row .icon-btn { width: 42px; height: 42px; }
-  .admin-content { padding: 16px 14px; }
+  /* Sisi lebih longgar di HP: kartu tidak menempel pinggir layar */
+  .admin-content { padding: 16px 22px; }
   .admin-topbar { padding: 12px 14px; }
 }
 @media (max-width: 560px) {
