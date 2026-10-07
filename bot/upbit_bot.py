@@ -4,7 +4,8 @@ EVOLUSIAI BOT v4
 - Saldo per Telegram user ID (tanpa login) — data PERSISTEN di bot/data (bukan /tmp)
 - Check-in harian 7-hari sinkron dengan website (Rp 300/hari, bonus Rp 2.000 hari ke-7)
 - Flash Sale pagination + varian durasi (1 bln / 3 bln / 6 bln / 1 thn)
-- Stok habis per-user: produk 30.000–80.000 auto-refund ke Saldo (sama seperti server)
+- Stok habis global (sinkron website): produk stockOut tidak bisa dibeli siapa pun;
+  pembayaran produk 30k–80k yang terkonfirmasi menandai produk stok habis (tanpa refund)
 - i18n 9 bahasa: id, en, zh, ja, ru, ms, hi, de, vi
 - UI profesional: bold typography, clean layout
 """
@@ -38,8 +39,8 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "").strip()
 if not BOT_TOKEN:
     raise SystemExit("BOT_TOKEN tidak diset. Buat bot/.env berisi BOT_TOKEN=...")
 
-API_BASE  = "https://www.upbit.my.id/api"
-STORE_URL = "https://www.upbit.my.id"
+API_BASE  = "https://evolusiai.xyz/api"
+STORE_URL = "https://evolusiai.xyz"
 
 BOT_DIR    = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR   = os.path.join(BOT_DIR, "data")
@@ -54,7 +55,8 @@ LEGACY_BAL_FILE   = "/tmp/upbit-bot-balance.json"
 os.makedirs(DATA_DIR, exist_ok=True)
 
 # ═══ ATURAN BISNIS (sinkron dengan server) ═══
-# Produk 30.000–80.000 IDR → simulasi stok habis → refund otomatis ke Saldo
+# Produk 30.000–80.000 IDR → pembayaran terkonfirmasi → produk otomatis
+# "stok habis" global (tanpa refund — checkout produk stockOut ditolak, seperti website)
 STOCK_OUT_MIN = 30000
 STOCK_OUT_MAX = 80000
 MIN_WITHDRAW  = 310000          # min. total transaksi untuk tarik saldo
@@ -164,7 +166,7 @@ I18N = {
  "tx_ok":"<b>TX Hash diterima</b>\nKlik tombol <b>Cek Pembayaran</b> di atas untuk melanjutkan.",
  "tx_first":"Masukkan TX Hash dulu",
  "stock_title":"<b>Stok Habis</b>",
- "stock_msg":"Sayang sekali, stok <b>{product}</b> baru saja habis.\n\nSaldo <b>{amount}</b> sudah masuk ke <b>Saldo</b> kamu.\nCek halaman Saldo untuk refund & tarik dana.\n\n<i>Min. transaksi {min} untuk bisa tarik saldo.</i>",
+ "stock_msg":"Maaf, stok <b>{product}</b> sedang habis — pembelian belum bisa dilanjutkan.\n\n<i>Tunggu restock berikutnya atau pilih produk lain.</i>",
  "order_title":"<b>Pesanan Dibuat</b>",
  "order_msg":"ID: <code>{id}</code>\nProduk: {product} · {price}\nStatus: <b>Diproses</b>\n\n<i>Detail akses dikirim ke email setelah dikonfirmasi.</i>",
  "saldo_title":"<b>SALDO</b>","saldo_avail":"Saldo tersedia: <b>{amount}</b>",
@@ -176,7 +178,7 @@ I18N = {
  "website_about":"<i>Marketplace produk digital premium.\nAI Assistant, Software, Tools.</i>",
  "help_title":"<b>BANTUAN</b>",
  "help_steps":"1. Pilih produk dari Flash Sale / Katalog\n2. Pilih paket & metode bayar (QRIS / Crypto)\n3. Bayar & klik Cek Pembayaran\n4. Akses dikirim ke email",
- "help_refund":"<b>Refund:</b> otomatis jika stok habis","help_withdraw":"<b>Tarik Saldo:</b> min. transaksi {min}",
+ "help_refund":"<b>Stok Habis:</b> produk habis tidak bisa dibeli sampai restock","help_withdraw":"<b>Tarik Saldo:</b> min. transaksi {min}",
  "help_checkin":"<b>Check-in:</b> {reward}/hari di menu Saldo",
  "help_contact":"<b>Kontak:</b>\nWA: 083849870242\nTelegram: @evolusi_store\nEmail: support@upbit.my.id",
  "use_menu":"Gunakan menu di bawah untuk navigasi.","open_web":"Buka Website","stock_out_tag":"Stok Habis",
@@ -201,7 +203,7 @@ I18N = {
  "tx_ok":"<b>TX Hash received</b>\nTap <b>Check Payment</b> above to continue.",
  "tx_first":"Enter your TX Hash first",
  "stock_title":"<b>Out of Stock</b>",
- "stock_msg":"Unfortunately, <b>{product}</b> just ran out of stock.\n\nYour <b>{amount}</b> has been added to your <b>Balance</b>.\nCheck the Balance page for refund & withdrawal.\n\n<i>Min. {min} total transactions to withdraw.</i>",
+ "stock_msg":"Sorry, <b>{product}</b> is out of stock — the purchase can't be continued.\n\n<i>Wait for the next restock or pick another product.</i>",
  "order_title":"<b>Order Created</b>",
  "order_msg":"ID: <code>{id}</code>\nProduct: {product} · {price}\nStatus: <b>Processing</b>\n\n<i>Access details will be sent to your email once confirmed.</i>",
  "saldo_title":"<b>BALANCE</b>","saldo_avail":"Available balance: <b>{amount}</b>",
@@ -213,7 +215,7 @@ I18N = {
  "website_about":"<i>Premium digital products marketplace.\nAI Assistant, Software, Tools.</i>",
  "help_title":"<b>HELP</b>",
  "help_steps":"1. Pick a product from Flash Sale / Catalog\n2. Choose package & payment (QRIS / Crypto)\n3. Pay & tap Check Payment\n4. Access is sent to your email",
- "help_refund":"<b>Refund:</b> automatic if out of stock","help_withdraw":"<b>Withdraw:</b> min. {min} transactions",
+ "help_refund":"<b>Out of stock:</b> sold-out products can't be bought until restock","help_withdraw":"<b>Withdraw:</b> min. {min} transactions",
  "help_checkin":"<b>Check-in:</b> {reward}/day in Balance menu",
  "help_contact":"<b>Contact:</b>\nWA: 083849870242\nTelegram: @evolusi_store\nEmail: support@upbit.my.id",
  "use_menu":"Use the menu below to navigate.","open_web":"Open Website","stock_out_tag":"Out of Stock",
@@ -238,7 +240,7 @@ I18N = {
  "tx_ok":"<b>TX Hash 已收到</b>\n点击上方 <b>检查付款</b> 继续。",
  "tx_first":"请先输入 TX Hash",
  "stock_title":"<b>已售罄</b>",
- "stock_msg":"很遗憾，<b>{product}</b> 刚刚售罄。\n\n您的 <b>{amount}</b> 已存入<b>余额</b>。\n请查看余额页面了解退款与提现。\n\n<i>累计消费满 {min} 才可提现。</i>",
+ "stock_msg":"抱歉，<b>{product}</b> 已售罄，无法继续购买。\n\n<i>请等待下次补货或选择其他商品。</i>",
  "order_title":"<b>订单已创建</b>",
  "order_msg":"ID: <code>{id}</code>\n商品: {product} · {price}\n状态: <b>处理中</b>\n\n<i>确认后访问详情将发送至您的邮箱。</i>",
  "saldo_title":"<b>余额</b>","saldo_avail":"可用余额: <b>{amount}</b>",
@@ -250,7 +252,7 @@ I18N = {
  "website_about":"<i>高端数字产品商城。\nAI 助手、软件、工具。</i>",
  "help_title":"<b>帮助</b>",
  "help_steps":"1. 从闪购/目录选择商品\n2. 选择套餐与支付方式（QRIS / Crypto）\n3. 支付并点击检查付款\n4. 访问详情发送至邮箱",
- "help_refund":"<b>退款：</b>售罄时自动退款","help_withdraw":"<b>提现：</b>累计消费满 {min}",
+ "help_refund":"<b>已售罄：</b>售罄商品在补货前无法购买","help_withdraw":"<b>提现：</b>累计消费满 {min}",
  "help_checkin":"<b>签到：</b>每天 {reward}，在余额菜单",
  "help_contact":"<b>联系：</b>\nWA: 083849870242\nTelegram: @evolusi_store\nEmail: support@upbit.my.id",
  "use_menu":"请使用下方菜单导航。","open_web":"打开网站","stock_out_tag":"已售罄",
@@ -275,7 +277,7 @@ I18N = {
  "tx_ok":"<b>TX Hashを受信しました</b>\n上の<b>支払い確認</b>をタップして続行。",
  "tx_first":"先にTX Hashを入力してください",
  "stock_title":"<b>在庫切れ</b>",
- "stock_msg":"残念ながら、<b>{product}</b>は在庫切れになりました。\n\n<b>{amount}</b>は<b>残高</b>に入金されました。\n残高ページで返金・出金をご確認ください。\n\n<i>出金には累計{min}以上の取引が必要です。</i>",
+ "stock_msg":"申し訳ありません、<b>{product}</b>は在庫切れのため購入を続行できません。\n\n<i>次回の入荷をお待ちいただくか、別の製品をお選びください。</i>",
  "order_title":"<b>注文を作成しました</b>",
  "order_msg":"ID: <code>{id}</code>\n商品: {product} · {price}\nステータス: <b>処理中</b>\n\n<i>確認後、アクセス詳細をメールで送信します。</i>",
  "saldo_title":"<b>残高</b>","saldo_avail":"利用可能残高: <b>{amount}</b>",
@@ -287,7 +289,7 @@ I18N = {
  "website_about":"<i>プレミアムデジタル商品マーケットプレイス。\nAIアシスタント、ソフトウェア、ツール。</i>",
  "help_title":"<b>ヘルプ</b>",
  "help_steps":"1. フラッシュセール/カタログから商品を選択\n2. パッケージと支払い方法を選択（QRIS / Crypto）\n3. 支払い後、支払い確認をタップ\n4. アクセス詳細をメールで送信",
- "help_refund":"<b>返金：</b>在庫切れ時は自動","help_withdraw":"<b>出金：</b>累計取引 {min} 以上",
+ "help_refund":"<b>在庫切れ：</b>売り切れた製品は入荷まで購入できません","help_withdraw":"<b>出金：</b>累計取引 {min} 以上",
  "help_checkin":"<b>チェックイン：</b>毎日 {reward}（残高メニュー）",
  "help_contact":"<b>連絡先：</b>\nWA: 083849870242\nTelegram: @evolusi_store\nEmail: support@upbit.my.id",
  "use_menu":"下のメニューを使用して移動してください。","open_web":"ウェブサイトを開く","stock_out_tag":"在庫切れ",
@@ -312,7 +314,7 @@ I18N = {
  "tx_ok":"<b>TX Hash получен</b>\nНажмите <b>Проверить оплату</b> выше, чтобы продолжить.",
  "tx_first":"Сначала введите TX Hash",
  "stock_title":"<b>Нет в наличии</b>",
- "stock_msg":"К сожалению, <b>{product}</b> только что закончился.\n\nВаши <b>{amount}</b> зачислены на <b>баланс</b>.\nПроверьте страницу баланса для возврата и вывода.\n\n<i>Для вывода нужны покупки от {min}.</i>",
+ "stock_msg":"Извините, <b>{product}</b> нет в наличии — покупку невозможно продолжить.\n\n<i>Дождитесь следующего пополнения или выберите другой товар.</i>",
  "order_title":"<b>Заказ создан</b>",
  "order_msg":"ID: <code>{id}</code>\nТовар: {product} · {price}\nСтатус: <b>Обработка</b>\n\n<i>Данные доступа будут отправлены на email после подтверждения.</i>",
  "saldo_title":"<b>БАЛАНС</b>","saldo_avail":"Доступно: <b>{amount}</b>",
@@ -324,7 +326,7 @@ I18N = {
  "website_about":"<i>Премиальный маркетплейс цифровых товаров.\nAI-ассистенты, софт, инструменты.</i>",
  "help_title":"<b>ПОМОЩЬ</b>",
  "help_steps":"1. Выберите товар в Flash Sale / Каталоге\n2. Выберите пакет и способ оплаты (QRIS / Crypto)\n3. Оплатите и нажмите Проверить оплату\n4. Доступ отправлен на email",
- "help_refund":"<b>Возврат:</b> автоматически при отсутствии стока","help_withdraw":"<b>Вывод:</b> покупки от {min}",
+ "help_refund":"<b>Нет в наличии:</b> распроданные товары нельзя купить до пополнения","help_withdraw":"<b>Вывод:</b> покупки от {min}",
  "help_checkin":"<b>Чек-ин:</b> {reward}/день в меню Баланс",
  "help_contact":"<b>Контакты:</b>\nWA: 083849870242\nTelegram: @evolusi_store\nEmail: support@upbit.my.id",
  "use_menu":"Используйте меню ниже для навигации.","open_web":"Открыть сайт","stock_out_tag":"Нет в наличии",
@@ -349,7 +351,7 @@ I18N = {
  "tx_ok":"<b>TX Hash diterima</b>\nKlik <b>Semak Pembayaran</b> di atas untuk teruskan.",
  "tx_first":"Masukkan TX Hash dahulu",
  "stock_title":"<b>Stok Habis</b>",
- "stock_msg":"Malangnya, stok <b>{product}</b> baru sahaja habis.\n\nSaldo <b>{amount}</b> telah masuk ke <b>Saldo</b> anda.\nSemak halaman Saldo untuk refund & pengeluaran.\n\n<i>Min. transaksi {min} untuk tarik saldo.</i>",
+ "stock_msg":"Maaf, stok <b>{product}</b> sedang habis — pembelian tidak boleh diteruskan.\n\n<i>Tunggu restock seterusnya atau pilih produk lain.</i>",
  "order_title":"<b>Pesanan Dibuat</b>",
  "order_msg":"ID: <code>{id}</code>\nProduk: {product} · {price}\nStatus: <b>Diproses</b>\n\n<i>Detail akses dihantar ke email selepas disahkan.</i>",
  "saldo_title":"<b>SALDO</b>","saldo_avail":"Saldo tersedia: <b>{amount}</b>",
@@ -361,7 +363,7 @@ I18N = {
  "website_about":"<i>Marketplace produk digital premium.\nAI Assistant, Software, Tools.</i>",
  "help_title":"<b>BANTUAN</b>",
  "help_steps":"1. Pilih produk dari Flash Sale / Katalog\n2. Pilih pakej & kaedah bayar (QRIS / Crypto)\n3. Bayar & klik Semak Pembayaran\n4. Akses dihantar ke email",
- "help_refund":"<b>Refund:</b> automatik jika stok habis","help_withdraw":"<b>Tarik Saldo:</b> min. transaksi {min}",
+ "help_refund":"<b>Kehabisan stok:</b> produk habis tidak boleh dibeli sehingga restock","help_withdraw":"<b>Tarik Saldo:</b> min. transaksi {min}",
  "help_checkin":"<b>Check-in:</b> {reward}/hari di menu Saldo",
  "help_contact":"<b>Kontak:</b>\nWA: 083849870242\nTelegram: @evolusi_store\nEmail: support@upbit.my.id",
  "use_menu":"Guna menu di bawah untuk navigasi.","open_web":"Buka Laman Web","stock_out_tag":"Stok Habis",
@@ -386,7 +388,7 @@ I18N = {
  "tx_ok":"<b>TX Hash प्राप्त हुआ</b>\nजारी रखने के लिए ऊपर <b>भुगतान जांचें</b> दबाएँ।",
  "tx_first":"पहले TX Hash दर्ज करें",
  "stock_title":"<b>स्टॉक खत्म</b>",
- "stock_msg":"क्षमा करें, <b>{product}</b> अभी खत्म हो गया।\n\nआपका <b>{amount}</b> <b>बैलेंस</b> में जोड़ दिया गया।\nरिफंड और निकासी के लिए बैलेंस पेज देखें।\n\n<i>निकासी के लिए न्यूनतम {min} की खरीदारी चाहिए।</i>",
+ "stock_msg":"क्षमा करें, <b>{product}</b> स्टॉक में नहीं है — खरीद जारी नहीं रखी जा सकती।\n\n<i>अगले रीस्टॉक की प्रतीक्षा करें या दूसरा उत्पाद चुनें।</i>",
  "order_title":"<b>ऑर्डर बन गया</b>",
  "order_msg":"ID: <code>{id}</code>\nउत्पाद: {product} · {price}\nस्थिति: <b>प्रोसेस हो रही है</b>\n\n<i>पुष्टि के बाद एक्सेस विवरण ईमेल पर भेजा जाएगा।</i>",
  "saldo_title":"<b>बैलेंस</b>","saldo_avail":"उपलब्ध बैलेंस: <b>{amount}</b>",
@@ -398,7 +400,7 @@ I18N = {
  "website_about":"<i>प्रीमियम डिजिटल उत्पाद मार्केटप्लेस।\nAI असिस्टेंट, सॉफ्टवेयर, टूल्स।</i>",
  "help_title":"<b>सहायता</b>",
  "help_steps":"1. फ्लैश सेल / कैटलॉग से उत्पाद चुनें\n2. पैकेज और भुगतान विधि चुनें (QRIS / Crypto)\n3. भुगतान करें और भुगतान जांचें दबाएँ\n4. एक्सेस विवरण ईमेल पर भेजा जाता है",
- "help_refund":"<b>रिफंड:</b> स्टॉक खत्म होने पर स्वतः","help_withdraw":"<b>निकासी:</b> न्यूनतम {min} खरीदारी",
+ "help_refund":"<b>स्टॉक समाप्त:</b> बिक चुके उत्पाद रीस्टॉक तक नहीं खरीदे जा सकते","help_withdraw":"<b>निकासी:</b> न्यूनतम {min} खरीदारी",
  "help_checkin":"<b>चेक-इन:</b> {reward}/दिन बैलेंस मेनू में",
  "help_contact":"<b>संपर्क:</b>\nWA: 083849870242\nTelegram: @evolusi_store\nEmail: support@upbit.my.id",
  "use_menu":"नेविगेशन के लिए नीचे मेनू का उपयोग करें।","open_web":"वेबसाइट खोलें","stock_out_tag":"स्टॉक खत्म",
@@ -423,7 +425,7 @@ I18N = {
  "tx_ok":"<b>TX Hash erhalten</b>\nTippe oben auf <b>Zahlung prüfen</b>, um fortzufahren.",
  "tx_first":"Gib zuerst die TX Hash ein",
  "stock_title":"<b>Ausverkauft</b>",
- "stock_msg":"Leider ist <b>{product}</b> gerade ausverkauft.\n\nDeine <b>{amount}</b> wurden deinem <b>Guthaben</b> gutgeschrieben.\nSiehe Guthabenseite für Erstattung & Auszahlung.\n\n<i>Mind. {min} Einkäufe für Auszahlung.</i>",
+ "stock_msg":"Leider ist <b>{product}</b> ausverkauft — der Kauf kann nicht fortgesetzt werden.\n\n<i>Warte auf den nächsten Restock oder wähle ein anderes Produkt.</i>",
  "order_title":"<b>Bestellung erstellt</b>",
  "order_msg":"ID: <code>{id}</code>\nProdukt: {product} · {price}\nStatus: <b>In Bearbeitung</b>\n\n<i>Zugangsdetails werden nach Bestätigung per E-Mail gesendet.</i>",
  "saldo_title":"<b>GUTHABEN</b>","saldo_avail":"Verfügbares Guthaben: <b>{amount}</b>",
@@ -435,7 +437,7 @@ I18N = {
  "website_about":"<i>Premium-Marktplatz für digitale Produkte.\nKI-Assistenten, Software, Tools.</i>",
  "help_title":"<b>HILFE</b>",
  "help_steps":"1. Produkt im Flash Sale / Katalog wählen\n2. Paket & Zahlungsmethode wählen (QRIS / Crypto)\n3. Bezahlen & Zahlung prüfen\n4. Zugang per E-Mail",
- "help_refund":"<b>Erstattung:</b> automatisch bei Ausverkauf","help_withdraw":"<b>Auszahlung:</b> mind. {min} Käufe",
+ "help_refund":"<b>Ausverkauft:</b> ausverkaufte Produkte sind bis zum Restock nicht kaufbar","help_withdraw":"<b>Auszahlung:</b> mind. {min} Käufe",
  "help_checkin":"<b>Check-in:</b> {reward}/Tag im Guthaben-Menü",
  "help_contact":"<b>Kontakt:</b>\nWA: 083849870242\nTelegram: @evolusi_store\nEmail: support@upbit.my.id",
  "use_menu":"Nutze das Menü unten zur Navigation.","open_web":"Website öffnen","stock_out_tag":"Ausverkauft",
@@ -460,7 +462,7 @@ I18N = {
  "tx_ok":"<b>Đã nhận TX Hash</b>\nNhấn <b>Kiểm tra thanh toán</b> phía trên để tiếp tục.",
  "tx_first":"Vui lòng nhập TX Hash trước",
  "stock_title":"<b>Hết hàng</b>",
- "stock_msg":"Rất tiếc, <b>{product}</b> vừa hết hàng.\n\n<b>{amount}</b> của bạn đã vào <b>Số dư</b>.\nXem trang Số dư để hoàn tiền và rút tiền.\n\n<i>Tối thiểu {min} giao dịch để rút tiền.</i>",
+ "stock_msg":"Rất tiếc, <b>{product}</b> đã hết hàng — không thể tiếp tục mua.\n\n<i>Chờ đợt nhập hàng tiếp theo hoặc chọn sản phẩm khác.</i>",
  "order_title":"<b>Đơn hàng đã tạo</b>",
  "order_msg":"ID: <code>{id}</code>\nSản phẩm: {product} · {price}\nTrạng thái: <b>Đang xử lý</b>\n\n<i>Chi tiết truy cập sẽ được gửi qua email sau khi xác nhận.</i>",
  "saldo_title":"<b>SỐ DƯ</b>","saldo_avail":"Số dư khả dụng: <b>{amount}</b>",
@@ -472,7 +474,7 @@ I18N = {
  "website_about":"<i>Chợ sản phẩm số cao cấp.\nTrợ lý AI, phần mềm, công cụ.</i>",
  "help_title":"<b>TRỢ GIÚP</b>",
  "help_steps":"1. Chọn sản phẩm từ Flash Sale / Danh mục\n2. Chọn gói & phương thức thanh toán (QRIS / Crypto)\n3. Thanh toán & nhấn Kiểm tra thanh toán\n4. Quyền truy cập gửi qua email",
- "help_refund":"<b>Hoàn tiền:</b> tự động nếu hết hàng","help_withdraw":"<b>Rút tiền:</b> tối thiểu {min} giao dịch",
+ "help_refund":"<b>Hết hàng:</b> sản phẩm hết hàng không thể mua cho đến khi nhập lại","help_withdraw":"<b>Rút tiền:</b> tối thiểu {min} giao dịch",
  "help_checkin":"<b>Check-in:</b> {reward}/ngày trong menu Số dư",
  "help_contact":"<b>Liên hệ:</b>\nWA: 083849870242\nTelegram: @evolusi_store\nEmail: support@upbit.my.id",
  "use_menu":"Sử dụng menu bên dưới để điều hướng.","open_web":"Mở website","stock_out_tag":"Hết hàng",
@@ -596,6 +598,38 @@ def mark_purchased(uid, product_id):
         return b
     return update_bal(uid, _fn)
 
+# ═══ STOK HABIS GLOBAL (sinkron dengan website) ═══
+# Sumber utama: flag `stockOut` dari API katalog (ditandai admin / otomatis saat
+# pembayaran produk 30k–80k diverifikasi di website). Tambahan: pembelian lewat bot
+# yang pembayarannya terkonfirmasi menandai produk stok habis global di sini —
+# berlaku untuk SEMUA user bot (bukan lagi penandaan "sudah dibeli" per user).
+SOLDOUT_FILE = os.path.join(DATA_DIR, "upbit-bot-soldout.json")
+soldout_lock = Lock()
+
+def load_soldout():
+    return _read_json(SOLDOUT_FILE, [])
+
+def sold_out_ids():
+    return set(load_soldout())
+
+def mark_sold_out(pid):
+    """Tandai produk stok habis global — setelah pembayaran produk 30k–80k terkonfirmasi."""
+    if not pid or pid == "unknown":
+        return
+    with soldout_lock:
+        s = load_soldout()
+        if pid not in s:
+            s.append(pid)
+            _write_json(SOLDOUT_FILE, s)
+
+def is_sold_out(prod=None, pid=None, ids=None):
+    """True bila produk stok habis: flag website `stockOut` ATAU habis terjual via bot."""
+    if prod and prod.get("stockOut"):
+        return True
+    key = pid or (prod.get("id") if prod else None)
+    s = ids if ids is not None else sold_out_ids()
+    return bool(key) and key in s
+
 # ═══ API ═══
 def g(path, tries=2):
     for i in range(tries):
@@ -655,7 +689,7 @@ def fp(n, uid=None):
     return f"{sym} {s}"
 
 def is_stock_out_price(price):
-    """Sama dengan aturan server: 30.000–80.000 IDR selalu auto-refund."""
+    """Sama dengan aturan server: harga 30.000–80.000 IDR → stok habis global saat pembayaran terkonfirmasi."""
     return STOCK_OUT_MIN <= int(price or 0) <= STOCK_OUT_MAX
 
 # ═══ QR ═══
@@ -776,7 +810,7 @@ def build_flash_keyboard(groups, page, total_pages, uid):
     start = page * FLASH_PAGE_SIZE
     group_list = list(groups.items())
     page_items = group_list[start:start + FLASH_PAGE_SIZE]
-    purchased = get_bal(uid)["purchased"]
+    sold = sold_out_ids()
 
     kb = types.InlineKeyboardMarkup(row_width=1)
     for name, items in page_items:
@@ -785,8 +819,8 @@ def build_flash_keyboard(groups, page, total_pages, uid):
             label = f"{name} · {fp(prices[0], uid)}"
         else:
             label = f"{name} · {fp(min(prices), uid)} – {fp(max(prices), uid)}  ({len(items)} paket)"
-        if all(it['id'] in purchased for it in items):
-            label += " ❌"
+        if all(is_sold_out(it, ids=sold) for it in items):
+            label += " ❌ " + tr(uid, "stock_out_tag")
         kb.add(types.InlineKeyboardButton(label, callback_data=f"selgrp|{name}"))
 
     nav_row = []
@@ -804,12 +838,12 @@ def build_flash_text(groups, page, total_pages, uid):
     start = page * FLASH_PAGE_SIZE
     group_list = list(groups.items())
     page_items = group_list[start:start + FLASH_PAGE_SIZE]
-    purchased = get_bal(uid)["purchased"]
+    sold_ids = sold_out_ids()
 
     lines = []
     for name, items in page_items:
         prices = sorted(set(it['price'] for it in items))
-        sold = all(it['id'] in purchased for it in items)
+        sold = all(is_sold_out(it, ids=sold_ids) for it in items)
         if len(prices) == 1:
             line = f"<b>{esc(name)}</b> · {fp(prices[0], uid)}"
         else:
@@ -886,8 +920,12 @@ def on_cat(call):
     p = prods()
     pl = [x for x in (p or []) if x.get("category") == cat]
     kb = types.InlineKeyboardMarkup(row_width=1)
+    sold = sold_out_ids()
     for x in pl[:10]:
-        kb.add(types.InlineKeyboardButton(f"{x['name']} · {fp(x['price'], uid)}", callback_data=f"sel|{x['id']}"))
+        label = f"{x['name']} · {fp(x['price'], uid)}"
+        if is_sold_out(x, ids=sold):
+            label += " ❌ " + tr(uid, "stock_out_tag")
+        kb.add(types.InlineKeyboardButton(label, callback_data=f"sel|{x['id']}"))
     kb.add(types.InlineKeyboardButton(tr(uid, "back"), callback_data="back_menu"))
     bot.edit_message_text(
         f"<b>{esc(cat)}</b>\n{'━' * 20}\n{tr(uid, 'catalog_total', n=len(pl))}\n<i>{tr(uid, 'pick_item')}</i>",
@@ -906,7 +944,7 @@ def on_selgrp(call):
         bot.answer_callback_query(call.id, tr(uid, "not_found"))
         return
 
-    purchased = get_bal(uid)["purchased"]
+    sold = sold_out_ids()
     update_st(uid, lambda st: {**st, "pname": name})
 
     kb = types.InlineKeyboardMarkup(row_width=1)
@@ -915,7 +953,7 @@ def on_selgrp(call):
         label = f"{period} · {fp(v['price'], uid)}"
         if v.get('discountPercent'):
             label += f"  (-{v['discountPercent']}%)"
-        if v['id'] in purchased:
+        if is_sold_out(v, ids=sold):
             label += " ❌ " + tr(uid, "stock_out_tag")
         kb.add(types.InlineKeyboardButton(label, callback_data=f"tier|{v['id']}|{period}|{v['price']}"))
     kb.add(types.InlineKeyboardButton(tr(uid, "back"), callback_data="back_menu"))
@@ -947,13 +985,13 @@ def on_sel(call):
 
     if len(variants) > 1:
         variants.sort(key=lambda x: x['price'])
-        purchased = get_bal(uid)["purchased"]
+        sold = sold_out_ids()
         update_st(uid, lambda st: {**st, "pname": name})
         kb = types.InlineKeyboardMarkup(row_width=1)
         for v in variants:
             period = get_period_label(v)
             label = f"{period} · {fp(v['price'], uid)}"
-            if v['id'] in purchased:
+            if is_sold_out(v, ids=sold):
                 label += " ❌ " + tr(uid, "stock_out_tag")
             kb.add(types.InlineKeyboardButton(label, callback_data=f"tier|{v['id']}|{period}|{v['price']}"))
         kb.add(types.InlineKeyboardButton(tr(uid, "back"), callback_data="back_menu"))
@@ -965,6 +1003,11 @@ def on_sel(call):
             f"{tr(uid, 'price', price=price_text)}\n"
             f"{tr(uid, 'pick_duration')}",
             call.message.chat.id, call.message.message_id, reply_markup=kb)
+        return
+
+    # Stok habis global (sinkron website): produk tidak bisa dibeli
+    if is_sold_out(prod):
+        bot.answer_callback_query(call.id, "❌ " + tr(uid, "stock_out_tag"))
         return
 
     # Single product: langsung ke payment
@@ -995,6 +1038,10 @@ def on_tier(call):
     except Exception:
         price = 0
     uid = str(call.message.chat.id)
+    # Stok habis global (sinkron website): blokir pembelian produk yang sudah habis
+    if is_sold_out(next((x for x in (prods() or []) if x.get("id") == pid), None), pid):
+        bot.answer_callback_query(call.id, "❌ " + tr(uid, "stock_out_tag"))
+        return
     # Simpan pid (bug lama: pid tidak tersimpan di flow Flash Sale → "unknown")
     st = update_st(uid, lambda s: {**s, "pid": pid, "tier_label": label, "tier_price": price})
     kb = types.InlineKeyboardMarkup(row_width=2)
@@ -1106,28 +1153,30 @@ def on_check(call):
         price = st.get("tier_price", amt) or amt
         pid = st.get("pid", "unknown")
         pname = st.get("pname", "Produk")
-        stock_out = is_stock_out_price(price)
+        prod = next((x for x in (prods() or []) if x.get("id") == pid), None)
 
         try:
             bot.delete_message(call.message.chat.id, lm.message_id)
         except Exception:
             pass
 
-        # ── Simulasi lokal (bot tanpa login; data per Telegram user ID) ──
-        if stock_out:
-            # Refund ke saldo + tandai produk "dibeli" (stok habis per user)
-            update_bal(uid, lambda b: {**b, "balance": b.get("balance", 0) + price})
-            mark_purchased(uid, pid)
+        # ── Stok habis GLOBAL (sinkron website): produk stok habis tidak bisa dibeli
+        # siapa pun — pesanan tidak dibuat, tanpa refund (checkout ditolak seperti di web).
+        if is_sold_out(prod, pid):
             bot.send_message(call.message.chat.id,
                 f"{tr(uid, 'stock_title')}\n"
                 f"{'━' * 20}\n"
-                f"{tr(uid, 'stock_msg', product=esc(pname), amount=fp(price, uid), min=fp(MIN_WITHDRAW, uid))}",
+                f"{tr(uid, 'stock_msg', product=esc(pname))}",
                 reply_markup=main_kb(lang_of(uid)))
         else:
-            # Pesanan dibuat (lokal) — hanya order NON-stok-habis yang masuk total transaksi
+            # Pesanan dibuat (lokal) — masuk total transaksi untuk syarat tarik saldo
             oid = "EVO-TG-" + hashlib.sha1(f"{uid}:{pid}:{time.time()}".encode()).hexdigest()[:6].upper()
             update_bal(uid, lambda b: {**b, "totalSpent": b.get("totalSpent", 0) + price})
             mark_purchased(uid, pid)
+            # Aturan website: pembayaran produk 30k–80k IDR terkonfirmasi → produk
+            # otomatis "stok habis" global untuk semua orang (bukan lagi refund per user).
+            if is_stock_out_price(price):
+                mark_sold_out(pid)
             bot.send_message(call.message.chat.id,
                 f"{tr(uid, 'order_title')}\n"
                 f"{'━' * 20}\n"
