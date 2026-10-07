@@ -6,7 +6,11 @@
 //   curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://evolusiai.xyz/api/telegram/webhook"
 // Env: TELEGRAM_BOT_TOKEN=...  (atau BOT_TOKEN untuk kompatibilitas bot lama)
 // ═══════════════════════════════════════════════════════════════════
+import crypto from 'node:crypto'
 import { prisma } from './db.js'
+import { PAYMENT_FEE_IDR } from './money.js'
+import { saveUpload } from './storage.js'
+import { notify, notifyAdmins } from './notify.js'
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || ''
 const STORE_URL = 'https://evolusiai.xyz'
@@ -28,6 +32,61 @@ const reply = (chatId, text, kb) => tg('sendMessage', {
   ...(kb ? { reply_markup: kb } : {}),
 })
 const IK = (inline_keyboard) => ({ inline_keyboard })
+
+// Respon API Telegram yang mengembalikan JSON (untuk getFile, dll.)
+async function tgRes(method, payload) {
+  if (!BOT_TOKEN) return null
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    return await r.json()
+  } catch { return null }
+}
+
+// ═══ Pembayaran — sumber kebenaran: app/src/data/payment.js (sama persis dgn checkout web) ═══
+const QRIS_STATIC =
+  '00020101021126570011ID.DANA.WWW011893600915303397767602090339776760303UMI51440014ID.CO.QRIS.WWW0215ID10265685152290303UMI5204599953033605802ID5915EvolusiAi Store6015Kota Jakarta Se6105121106304D121'
+function crc16(str) {
+  let crc = 0xffff
+  for (let i = 0; i < str.length; i++) {
+    crc ^= str.charCodeAt(i) << 8
+    for (let j = 0; j < 8; j++) {
+      crc = crc & 0x8000 ? (crc << 1) ^ 0x1021 : crc << 1
+      crc &= 0xffff
+    }
+  }
+  return crc.toString(16).toUpperCase().padStart(4, '0')
+}
+// QRIS dinamis: sisip nominal (tag 54) + POI 11→12, lalu hitung ulang CRC.
+const buildQrisPayload = (amount) => {
+  const amt = String(Math.max(0, Math.round(amount || 0)))
+  let base = QRIS_STATIC.slice(0, -8)
+  base = base.slice(0, 10) + '12' + base.slice(12)
+  const field = '54' + String(amt.length).padStart(2, '0') + amt
+  base = base.replace('5802ID', field + '5802ID')
+  const signed = base + '6304'
+  return signed + crc16(signed)
+}
+const CRYPTO = {
+  network: 'BNB Smart Chain (BEP-20)',
+  assets: [
+    { id: 'bnb', symbol: 'BNB', address: '0x02fd0906c6f873f35259889d7396f46b92a24aee', idrRate: 9650000, decimals: 4 },
+    { id: 'usdt', symbol: 'USDT', address: '0x02fd0906c6f873f35259889d7396f46b92a24aee', idrRate: 16300, decimals: 2 },
+  ],
+}
+const toCryptoAmount = (idr, asset) => (idr / asset.idrRate).toFixed(asset.decimals)
+const qrImageUrl = (data) => `https://api.qrserver.com/v1/create-qr-code/?size=360x360&data=${encodeURIComponent(data)}`
+function makeBotOrderId() {
+  const t = new Date()
+  const stamp = String(t.getFullYear()).slice(2) +
+    String(t.getMonth() + 1).padStart(2, '0') +
+    String(t.getDate()).padStart(2, '0')
+  const rand = crypto.randomBytes(3).toString('hex').toUpperCase()
+  return `EVO-${stamp}-${rand}`
+}
 
 // ── State percakapan per chat ──
 const DEFAULT_STATE = { lang: 'id' }
@@ -115,6 +174,28 @@ const S = {
   notifCompleted: { id: '✅ <b>Pesanan selesai!</b>\n<code>{id}</code>\n\nAkses sudah dikirim ke email kamu. Cek detail pesanan di website.' },
   notifCancelled: { id: '❌ <b>Pesanan dibatalkan</b>\n<code>{id}</code>\n{refund}\n\nCek Saldoku di website untuk detailnya.' },
   notifRefund: { id: '↩️ <b>Refund masuk ke Saldo</b>\n<code>{id}</code>\n+<b>{amount}</b>' },
+  // ── Katalog & beli (id default; bahasa lain fallback ke id) ──
+  catalogTitle: { id: '🛍 <b>Katalog</b> — pilih kategori:', en: '🛍 <b>Catalog</b> — pick a category:' },
+  catEmpty: { id: 'Belum ada produk aktif.', en: 'No active products yet.' },
+  prodPick: { id: '<b>{cat}</b> — {n} produk. Pilih:', en: '<b>{cat}</b> — {n} products. Pick one:' },
+  prodDetail: { id: '<b>{name}</b>{out}\n{vendor} · {cat}\n\n<i>{tagline}</i>', en: '<b>{name}</b>{out}\n{vendor} · {cat}\n\n<i>{tagline}</i>' },
+  tierPick: { id: 'Pilih paket / durasi:', en: 'Pick package / duration:' },
+  outOfStock: { id: '\n⛔ <b>Stok Habis</b> — tidak bisa dibeli sampai restock.', en: '\n⛔ <b>Out of Stock</b> — unavailable until restock.' },
+  payTitle: { id: '🧾 <b>Checkout</b>\n{product} · {tier}\nTotal: <b>{total}</b> <i>(sudah termasuk fee {fee})</i>\n\nMetode pembayaran:', en: '🧾 <b>Checkout</b>\n{product} · {tier}\nTotal: <b>{total}</b> <i>(incl. {fee} fee)</i>\n\nPayment method:' },
+  payQris: { id: '📲 Scan QR ini untuk bayar <b>{total}</b>.\n\nSetelah transfer, <b>kirim screenshot bukti</b> ke chat ini. Ketik /cancel untuk batal.', en: '📲 Scan this QR to pay <b>{total}</b>.\n\nAfter transfer, <b>send the payment screenshot</b> to this chat. Type /cancel to abort.' },
+  payCrypto: { id: '🪙 Kirim <b>{amount} {symbol}</b> ke:\n<code>{address}</code>\nNetwork: <b>{network}</b>\n\nSetelah transfer, <b>balas chat ini dengan TX Hash</b>. Ketik /cancel untuk batal.', en: '🪙 Send <b>{amount} {symbol}</b> to:\n<code>{address}</code>\nNetwork: <b>{network}</b>\n\nAfter transfer, <b>reply with the TX Hash</b>. Type /cancel to abort.' },
+  payBalShort: { id: '⚠️ Saldo tidak cukup ({balance}). Top up dulu: evolusiai.xyz/balance', en: '⚠️ Insufficient balance ({balance}). Top up first: evolusiai.xyz/balance' },
+  proofGot: { id: '📸 Bukti diterima — membuat pesanan…', en: '📸 Proof received — creating order…' },
+  proofFail: { id: '⚠️ Gagal memproses foto. Coba kirim ulang.', en: '⚠️ Failed to process the photo. Please resend.' },
+  txShort: { id: '⚠️ TX Hash terlalu pendek (min. 10 karakter).', en: '⚠️ TX Hash too short (min. 10 chars).' },
+  txGot: { id: '🔗 TX Hash diterima — membuat pesanan…', en: '🔗 TX Hash received — creating order…' },
+  txDup: { id: '⚠️ TX Hash ini sudah pernah dipakai pesanan lain.', en: '⚠️ This TX Hash was already used by another order.' },
+  orderMade: { id: '🧾 <b>Pesanan dibuat!</b>\nID: <code>{id}</code>\n{items}\nTotal: <b>{total}</b>\n\n⏳ Status: Diproses — akses dikirim ke email <b>{email}</b> setelah pembayaran diverifikasi admin.', en: '🧾 <b>Order created!</b>\nID: <code>{id}</code>\n{items}\nTotal: <b>{total}</b>\n\n⏳ Status: Processing — access will be emailed to <b>{email}</b> after admin verifies payment.' },
+  buyCancel: { id: '❌ Checkout dibatalkan.', en: '❌ Checkout cancelled.' },
+  tierGone: { id: '⚠️ Produk/paket tidak ditemukan — buka katalog lagi.', en: '⚠️ Product/tier not found — open the catalog again.' },
+  catBack: { id: '« Kategori', en: '« Categories' },
+  more: { id: 'Lagi →', en: 'More →' },
+  back: { id: '« Kembali', en: '« Back' },
 }
 const s_ = (key, lang, vars = {}) => {
   let text = S[key]?.[lang] ?? S[key]?.id ?? ''
@@ -157,8 +238,11 @@ async function menuFor(user, lang) {
     { text: '💰 Saldo', callback_data: 'm:bal' },
     { text: '📅 Check-in', callback_data: 'm:chk' },
   ], [
-    { text: '📦 Pesanan', callback_data: 'm:ord' },
+    { text: '🛍 Katalog', callback_data: 'm:cat' },
     { text: '⚡ Flash Sale', callback_data: 'm:flash' },
+  ], [
+    { text: '📦 Pesanan', callback_data: 'm:ord' },
+    { text: '⬆️ Top Up', url: STORE_URL + '/balance' },
   ], [
     { text: '🌐 Bahasa / Language', callback_data: 'm:lang' },
   ], [
@@ -327,6 +411,181 @@ async function showFlash(chatId, lang) {
   return reply(chatId, s_('flashHeader', lang, { n: items.length }) + lines.join('\n'))
 }
 
+// ═══ Katalog & alur beli — order masuk DB website, aturan sama dengan orders.js ═══
+const tierList = (prod) => {
+  try { return typeof prod.tiers === 'string' ? JSON.parse(prod.tiers) : (prod.tiers || []) } catch { return [] }
+}
+// Harga tier sesuai aturan website: flash sale hanya berlaku untuk tier pertama.
+function unitPriceOf(prod, tierIdx) {
+  const tiers = tierList(prod)
+  const tier = tiers[tierIdx] || tiers[0]
+  if (!tier) return null
+  return (tierIdx <= 0 && prod.flashSale && prod.flashPrice) ? prod.flashPrice : (tier.price ?? prod.price)
+}
+async function showCatalog(chatId, lang, page = 0) {
+  const prods = await prisma.product.findMany({ where: { active: true }, select: { category: true }, orderBy: { category: 'asc' } })
+  const cats = [...new Set(prods.map((p) => p.category).filter(Boolean))]
+  if (!cats.length) return reply(chatId, s_('catEmpty', lang))
+  const per = 8
+  const start = page * per
+  const slice = cats.slice(start, start + per)
+  const rows = slice.map((c) => [{ text: `📂 ${c}`, callback_data: `cat:${c}:0` }])
+  const nav = []
+  if (page > 0) nav.push({ text: s_('back', lang), callback_data: `catpg:${page - 1}` })
+  if (start + per < cats.length) nav.push({ text: s_('more', lang), callback_data: `catpg:${page + 1}` })
+  if (nav.length) rows.push(nav)
+  rows.push([{ text: '⚡ Flash Sale', callback_data: 'm:flash' }])
+  return reply(chatId, s_('catalogTitle', lang), IK(rows))
+}
+async function showCategory(chatId, lang, cat, page = 0) {
+  const prods = await prisma.product.findMany({ where: { active: true, category: cat }, orderBy: { createdAt: 'desc' } })
+  if (!prods.length) return reply(chatId, s_('catEmpty', lang))
+  const per = 6
+  const start = page * per
+  const slice = prods.slice(start, start + per)
+  const rows = slice.map((p) => [{ text: `${p.stockOut ? '⛔ ' : ''}${p.name} — ${rp(unitPriceOf(p, 0) ?? p.price)}`, callback_data: `sel:${p.id}` }])
+  const nav = []
+  if (page > 0) nav.push({ text: s_('back', lang), callback_data: `cat:${cat}:${page - 1}` })
+  if (start + per < prods.length) nav.push({ text: s_('more', lang), callback_data: `cat:${cat}:${page + 1}` })
+  if (nav.length) rows.push(nav)
+  rows.push([{ text: s_('catBack', lang), callback_data: 'catpg:0' }])
+  return reply(chatId, s_('prodPick', lang, { cat: esc(cat), n: prods.length }), IK(rows))
+}
+async function showProduct(chatId, lang, pid) {
+  const p = await prisma.product.findUnique({ where: { id: pid } })
+  if (!p || !p.active) return reply(chatId, s_('tierGone', lang))
+  const out = p.stockOut ? s_('outOfStock', lang) : ''
+  const tiers = tierList(p)
+  const rows = []
+  if (!p.stockOut) {
+    tiers.slice(0, 6).forEach((t, i) => {
+      rows.push([{ text: `${t.label} — ${rp(unitPriceOf(p, i) ?? t.price)}`, callback_data: `tier:${p.id}:${i}` }])
+    })
+  }
+  rows.push([{ text: '🛒 Buka di Website', url: `${STORE_URL}/product/${p.id}` }])
+  rows.push([{ text: s_('catBack', lang), callback_data: `cat:${p.category}:0` }])
+  const note = tiers[0]?.note ? `\n\n<i>${esc(tiers[0].note)}</i>` : ''
+  return reply(chatId,
+    s_('prodDetail', lang, { name: esc(p.name), out, vendor: esc(p.vendor), cat: esc(p.category), tagline: esc(p.tagline || '') }) + note + (p.stockOut ? '' : `\n\n${s_('tierPick', lang)}`),
+    IK(rows))
+}
+async function checkoutMenu(chatId, lang, user, pid, tierIdx) {
+  const p = await prisma.product.findUnique({ where: { id: pid } })
+  if (!p || !p.active) return reply(chatId, s_('tierGone', lang))
+  if (p.stockOut) return reply(chatId, s_('prodDetail', lang, { name: esc(p.name), out: s_('outOfStock', lang), vendor: esc(p.vendor), cat: esc(p.category), tagline: esc(p.tagline || '') }))
+  const tiers = tierList(p)
+  const tier = tiers[tierIdx]
+  if (!tier) return reply(chatId, s_('tierGone', lang))
+  const total = (unitPriceOf(p, tierIdx) ?? tier.price) + PAYMENT_FEE_IDR
+  await setState(chatId, { buy: { pid, tierIdx, method: null, asset: null, step: 'method' } })
+  const rows = [[{ text: '📲 QRIS', callback_data: `payq:${pid}:${tierIdx}` }]]
+  rows.push(CRYPTO.assets.map((a) => ({ text: `🪙 ${a.symbol}`, callback_data: `payc:${pid}:${tierIdx}:${a.id}` })))
+  if (user.balance >= total) rows.push([{ text: `💳 Pakai Saldo (${rp(user.balance)})`, callback_data: `paybal:${pid}:${tierIdx}` }])
+  rows.push([{ text: s_('catBack', lang), callback_data: `sel:${pid}` }])
+  return reply(chatId, s_('payTitle', lang, { product: esc(p.name), tier: esc(tier.label), total: rp(total), fee: rp(PAYMENT_FEE_IDR) }), IK(rows))
+}
+async function payQris(chatId, lang, user, pid, tierIdx) {
+  const p = await prisma.product.findUnique({ where: { id: pid } })
+  if (!p || !p.active || p.stockOut) return reply(chatId, s_('tierGone', lang))
+  const tier = tierList(p)[tierIdx]
+  if (!tier) return reply(chatId, s_('tierGone', lang))
+  const total = (unitPriceOf(p, tierIdx) ?? tier.price) + PAYMENT_FEE_IDR
+  await setState(chatId, { buy: { pid, tierIdx, method: 'qris', asset: null, step: 'await_proof' } })
+  return tg('sendPhoto', {
+    chat_id: chatId,
+    photo: qrImageUrl(buildQrisPayload(total)),
+    caption: s_('payQris', lang, { total: rp(total) }),
+    parse_mode: 'HTML',
+  })
+}
+async function payCrypto(chatId, lang, user, pid, tierIdx, assetId) {
+  const p = await prisma.product.findUnique({ where: { id: pid } })
+  if (!p || !p.active || p.stockOut) return reply(chatId, s_('tierGone', lang))
+  const tier = tierList(p)[tierIdx]
+  if (!tier) return reply(chatId, s_('tierGone', lang))
+  const asset = CRYPTO.assets.find((a) => a.id === assetId) || CRYPTO.assets[0]
+  const total = (unitPriceOf(p, tierIdx) ?? tier.price) + PAYMENT_FEE_IDR
+  await setState(chatId, { buy: { pid, tierIdx, method: 'crypto', asset: asset.id, step: 'await_tx' } })
+  return reply(chatId, s_('payCrypto', lang, { amount: toCryptoAmount(total, asset), symbol: asset.symbol, address: asset.address, network: CRYPTO.network }))
+}
+async function payBalance(chatId, lang, user, pid, tierIdx) {
+  const p = await prisma.product.findUnique({ where: { id: pid } })
+  if (!p || !p.active || p.stockOut) return reply(chatId, s_('tierGone', lang))
+  const tier = tierList(p)[tierIdx]
+  if (!tier) return reply(chatId, s_('tierGone', lang))
+  const total = (unitPriceOf(p, tierIdx) ?? tier.price) + PAYMENT_FEE_IDR
+  if (user.balance < total) return reply(chatId, s_('payBalShort', lang, { balance: rp(user.balance) }))
+  const order = await createBotOrder(user, p, tierIdx, { method: 'manual', proofRef: null, txHash: null, asset: null, payAmount: null, balanceUsed: total })
+  if (!order) return reply(chatId, s_('err', lang))
+  await setState(chatId, { buy: null })
+  return orderDone(chatId, lang, user, order)
+}
+// Buat order di DB website — validasi & transaksi mengikuti orders.js (stok atomik,
+// fee 455, saldo dipotong atomik, BalanceTransaction tercatat).
+async function createBotOrder(user, p, tierIdx, { method, proofRef, txHash, asset, payAmount, balanceUsed }) {
+  const tiers = tierList(p)
+  const tier = tiers[tierIdx] || tiers[0]
+  const price = unitPriceOf(p, tierIdx)
+  if (!tier || price == null) return null
+  if (p.stock !== -1) {
+    const dec = await prisma.product.updateMany({ where: { id: p.id, stock: { gte: 1 } }, data: { stock: { decrement: 1 } } })
+    if (dec.count === 0) return null
+  }
+  const total = Math.max(0, price + PAYMENT_FEE_IDR - (balanceUsed || 0))
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const o = await tx.order.create({
+        data: {
+          id: makeBotOrderId(),
+          userId: user.id,
+          deliveryEmail: user.email,
+          activation: 'new',
+          status: 'PROCESSING',
+          currency: 'IDR',
+          subtotal: price,
+          discount: 0,
+          total,
+          fee: PAYMENT_FEE_IDR,
+          paymentMethod: method,
+          paymentAsset: asset || null,
+          paymentAmount: payAmount || null,
+          paymentTxHash: txHash ? String(txHash).trim() : null,
+          paymentProof: proofRef || null,
+          adminNote: method === 'manual'
+            ? 'Order via bot Telegram — dibayar penuh pakai Saldo (lihat BalanceTransaction)'
+            : 'Order via bot Telegram',
+          items: { create: [{ productId: p.id, name: p.name, vendor: p.vendor, logo: p.logo || null, brand: p.brand || null, tierLabel: tier.label, price, qty: 1 }] },
+        },
+        include: { items: true },
+      })
+      if (balanceUsed > 0) {
+        const bal = await tx.user.updateMany({ where: { id: user.id, balance: { gte: balanceUsed } }, data: { balance: { decrement: balanceUsed } } })
+        if (bal.count === 0) throw new Error('Saldo tidak mencukupi')
+        await tx.balanceTransaction.create({
+          data: { userId: user.id, amount: -balanceUsed, type: 'purchase', note: `Pakai saldo untuk pesanan ${o.id} (via Telegram)`, orderId: o.id },
+        })
+      }
+      return o
+    })
+  } catch (e) {
+    console.error('bot order error:', e.message)
+    if (p.stock !== -1) await prisma.product.update({ where: { id: p.id }, data: { stock: { increment: 1 } } }).catch(() => {})
+    return null
+  }
+}
+async function orderDone(chatId, lang, user, order) {
+  notify(user.id, { type: 'order_created', title: `Pesanan ${order.id} diterima`, body: 'Pembayaran sedang kami verifikasi.', orderId: order.id })
+  notifyAdmins({ type: 'admin_new_order', title: `Pesanan baru ${order.id}`, body: '1 item · via bot Telegram', orderId: order.id })
+  return reply(chatId,
+    s_('orderMade', lang, {
+      id: esc(order.id),
+      items: order.items.map((it) => `• ${esc(it.name)} · ${esc(it.tierLabel)}`).join('\n'),
+      total: rp(order.total),
+      email: esc(user.email),
+    }),
+    IK([[{ text: '📦 Lihat Pesanan', url: `${STORE_URL}/orders/${order.id}` }]]))
+}
+
 // ── Picker bahasa ──
 async function showLang(chatId) {
   const codes = Object.entries(LANGS)
@@ -347,11 +606,12 @@ export async function handleTelegramUpdate(update) {
       const tgId = String(cb.from.id)
       const lang = (await getState(chatId)).lang
       tg('answerCallbackQuery', { callback_query_id: cb.id })
-      const [act, val] = String(cb.data || '').split(':')
+      const parts = String(cb.data || '').split(':')
+      const act = parts[0]
 
       if (act === 'lang') {
-        await setState(chatId, { lang: val })
-        return reply(chatId, s_('langSaved', val, { lang: LANGS[val] || val }))
+        await setState(chatId, { lang: parts[1] })
+        return reply(chatId, s_('langSaved', parts[1], { lang: LANGS[parts[1]] || parts[1] }))
       }
       if (act === 'm:lang') return showLang(chatId)
       if (act === 'm:menu') {
@@ -361,6 +621,12 @@ export async function handleTelegramUpdate(update) {
       }
       if (act === 'm:link') return reply(chatId, s_('notLinked', lang))
 
+      // Katalog & produk — bisa dibuka tanpa akun terhubung
+      if (act === 'm:cat' || act === 'catpg') return showCatalog(chatId, lang, act === 'catpg' ? (parseInt(parts[1], 10) || 0) : 0)
+      if (act === 'cat') return showCategory(chatId, lang, parts[1], parseInt(parts[2], 10) || 0)
+      if (act === 'sel') return showProduct(chatId, lang, parts[1])
+      if (act === 'buycancel') { await setState(chatId, { buy: null }); return reply(chatId, s_('buyCancel', lang)) }
+
       const user = await userByTelegram(tgId)
       if (!user) return reply(chatId, s_('notLinked', lang))
       if (act === 'm:bal') return showBalance(chatId, user, lang)
@@ -368,6 +634,11 @@ export async function handleTelegramUpdate(update) {
       if (act === 'm:chkgo') return checkinGo(chatId, user, lang)
       if (act === 'm:ord') return showOrders(chatId, user, lang)
       if (act === 'm:flash') return showFlash(chatId, lang)
+      // Checkout — butuh akun terhubung (saldo & order tersimpan di database website)
+      if (act === 'tier') return checkoutMenu(chatId, lang, user, parts[1], parseInt(parts[2], 10) || 0)
+      if (act === 'payq') return payQris(chatId, lang, user, parts[1], parseInt(parts[2], 10) || 0)
+      if (act === 'payc') return payCrypto(chatId, lang, user, parts[1], parseInt(parts[2], 10) || 0, parts[3])
+      if (act === 'paybal') return payBalance(chatId, lang, user, parts[1], parseInt(parts[2], 10) || 0)
       return
     }
 
@@ -386,12 +657,37 @@ export async function handleTelegramUpdate(update) {
         const m = await menuFor(user, lang)
         return reply(chatId, m.text, m.kb)
       }
+      if (text === '/cancel') {
+        await setState(chatId, { buy: null })
+        return reply(chatId, s_('buyCancel', lang))
+      }
       if (text.startsWith('/menu') || text === '/help') {
         const user = await userByTelegram(tgId)
         return reply(chatId, s_('notLinked', lang).split('\n\n')[0] === '🔐 Akun belum terhubung.' && !user
           ? s_('notLinked', lang)
           : s_('menu', lang, { name: esc(user?.name || '-'), balance: rp(user?.balance || 0) }),
           IK([[{ text: '⚙️ Buka Menu', callback_data: 'm:menu' }]]))
+      }
+      // Checkout crypto: user mengirim TX Hash saat state menunggu
+      if (st.buy?.step === 'await_tx') {
+        const tx = text.replace(/\s+/g, '')
+        if (tx.length < 10) return reply(chatId, s_('txShort', lang))
+        const dupe = await prisma.order.findFirst({ where: { paymentTxHash: tx } })
+        if (dupe) return reply(chatId, s_('txDup', lang))
+        reply(chatId, s_('txGot', lang))
+        const user = await userByTelegram(tgId)
+        if (!user) return reply(chatId, s_('notLinked', lang))
+        const p = await prisma.product.findUnique({ where: { id: st.buy.pid } })
+        if (!p || !p.active || p.stockOut) return reply(chatId, s_('tierGone', lang))
+        const asset = CRYPTO.assets.find((a) => a.id === st.buy.asset) || CRYPTO.assets[0]
+        const total = (unitPriceOf(p, st.buy.tierIdx) ?? 0) + PAYMENT_FEE_IDR
+        const order = await createBotOrder(user, p, st.buy.tierIdx, {
+          method: 'crypto', proofRef: null, txHash: tx, asset: asset.symbol,
+          payAmount: `${toCryptoAmount(total, asset)} ${asset.symbol}`, balanceUsed: 0,
+        })
+        if (!order) return reply(chatId, s_('err', lang))
+        await setState(chatId, { buy: null })
+        return orderDone(chatId, lang, user, order)
       }
       // Kode 6 digit diketik manual → coba hubungkan
       if (/^[A-Za-z0-9]{6}$/.test(text)) {
@@ -401,6 +697,31 @@ export async function handleTelegramUpdate(update) {
       const user = await userByTelegram(tgId)
       const m = await menuFor(user, lang)
       return reply(chatId, m.text, m.kb)
+    }
+
+    // Foto bukti transfer (QRIS) saat checkout menunggu bukti
+    if (msg?.photo && msg.chat?.type === 'private') {
+      chatId = msg.chat.id
+      const st2 = await getState(chatId)
+      if (st2.buy?.step !== 'await_proof') return
+      const tgId2 = String(msg.from.id)
+      const user = await userByTelegram(tgId2)
+      if (!user) return reply(chatId, s_('notLinked', st2.lang))
+      const fileId = msg.photo[msg.photo.length - 1].file_id
+      const g = await tgRes('getFile', { file_id: fileId })
+      const fp = g?.result?.file_path
+      if (!fp) return reply(chatId, s_('proofFail', st2.lang))
+      const r = await fetch(`https://api.telegram.org/file/bot${BOT_TOKEN}/${fp}`)
+      if (!r.ok) return reply(chatId, s_('proofFail', st2.lang))
+      const buf = Buffer.from(await r.arrayBuffer())
+      const p = await prisma.product.findUnique({ where: { id: st2.buy.pid } })
+      if (!p || !p.active || p.stockOut) return reply(chatId, s_('tierGone', st2.lang))
+      reply(chatId, s_('proofGot', st2.lang))
+      const proofRef = await saveUpload(buf, { prefix: 'proof', originalname: 'telegram-proof.jpg', contentType: r.headers.get('content-type') || 'image/jpeg' })
+      const order = await createBotOrder(user, p, st2.buy.tierIdx, { method: 'qris', proofRef, txHash: null, asset: null, payAmount: null, balanceUsed: 0 })
+      if (!order) return reply(chatId, s_('err', st2.lang))
+      await setState(chatId, { buy: null })
+      return orderDone(chatId, st2.lang, user, order)
     }
   } catch (e) {
     console.error('telegramBot error:', e.message)
