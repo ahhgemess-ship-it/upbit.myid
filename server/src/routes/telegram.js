@@ -2,23 +2,28 @@
 import { Router } from 'express'
 import { prisma } from '../db.js'
 import { requireAuth } from '../auth.js'
-import { handleTelegramUpdate } from '../telegramBot.js'
+import { handleTelegramUpdate, flushPending } from '../telegramBot.js'
 
 const router = Router()
 
 // POST /api/telegram/webhook — endpoint yang dipanggil Telegram (setWebhook).
-// Ringan: Telegram butuh respons cepat; balasan dikirim fire-and-forget.
+// PENTING: proses update SEBELUM membalas 200. Di Vercel serverless, fungsi
+// dibekukan begitu respons terkirim — balasan fire-and-forget setelah res.json()
+// tidak pernah terkirim (bug "bot tidak merespon"). Telegram bersedia menunggu
+// respons hingga 60 detik; handler ini selesai dalam 1–3 detik.
 router.post('/webhook', async (req, res) => {
   // Validasi secret header (diset saat setWebhook; opsional tapi disarankan)
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET || ''
   if (secret && req.get('x-telegram-bot-api-secret-token') !== secret) {
     return res.status(401).json({ ok: false })
   }
-  res.json({ ok: true }) // balas cepat, proses setelahnya
   try {
     if (req.body?.update_id) await handleTelegramUpdate(req.body)
+    await flushPending() // tunggu semua sendMessage/answerCallback selesai
   } catch (e) {
-    console.error('telegram webhook error:', e.message)
+    console.error('telegram webhook error:', e?.message || e)
+  } finally {
+    res.json({ ok: true })
   }
 })
 

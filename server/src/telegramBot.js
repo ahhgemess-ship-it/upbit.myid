@@ -16,16 +16,30 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || ''
 const STORE_URL = 'https://evolusiai.xyz'
 
 // ── Util Telegram Bot API (fire-and-forget; serverless tidak boleh menggantung) ──
+// Semua kirim pesan dikumpulkan di `pending` supaya route webhook bisa menunggu
+// sampai SEMUA terkirim sebelum membalas 200 — di Vercel serverless, fungsi
+// dibekukan begitu respons terkirim, jadi fire-and-forget murni hilang.
+const pending = new Set()
 async function tg(method, payload) {
   if (!BOT_TOKEN) return
-  try {
-    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-  } catch { /* abaikan — pesan berikutnya tetap jalan */ }
+  const p = (async () => {
+    try {
+      const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!r.ok) {
+        const j = await r.json().catch(() => null)
+        console.error(`tg ${method} gagal:`, j?.description || r.status)
+      }
+    } catch (e) { console.error(`tg ${method} error:`, e?.message || e) }
+  })()
+  pending.add(p)
+  p.then(() => pending.delete(p), () => pending.delete(p))
+  return p
 }
+export const flushPending = () => Promise.allSettled([...pending])
 const reply = (chatId, text, kb) => tg('sendMessage', {
   chat_id: chatId, text, parse_mode: 'HTML',
   link_preview_options: { is_disabled: true },
