@@ -1,12 +1,14 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Search, X, Zap, Package, Check, Pencil, Save, Ban, Upload, Image as ImageIcon } from 'lucide-react'
-import { formatIDR, applyDiscount } from '../data/products.js'
+import { Search, X, Zap, Package, Check, Pencil, Save, Ban, Upload, Image as ImageIcon, Eye } from 'lucide-react'
+import { formatIDR, applyDiscount, flashFrom } from '../data/products.js'
 import { USD_TO_IDR } from '../i18n/pricing.js'
 import { api } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import AdminGate from '../components/AdminGate.jsx'
+import FlashSaleCard from '../components/FlashSaleCard.jsx'
+import PreviewWindow from '../components/PreviewWindow.jsx'
 
 const BADGES = [
   { value: '', label: 'Tanpa badge' },
@@ -25,6 +27,10 @@ export default function AdminFlashSale() {
   const [uploadingId, setUploadingId] = useState(null)
   const [editingId, setEditingId] = useState(null)
   const [drafts, setDrafts] = useState({})
+  // Window preview sisi pembeli + sinyal reload (naik setiap data tersimpan
+  // supaya window preview menampilkan perubahan terbaru secara realtime).
+  const [preview, setPreview] = useState(null)
+  const [previewSignal, setPreviewSignal] = useState(0)
 
   const load = () => api.adminProducts().then((d) => {
     setRows(d.products)
@@ -47,6 +53,7 @@ export default function AdminFlashSale() {
       await api.adminUpdateProduct(p.id, { flashSale: next })
       setRows((rs) => rs.map((r) => (r.id === p.id ? { ...r, flashSale: next } : r)))
       refresh()
+      setPreviewSignal((n) => n + 1)
       toast(next ? `"${p.name}" masuk Flash Sale` : `"${p.name}" dikeluarkan dari Flash Sale`, 'success')
     } catch (e) {
       toast(e.message, 'error')
@@ -56,6 +63,37 @@ export default function AdminFlashSale() {
   }
 
   const setDraft = (id, key, value) => setDrafts((ds) => ({ ...ds, [id]: { ...ds[id], [key]: value } }))
+
+  // Bangun kartu flash dari nilai DRAFT — dipakai preview live di form edit:
+  // admin melihat kartu persis seperti yang dilihat pembeli (diskon, harga
+  // coret, stok) seketika saat mengetik, sebelum disimpan.
+  const draftFlashOf = (p) => {
+    const d = drafts[p.id] || {}
+    const flashPrice = Math.max(1, parseInt(d.flashPrice, 10) || 0) || (p.flashPrice ?? p.price)
+    const price = Math.max(1, parseInt(d.price, 10) || 0) || (p.price ?? flashPrice)
+    const stock = d.stock === '' ? -1 : (Number.isSafeInteger(parseInt(d.stock, 10)) ? parseInt(d.stock, 10) : -1)
+    const tiers = Array.isArray(p.tiers) && p.tiers.length
+      ? [{ ...p.tiers[0], price }, ...p.tiers.slice(1)]
+      : [{ label: p.period || 'Produk', price }]
+    const badgeDef = BADGES.find((b) => b.value === (d.badge || ''))
+    const merged = {
+      ...p,
+      flashSale: true,
+      flashPrice,
+      price,
+      flashPriceIntl: 0, // dipaksa turun ulang dari Rp agar preview USD akurat
+      priceIntl: 0,
+      name: (d.name || '').trim() || p.name,
+      description: (d.description || '').trim(),
+      logo: (d.logo || '').trim() || null,
+      badge: badgeDef?.value || null,
+      badgeColor: badgeDef?.color || null,
+      stockOut: !!d.stockOut,
+      stock,
+      tiers,
+    }
+    return flashFrom((rows || []).map((r) => (r.id === p.id ? merged : r)))[0]
+  }
 
   const onPickLogo = async (p, e) => {
     const file = e.target.files?.[0]
@@ -128,6 +166,7 @@ export default function AdminFlashSale() {
       setDraft(p.id, 'badge', product.badge || '')
       setEditingId(null)
       refresh()
+      setPreviewSignal((n) => n + 1)
       toast(`Perubahan "${product.name}" disimpan`, 'success')
     } catch (e) {
       toast(e.message, 'error')
@@ -150,14 +189,19 @@ export default function AdminFlashSale() {
 
   return (
     <div className="container section">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6, flexWrap: 'wrap' }}>
         <span style={{ display: 'grid', placeItems: 'center', width: 38, height: 38, borderRadius: 12, background: 'var(--lime)', color: 'var(--ink)' }}>
           <Zap size={19} fill="currentColor" />
         </span>
         <h1 className="display h-lg">KELOLA FLASH SALE</h1>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="pill pill-indigo" style={{ padding: '8px 14px', fontSize: 12.5 }} onClick={() => setPreview({ src: '/flash-sale', title: 'Katalog Flash Sale — sisi pembeli' })}>
+            <Eye size={14} /> Preview katalog pembeli
+          </button>
+        </div>
       </div>
       <p className="text-muted" style={{ fontSize: 14, marginTop: 8, maxWidth: 700 }}>
-        Pilih produk Flash Sale tanpa mengubah kategori. Foto, nama, deskripsi, harga original & flash, badge, stok bisa diedit lewat ikon pensil.
+        Pilih produk Flash Sale tanpa mengubah kategori. Foto, nama, deskripsi, harga original & flash, badge, stok bisa diedit lewat ikon pensil. Tekan ikon mata untuk melihat tampilan pembeli sebagai window — preview katalog dimuat ulang otomatis setiap perubahan disimpan.
       </p>
 
       <div className="stat-cards" style={{ marginTop: 22 }}>
@@ -190,6 +234,7 @@ export default function AdminFlashSale() {
             const on = !!p.flashSale
             const d = drafts[p.id] || { flashPrice: p.flashPrice ?? p.price, stock: p.stock === -1 ? '' : p.stock, stockOut: !!p.stockOut, name: p.name, description: p.description || '', price: p.price, logo: p.logo || '', badge: p.badge || '' }
             const editing = editingId === p.id
+            const draftPreview = editing ? draftFlashOf(p) : null
             const multiTier = Array.isArray(p.tiers) && p.tiers.length > 1
             const badgeDef = BADGES.find((b) => b.value === (p.badge || ''))
             return (
@@ -218,6 +263,7 @@ export default function AdminFlashSale() {
                       {p.stockOut && ' · STOK HABIS'}
                     </span>
                   ) : (
+                    <div className="fs-edit-wrap">
                     <div className="fs-edit-form">
                       <div className="fs-edit-row">
                         <input ref={null} type="file" accept="image/*" hidden id={`fs-logo-${p.id}`} onChange={(e) => onPickLogo(p, e)} />
@@ -259,6 +305,14 @@ export default function AdminFlashSale() {
                         <label className="fs-out-check"><input type="checkbox" checked={d.stockOut} onChange={(e) => setDraft(p.id, 'stockOut', e.target.checked)} /><Ban size={15} /> Stok habis</label>
                       </div>
                     </div>
+                    <aside className="fs-live-preview" aria-hidden="true">
+                      <span className="fs-live-label"><Eye size={11} /> LIVE · kartu sisi pembeli</span>
+                      <div className="fs-live-card">
+                        {draftPreview && <FlashSaleCard product={draftPreview} />}
+                      </div>
+                      <span className="fs-live-hint">Tampil seketika mengikuti isian — belum tersimpan ke DB.</span>
+                    </aside>
+                    </div>
                   )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
@@ -268,7 +322,10 @@ export default function AdminFlashSale() {
                       <button className="icon-btn" onClick={() => setEditingId(null)} disabled={savingId === p.id} aria-label="Batal"><X size={16} /></button>
                     </>
                   ) : (
-                    <button className="icon-btn" onClick={() => setEditingId(p.id)} aria-label={`Edit produk ${p.name}`}><Pencil size={16} /></button>
+                    <>
+                      <button className="icon-btn" onClick={() => setPreview({ src: `/product/${p.id}`, title: `Preview pembeli: ${p.name}` })} aria-label={`Lihat ${p.name} seperti pembeli`} title="Lihat seperti pembeli"><Eye size={16} /></button>
+                      <button className="icon-btn" onClick={() => setEditingId(p.id)} aria-label={`Edit produk ${p.name}`}><Pencil size={16} /></button>
+                    </>
                   )}
                   <button onClick={() => toggle(p, !on)} disabled={savingId === p.id || !p.active} className={`fs-toggle ${on ? 'is-on' : ''}`} aria-label={on ? `Keluarkan ${p.name} dari flash sale` : `Masukkan ${p.name} ke flash sale`}>
                     <span className="fs-toggle-knob">{savingId === p.id ? '…' : on ? <Check size={12} strokeWidth={3} /> : ''}</span>
@@ -283,6 +340,10 @@ export default function AdminFlashSale() {
       <p className="text-muted" style={{ fontSize: 12, marginTop: 18 }}>
         Harga original adalah harga yang dicoret di kartu (diambil juga sebagai harga official bila produk sama ada di katalog reguler). Badge <strong>Private/Sharing</strong> tampil di kartu Flash Sale.
       </p>
+
+      {preview && (
+        <PreviewWindow title={preview.title} src={preview.src} onClose={() => setPreview(null)} refreshSignal={previewSignal} />
+      )}
 
       <style>{`
         .fs-toggle { width: 52px; height: 30px; border-radius: 999px; cursor: pointer; background: var(--surface-2); border: 1.5px solid var(--line-soft); position: relative; transition: background .18s ease, border-color .18s ease; display: flex; align-items: center; padding: 0 3px; }
@@ -301,6 +362,12 @@ export default function AdminFlashSale() {
         .fs-out-check { flex-direction: row !important; align-items: center; height: 38px; color: var(--danger, #dc2626) !important; cursor: pointer; }
         .fs-out-check input { accent-color: #dc2626; }
         @media (max-width: 620px) { .fs-edit-grid .input { width: 130px; } }
+        .fs-edit-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 296px; gap: 16px; align-items: start; }
+        .fs-live-preview { display: flex; flex-direction: column; gap: 8px; }
+        .fs-live-label { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); background: var(--lime); border: 1.5px solid var(--ink); padding: 4px 9px; border-radius: 999px; width: fit-content; }
+        .fs-live-card { pointer-events: none; user-select: none; max-width: 278px; }
+        .fs-live-hint { font-size: 10.5px; color: var(--muted); }
+        @media (max-width: 980px) { .fs-edit-wrap { grid-template-columns: 1fr; } .fs-live-card { max-width: 250px; } }
       `}</style>
     </div>
   )
