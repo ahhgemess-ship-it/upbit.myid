@@ -110,9 +110,9 @@ const _real = {
   withdrawBalance: (amount, method) => req('/api/balance/withdraw', { method: 'POST', body: { amount, method } }),
   checkInStatus: () => req('/api/balance/checkin/status'),
   checkIn: () => req('/api/balance/checkin', { method: 'POST' }),
-  // Telegram link (satu dompet dengan bot)
+  // Telegram link (satu dompet dengan bot) — tanpa kode, deep-link dari bot
   telegramStatus: () => req('/api/telegram/status'),
-  telegramLinkCode: () => req('/api/telegram/link-code', { method: 'POST' }),
+  telegramLink: (telegramId) => req('/api/telegram/link', { method: 'POST', body: { telegramId } }),
   // Top-up saldo (multipart)
   createTopup: (form) => req('/api/balance/topup', { method: 'POST', form }),
   topupHistory: () => req('/api/balance/topup'),
@@ -174,7 +174,7 @@ export const api = {
   checkIn: withFallback(_real.checkIn, demoApi.checkIn),
   // Telegram link (butuh backend)
   telegramStatus: withFallback(_real.telegramStatus, () => Promise.resolve({ linked: false })),
-  telegramLinkCode: withFallback(_real.telegramLinkCode, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
+  telegramLink: withFallback(_real.telegramLink, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
   // Top-up (butuh backend)
   createTopup: withFallback(_real.createTopup, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
   topupHistory: withFallback(_real.topupHistory, () => Promise.resolve([])),

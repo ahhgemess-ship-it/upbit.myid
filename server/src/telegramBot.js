@@ -129,20 +129,20 @@ const LANGS = {
 }
 const S = {
   welcome: {
-    id: '👋 <b>Selamat datang di EvolusiAI Bot!</b>\n\nDompet kamu sekarang <b>satu dengan website</b> — saldo, check-in harian, dan pesanan sama persis dengan evolusiai.xyz.\n\nHubungkan akun website dulu supaya saldo & check-in kamu aktif di sini.',
-    en: '👋 <b>Welcome to EvolusiAI Bot!</b>\n\nYour wallet is now <b>one with the website</b> — balance, daily check-in and orders match evolusiai.xyz exactly.\n\nLink your website account first to activate balance & check-in here.',
+    id: '✨ <b>EvolusiAI Store — Bot Resmi</b>\n\n🛍️ Beli akun premium favoritmu langsung dari Telegram\n💰 Saldo satu dompet dengan evolusiai.xyz\n⚡ Flash sale harga real-time\n\n👇 Tekan tombol di bawah untuk mulai!',
+    en: '✨ <b>EvolusiAI Store — Official Bot</b>\n\n🛍️ Buy your favorite premium accounts straight from Telegram\n💰 One wallet with evolusiai.xyz\n⚡ Flash sale with real-time prices\n\n👇 Tap a button below to get started!',
   },
   menu: {
-    id: '⚙️ <b>Menu Utama</b>\n👤 {name}\n💰 Saldo: <b>{balance}</b>',
-    en: '⚙️ <b>Main Menu</b>\n👤 {name}\n💰 Balance: <b>{balance}</b>',
+    id: '✨ <b>EvolusiAI Store</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Saldo: <b>{balance}</b>\n\nPilih menu di bawah 👇',
+    en: '✨ <b>EvolusiAI Store</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Balance: <b>{balance}</b>\n\nPick a menu below 👇',
   },
   notLinked: {
-    id: '🔐 Akun belum terhubung.\n\n1️⃣ Buka evolusiai.xyz → <b>Saldoku</b>\n2️⃣ Klik <b>Hubungkan Telegram</b> → salin kodenya\n3️⃣ Kirim di sini: <code>/start KODE</code>\n\nAtau ketik kodenya langsung di chat ini.',
-    en: '🔐 Account not linked.\n\n1️⃣ Open evolusiai.xyz → <b>Saldoku</b>\n2️⃣ Tap <b>Hubungkan Telegram</b> → copy the code\n3️⃣ Send here: <code>/start CODE</code>\n\nOr just type the code in this chat.',
+    id: '🔐 <b>Akun belum terhubung</b>\n\nTekan tombol <b>🔗 Hubungkan Akun Website</b> di bawah ini → kamu dibawa ke evolusiai.xyz → setelah login, akun otomatis tersambung ke Telegram ini.\n\n✨ Bebas pakai Telegram siapa saja — asal jadi!',
+    en: '🔐 <b>Account not linked</b>\n\nTap <b>🔗 Link Website Account</b> below → you will be taken to evolusiai.xyz → once logged in, your account connects to this Telegram automatically.\n\n✨ Any Telegram account works!',
   },
   linked: {
-    id: '✅ <b>Akun terhubung!</b>\n👤 {name}\n💰 Saldo: <b>{balance}</b>{migrated}',
-    en: '✅ <b>Account linked!</b>\n👤 {name}\n💰 Balance: <b>{balance}</b>{migrated}',
+    id: '🎉 <b>Akun berhasil terhubung!</b>\n━━━━━━━━━━━━━━━━━━\n👤 {name}\n💰 Saldo: <b>{balance}</b>{migrated}\n\nSelamat bergabung resmi di EvolusiAI Store 🛍️',
+    en: '🎉 <b>Account linked successfully!</b>\n━━━━━━━━━━━━━━━━━━\n👤 {name}\n💰 Balance: <b>{balance}</b>{migrated}\n\nWelcome officially to EvolusiAI Store 🛍️',
   },
   migrated: {
     id: '\n🎁 Saldo lama bot <b>{amount}</b> sudah dipindahkan ke akun website kamu.',
@@ -174,14 +174,6 @@ const S = {
   flashLine: { id: '• <b>{name}</b>{dur} — <b>{price}</b> <s>{orig}</s> (-{disc}%)', en: '• <b>{name}</b>{dur} — <b>{price}</b> <s>{orig}</s> (-{disc}%)' },
   empty: { id: 'Belum ada produk flash sale saat ini.', en: 'No flash sale products right now.' },
   langSaved: { id: '✅ Bahasa disimpan: {lang}', en: '✅ Language saved: {lang}' },
-  invalidCode: {
-    id: '❌ Kode tidak valid / sudah kedaluwarsa.\n\nAmbil kode baru: evolusiai.xyz → Saldoku → <b>Hubungkan Telegram</b>.',
-    en: '❌ Invalid or expired code.\n\nGet a new one: evolusiai.xyz → Saldoku → <b>Hubungkan Telegram</b>.',
-  },
-  codeTaken: {
-    id: '⚠️ Telegram ini sudah terhubung ke akun website lain, atau akun website itu sudah punya Telegram lain. Minta admin melepas ikatan dulu.',
-    en: '⚠️ This Telegram is already linked to another website account (or vice versa). Ask admin to unlink first.',
-  },
   err: { id: '⚠️ Terjadi kesalahan, coba lagi.', en: '⚠️ Something went wrong, try again.' },
   // Notifikasi order (dipakai server, id saja — pesan transaksional)
   notifCreated: { id: '🧾 <b>Pesanan dibuat</b>\n<code>{id}</code>\nTotal: <b>{total}</b>\n\nBayar via QRIS di website ya!' },
@@ -247,44 +239,57 @@ async function minWithdrawGlobal() {
 }
 
 // ── Menu utama ──
-async function menuFor(user, lang) {
-  const rows = [[
-    { text: '💰 Saldo', callback_data: 'm:bal' },
-    { text: '📅 Check-in', callback_data: 'm:chk' },
-  ], [
-    { text: '🛍 Katalog', callback_data: 'm:cat' },
-    { text: '⚡ Flash Sale', callback_data: 'm:flash' },
-  ], [
-    { text: '📦 Pesanan', callback_data: 'm:ord' },
-    { text: '⬆️ Top Up', url: STORE_URL + '/balance' },
-  ], [
-    { text: '🌐 Bahasa / Language', callback_data: 'm:lang' },
-  ], [
-    { text: '🛒 Buka evolusiai.xyz', url: STORE_URL },
-  ]]
+const BANNER_URL = STORE_URL + '/logo.png'
+// Peta emoji kategori biar tombol katalog lebih hidup
+const CAT_EMOJI = [
+  [/ai|asisten|assistant|chatbot/i, '🤖'],
+  [/stream|film|movie|tv|video/i, '🎬'],
+  [/musik|music|audio|spotify/i, '🎵'],
+  [/game|gaming/i, '🎮'],
+  [/desain|design|edit|kreatif/i, '🎨'],
+  [/vpn|keamanan|security/i, '🛡️'],
+  [/edu|kursus|belajar|course/i, '📚'],
+]
+const catEmoji = (name) => (CAT_EMOJI.find(([re]) => re.test(String(name))) || [null, '🛍️'])[1]
+const linkKb = (tgId) => IK([[{ text: '🔗 Hubungkan Akun Website', url: `${STORE_URL}/balance?link=${tgId || ''}` }]])
+
+async function menuFor(user, lang, tgId) {
+  const rows = [
+    [{ text: '🛍️ Katalog Produk', callback_data: 'm:cat' }, { text: '⚡ Flash Sale', callback_data: 'm:flash' }],
+    [{ text: '💰 Saldo Saya', callback_data: 'm:bal' }, { text: '📦 Pesanan Saya', callback_data: 'm:ord' }],
+    [{ text: '📅 Check-in Harian', callback_data: 'm:chk' }, { text: '🌐 Bahasa', callback_data: 'm:lang' }],
+    [{ text: '⬆️ Top Up Saldo', url: STORE_URL + '/balance' }],
+    [{ text: '🌐 evolusiai.xyz', url: STORE_URL }],
+  ]
   if (user) {
-    const card = { balance: rp(user.balance) }
-    return { text: s_('menu', lang, { name: esc(user.name), balance: card.balance }), kb: IK(rows) }
+    return { text: s_('menu', lang, { name: esc(user.name), balance: rp(user.balance) }), kb: IK(rows) }
   }
-  return { text: s_('welcome', lang), kb: IK(rows) }
+  const kb = IK([
+    [{ text: '🔗 Hubungkan Akun Website', url: `${STORE_URL}/balance?link=${tgId || ''}` }],
+    [{ text: '🛍️ Lihat Katalog', callback_data: 'm:cat' }, { text: '⚡ Flash Sale', callback_data: 'm:flash' }],
+    [{ text: '🌐 evolusiai.xyz', url: STORE_URL }],
+  ])
+  return { text: s_('welcome', lang), kb }
 }
 
-// ── Hubungkan akun via kode dari website ──
-async function handleLink(chatId, telegramId, code, lang) {
-  const clean = String(code || '').trim().toUpperCase()
-  if (!/^[A-Z0-9]{6}$/.test(clean)) return reply(chatId, s_('invalidCode', lang))
-  const link = await prisma.telegramLinkCode.findUnique({ where: { code: clean } })
-  if (!link || link.expiresAt < new Date()) return reply(chatId, s_('invalidCode', lang))
+// Kirim pesan dengan banner logo (foto berwarna) — tampilan start lebih premium
+async function sendBanner(chatId, caption, kb) {
+  return tg('sendPhoto', {
+    chat_id: chatId, photo: BANNER_URL, caption,
+    parse_mode: 'HTML', link_preview_options: { is_disabled: true },
+    ...(kb ? { reply_markup: kb } : {}),
+  })
+}
+async function sendStart(chatId, tgId) {
+  const user = await userByTelegram(tgId)
+  const lang = (await getState(chatId)).lang
+  const m = await menuFor(user, lang, tgId)
+  return sendBanner(chatId, m.text, m.kb)
+}
 
-  // Telegram ini sudah dipakai akun lain? / akun target sudah punya Telegram lain?
-  const clash = await prisma.user.findFirst({ where: { telegramId: String(telegramId) } })
-  if (clash && clash.id !== link.userId) return reply(chatId, s_('codeTaken', lang))
-  const user = await prisma.user.findUnique({ where: { id: link.userId } })
-  if (!user) return reply(chatId, s_('invalidCode', lang))
-  if (user.telegramId && user.telegramId !== String(telegramId)) return reply(chatId, s_('codeTaken', lang))
-  if (user.blocked) return reply(chatId, s_('err', lang))
-
-  // ── Migrasi saldo lama bot (BotLedger dari file JSON VPS) — sekali pakai ──
+// ── Hubungkan akun (dipanggil dari website) ──
+// Migrasi saldo lama bot (BotLedger dari file JSON VPS) — sekali pakai.
+export async function migrateBotLedger(telegramId, userId) {
   let migrated = 0
   const ledger = await prisma.botLedger.findMany({
     where: { telegramId: String(telegramId), consumedAt: null },
@@ -293,29 +298,26 @@ async function handleLink(chatId, telegramId, code, lang) {
     if (row.amount > 0) {
       migrated += row.amount
       await prisma.$transaction([
-        prisma.user.update({ where: { id: user.id }, data: { balance: { increment: row.amount } } }),
+        prisma.user.update({ where: { id: userId }, data: { balance: { increment: row.amount } } }),
         prisma.balanceTransaction.create({
-          data: { userId: user.id, amount: row.amount, type: 'refund', note: 'Migrasi saldo lama bot Telegram ke akun website' },
+          data: { userId, amount: row.amount, type: 'refund', note: 'Migrasi saldo lama bot Telegram ke akun website' },
         }),
       ])
     }
     await prisma.botLedger.update({ where: { id: row.id }, data: { consumedAt: new Date() } })
   }
-
-  await prisma.$transaction([
-    prisma.user.update({ where: { id: user.id }, data: { telegramId: String(telegramId) } }),
-    prisma.telegramLinkCode.deleteMany({ where: { userId: user.id } }),
-  ])
-
-  await setState(chatId, { lang })
+  return migrated
+}
+// Kirim konfirmasi “akun terhubung” ke chat Telegram setelah link dari website.
+export async function notifyLinked(telegramId, user, migrated = 0) {
   const fresh = await prisma.user.findUnique({ where: { id: user.id } })
-  await reply(chatId,
-    s_('linked', lang, {
-      name: esc(fresh.name),
-      balance: rp(fresh.balance),
-      migrated: migrated > 0 ? s_('migrated', lang, { amount: rp(migrated) }) : '',
+  await reply(String(telegramId),
+    s_('linked', 'id', {
+      name: esc(fresh?.name || user.name),
+      balance: rp(fresh?.balance ?? user.balance),
+      migrated: migrated > 0 ? s_('migrated', 'id', { amount: rp(migrated) }) : '',
     }),
-    IK([[{ text: '⚙️ Menu Utama', callback_data: 'm:menu' }]]))
+    IK([[{ text: '🚀 Buka Menu Utama', callback_data: 'm:menu' }]]))
 }
 
 // ── Fitur: Saldo ──
@@ -443,7 +445,7 @@ async function showCatalog(chatId, lang, page = 0) {
   const per = 8
   const start = page * per
   const slice = cats.slice(start, start + per)
-  const rows = slice.map((c) => [{ text: `📂 ${c}`, callback_data: `cat:${c}:0` }])
+  const rows = slice.map((c) => [{ text: `${catEmoji(c)} ${c}`, callback_data: `cat:${c}:0` }])
   const nav = []
   if (page > 0) nav.push({ text: s_('back', lang), callback_data: `catpg:${page - 1}` })
   if (start + per < cats.length) nav.push({ text: s_('more', lang), callback_data: `catpg:${page + 1}` })
@@ -630,10 +632,10 @@ export async function handleTelegramUpdate(update) {
       if (act === 'm:lang') return showLang(chatId)
       if (act === 'm:menu') {
         const user = await userByTelegram(tgId)
-        const m = await menuFor(user, lang)
+        const m = await menuFor(user, lang, tgId)
         return reply(chatId, m.text, m.kb)
       }
-      if (act === 'm:link') return reply(chatId, s_('notLinked', lang))
+      if (act === 'm:link') return reply(chatId, s_('notLinked', lang), linkKb(tgId))
 
       // Katalog & produk — bisa dibuka tanpa akun terhubung
       if (act === 'm:cat' || act === 'catpg') return showCatalog(chatId, lang, act === 'catpg' ? (parseInt(parts[1], 10) || 0) : 0)
@@ -642,7 +644,7 @@ export async function handleTelegramUpdate(update) {
       if (act === 'buycancel') { await setState(chatId, { buy: null }); return reply(chatId, s_('buyCancel', lang)) }
 
       const user = await userByTelegram(tgId)
-      if (!user) return reply(chatId, s_('notLinked', lang))
+      if (!user) return reply(chatId, s_('notLinked', lang), linkKb(tgId))
       if (act === 'm:bal') return showBalance(chatId, user, lang)
       if (act === 'm:chk') return checkinStatus(chatId, user, lang)
       if (act === 'm:chkgo') return checkinGo(chatId, user, lang)
@@ -665,11 +667,7 @@ export async function handleTelegramUpdate(update) {
       const text = msg.text.trim()
 
       if (text.startsWith('/start')) {
-        const code = text.split(/\s+/)[1]
-        if (code) return handleLink(chatId, tgId, code, lang)
-        const user = await userByTelegram(tgId)
-        const m = await menuFor(user, lang)
-        return reply(chatId, m.text, m.kb)
+        return sendStart(chatId, tgId)
       }
       if (text === '/cancel') {
         await setState(chatId, { buy: null })
@@ -677,10 +675,8 @@ export async function handleTelegramUpdate(update) {
       }
       if (text.startsWith('/menu') || text === '/help') {
         const user = await userByTelegram(tgId)
-        return reply(chatId, s_('notLinked', lang).split('\n\n')[0] === '🔐 Akun belum terhubung.' && !user
-          ? s_('notLinked', lang)
-          : s_('menu', lang, { name: esc(user?.name || '-'), balance: rp(user?.balance || 0) }),
-          IK([[{ text: '⚙️ Buka Menu', callback_data: 'm:menu' }]]))
+        const m = await menuFor(user, lang, tgId)
+        return sendBanner(chatId, m.text, m.kb)
       }
       // Checkout crypto: user mengirim TX Hash saat state menunggu
       if (st.buy?.step === 'await_tx') {
@@ -690,7 +686,7 @@ export async function handleTelegramUpdate(update) {
         if (dupe) return reply(chatId, s_('txDup', lang))
         reply(chatId, s_('txGot', lang))
         const user = await userByTelegram(tgId)
-        if (!user) return reply(chatId, s_('notLinked', lang))
+        if (!user) return reply(chatId, s_('notLinked', lang), linkKb(tgId))
         const p = await prisma.product.findUnique({ where: { id: st.buy.pid } })
         if (!p || !p.active || p.stockOut) return reply(chatId, s_('tierGone', lang))
         const asset = CRYPTO.assets.find((a) => a.id === st.buy.asset) || CRYPTO.assets[0]
@@ -703,13 +699,9 @@ export async function handleTelegramUpdate(update) {
         await setState(chatId, { buy: null })
         return orderDone(chatId, lang, user, order)
       }
-      // Kode 6 digit diketik manual → coba hubungkan
-      if (/^[A-Za-z0-9]{6}$/.test(text)) {
-        return handleLink(chatId, tgId, text, lang)
-      }
       // Teks lain → menu
       const user = await userByTelegram(tgId)
-      const m = await menuFor(user, lang)
+      const m = await menuFor(user, lang, tgId)
       return reply(chatId, m.text, m.kb)
     }
 
@@ -720,7 +712,7 @@ export async function handleTelegramUpdate(update) {
       if (st2.buy?.step !== 'await_proof') return
       const tgId2 = String(msg.from.id)
       const user = await userByTelegram(tgId2)
-      if (!user) return reply(chatId, s_('notLinked', st2.lang))
+      if (!user) return reply(chatId, s_('notLinked', st2.lang), linkKb(tgId2))
       const fileId = msg.photo[msg.photo.length - 1].file_id
       const g = await tgRes('getFile', { file_id: fileId })
       const fp = g?.result?.file_path

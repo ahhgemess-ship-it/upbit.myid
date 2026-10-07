@@ -2,7 +2,7 @@
 import { Router } from 'express'
 import { prisma } from '../db.js'
 import { requireAuth } from '../auth.js'
-import { handleTelegramUpdate, flushPending } from '../telegramBot.js'
+import { handleTelegramUpdate, flushPending, migrateBotLedger, notifyLinked } from '../telegramBot.js'
 
 const router = Router()
 
@@ -30,28 +30,29 @@ router.post('/webhook', async (req, res) => {
 // Semua endpoint di bawah butuh login website
 router.use((req, res, next) => (req.path === '/webhook' ? next() : requireAuth(req, res, next)))
 
-// POST /api/telegram/link-code — buat kode 6 digit (berlaku 15 menit) untuk
-// menghubungkan akun website ke Telegram via /start KODE.
-router.post('/link-code', async (req, res) => {
+// POST /api/telegram/link — hubungkan akun website ke Telegram TANPA kode:
+// bot mengirim tombol deep-link ?link=<telegramId> → user login di web →
+// web memanggil endpoint ini dengan telegramId tersebut.
+router.post('/link', async (req, res) => {
   try {
+    const tgId = String(req.body?.telegramId || '').trim()
+    if (!/^\d{4,15}$/.test(tgId)) {
+      return res.status(400).json({ error: 'ID Telegram tidak valid — hubungkan lewat tombol di bot ya.' })
+    }
     const user = await prisma.user.findUnique({ where: { id: req.user.id } })
     if (!user) return res.status(404).json({ error: 'User tidak ditemukan' })
-    if (user.telegramId) {
-      return res.status(400).json({ error: 'Akun sudah terhubung ke Telegram.' })
+    if (user.blocked) return res.status(403).json({ error: 'Akun diblokir.' })
+    if (user.telegramId === tgId) return res.json({ ok: true, linked: true, already: true })
+    // Telegram ini dipakai akun website lain? → tolak (ikatan satu-satu)
+    const clash = await prisma.user.findFirst({ where: { telegramId: tgId } })
+    if (clash && clash.id !== user.id) {
+      return res.status(409).json({ error: 'Telegram ini sudah terhubung ke akun website lain. Hubungi admin untuk melepas ikatan.' })
     }
-    // Hapus kode lama milik user ini, lalu buat kode unik baru
-    await prisma.telegramLinkCode.deleteMany({ where: { userId: user.id } })
-    let code = ''
-    for (let i = 0; i < 5; i++) {
-      code = String(Math.floor(100000 + Math.random() * 900000))
-      const exists = await prisma.telegramLinkCode.findUnique({ where: { code } })
-      if (!exists) break
-      code = ''
-    }
-    if (!code) return res.status(500).json({ error: 'Gagal membuat kode, coba lagi' })
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000)
-    await prisma.telegramLinkCode.create({ data: { code, userId: user.id, expiresAt } })
-    res.json({ code, expiresAt, botUsername: process.env.TELEGRAM_BOT_USERNAME || null })
+    const migrated = await migrateBotLedger(tgId, user.id)
+    await prisma.user.update({ where: { id: user.id }, data: { telegramId: tgId } })
+    // Konfirmasi ke chat bot (di-await supaya tidak hilang di serverless)
+    await notifyLinked(tgId, user, migrated)
+    res.json({ ok: true, linked: true })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
@@ -64,17 +65,7 @@ router.get('/status', async (req, res) => {
       where: { id: req.user.id },
       select: { telegramId: true },
     })
-    res.json({ linked: !!user?.telegramId })
-  } catch (e) {
-    res.status(500).json({ error: e.message })
-  }
-})
-
-// DELETE /api/telegram/link-code — hapus kode aktif milik user (mis. dibatalkan)
-router.delete('/link-code', async (req, res) => {
-  try {
-    await prisma.telegramLinkCode.deleteMany({ where: { userId: req.user.id } })
-    res.json({ ok: true })
+    res.json({ linked: !!user?.telegramId, botUsername: process.env.TELEGRAM_BOT_USERNAME || null })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
