@@ -37,59 +37,7 @@ export default function AdminUsers() {
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState(null)
 
-  // Default global minimal tarik saldo + override per user
-  const [globalMin, setGlobalMin] = useState(null)
-  const [globalMinValue, setGlobalMinValue] = useState('')
-  const [savingGlobalMin, setSavingGlobalMin] = useState(false)
-  const [minWithdrawValue, setMinWithdrawValue] = useState('')
-  const [savingMin, setSavingMin] = useState(false)
-
   useEffect(() => { setPage(1) }, [q])
-
-  useEffect(() => {
-    if (!isAdmin) return
-    api.adminGetSettings().then((d) => setGlobalMin(d.minWithdraw)).catch(() => setGlobalMin(310000))
-  }, [isAdmin])
-
-  const saveGlobalMin = async () => {
-    setSavingGlobalMin(true)
-    try {
-      const v = Number(globalMinValue)
-      if (!Number.isSafeInteger(v) || v < 0) throw new Error('Harus angka bulat 0 atau lebih')
-      const res = await api.adminUpdateSettings({ minWithdraw: v })
-      setGlobalMin(res.minWithdraw)
-      setGlobalMinValue('')
-      toast(`Default min. tarik saldo: Rp ${v.toLocaleString('id-ID')} ✓`, 'success')
-    } catch (e) {
-      toast(e.message, 'error')
-    } finally {
-      setSavingGlobalMin(false)
-    }
-  }
-
-  // Simpan override minimal tarik saldo untuk user yang sedang dibuka.
-  // override === null → reset ke default global; selain itu pakai isi input.
-  const saveMinWithdraw = async (override) => {
-    setSavingMin(true)
-    try {
-      const raw = override === null ? '' : minWithdrawValue.trim()
-      let v = null
-      if (raw !== '') {
-        v = Number(raw)
-        if (!Number.isSafeInteger(v) || v < 0) throw new Error('Min. tarik saldo harus angka bulat 0 atau lebih')
-      }
-      const res = await api.adminUpdateUser(selectedId, { minWithdraw: v })
-      setDetail((prev) => ({ ...prev, user: { ...prev.user, ...res.user } }))
-      setMinWithdrawValue(res.user.minWithdraw == null ? '' : String(res.user.minWithdraw))
-      toast(res.user.minWithdraw == null
-        ? 'Min. tarik saldo user ini direset ke default global ✓'
-        : `Min. tarik saldo user ini: Rp ${res.user.minWithdraw.toLocaleString('id-ID')} ✓`, 'success')
-    } catch (e) {
-      toast(e.message, 'error')
-    } finally {
-      setSavingMin(false)
-    }
-  }
 
   useEffect(() => {
     if (!isAdmin) return
@@ -118,7 +66,6 @@ export default function AdminUsers() {
       setEditName(d.user.name)
       setEditRole(d.user.role)
       setBalanceValue(String(d.user.balance ?? 0))
-      setMinWithdrawValue(d.user.minWithdraw == null ? '' : String(d.user.minWithdraw))
       setAdjustNote('')
       setDetailLoading(false)
     }).catch((e) => {
@@ -189,22 +136,7 @@ export default function AdminUsers() {
     <div className="container section">
       <h1 className="display h-lg">KELOLA PENGGUNA</h1>
 
-      {/* Default global minimal tarik saldo */}
-      <div className="card" style={{ padding: '14px 16px', marginTop: 18, maxWidth: 560, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-        <div style={{ flex: 1, minWidth: 200 }}>
-          <div style={{ fontWeight: 700, fontSize: 13.5 }}>Minimal Tarik Saldo (default semua user)</div>
-          <div className="text-muted" style={{ fontSize: 11.5, marginTop: 2 }}>
-            Sekarang: {globalMin != null ? `Rp ${globalMin.toLocaleString('id-ID')}` : '…'} · override per user ada di detail user
-          </div>
-        </div>
-        <div className="input-ic" style={{ width: 140 }}>
-          <span style={{ paddingLeft: 10, fontWeight: 700, fontSize: 12.5 }}>Rp</span>
-          <input className="input" type="number" min="0" step="1" placeholder="Nilai baru" value={globalMinValue} onChange={(e) => setGlobalMinValue(e.target.value)} style={{ paddingLeft: 4 }} />
-        </div>
-        <button className="pill pill-indigo" style={{ padding: '8px 14px', fontSize: 12.5 }} disabled={savingGlobalMin || globalMinValue.trim() === ''} onClick={saveGlobalMin}>
-          <Check size={13} /> Simpan
-        </button>
-      </div>
+
 
       {/* Search */}
       <div className="input-ic" style={{ marginTop: 20, marginBottom: 20, maxWidth: 480 }}>
@@ -361,7 +293,6 @@ export default function AdminUsers() {
                   {/* Stats grid */}
                   <div className="stat-cards" style={{ marginBottom: 20 }}>
                     <StatCard icon={Wallet} label="Saldo" value={formatIDR(detail.user.balance)} accent />
-                    <StatCard icon={Banknote} label="Min. Tarik" value={detail.user.minWithdraw != null ? `${formatIDR(detail.user.minWithdraw)} (khusus)` : `${formatIDR(globalMin ?? 310000)} (default)`} />
                     <StatCard icon={TrendingUp} label="Total Belanja" value={formatIDR(detail.summary.totalSpent)} />
                     <StatCard icon={ShoppingBag} label="Total Order" value={detail.summary.totalOrders} />
                     <StatCard icon={RotateCcw} label="Refund" value={`${detail.summary.refundCount} (${detail.summary.refundPending} pending)`} />
@@ -369,35 +300,7 @@ export default function AdminUsers() {
                     <StatCard icon={Clock} label="User sejak" value={new Date(detail.user.createdAt).toLocaleDateString('id-ID', { year: 'numeric', month: 'short' })} />
                   </div>
 
-                  {/* Minimal tarik saldo user ini — editor langsung, selalu tampil tanpa perlu mode Edit */}
-                  <div className="card" style={{ padding: 16, marginBottom: 16, background: 'var(--surface-2)', borderColor: 'var(--indigo)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, flexWrap: 'wrap' }}>
-                      <Banknote size={16} />
-                      <span style={{ fontWeight: 700, fontSize: 14 }}>Minimal Tarik Saldo (user ini)</span>
-                      {detail.user.minWithdraw != null
-                        ? <span className="chip chip-lime" style={{ fontSize: 10 }}>KHUSUS</span>
-                        : <span className="chip" style={{ fontSize: 10 }}>DEFAULT</span>}
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <div className="input-ic" style={{ flex: 1, minWidth: 170 }}>
-                        <span style={{ paddingLeft: 10, fontWeight: 700, fontSize: 13 }}>Rp</span>
-                        <input className="input" type="number" min="0" step="1"
-                          placeholder={globalMin != null ? `kosongkan = default Rp ${globalMin.toLocaleString('id-ID')}` : 'kosongkan = default global'}
-                          value={minWithdrawValue} onChange={(e) => setMinWithdrawValue(e.target.value)} style={{ paddingLeft: 4 }} />
-                      </div>
-                      <button className="pill pill-indigo" style={{ padding: '8px 14px', fontSize: 12.5 }} disabled={savingMin} onClick={() => saveMinWithdraw()}>
-                        <Check size={13} /> {savingMin ? 'Menyimpan…' : 'Simpan'}
-                      </button>
-                      {detail.user.minWithdraw != null && (
-                        <button className="pill" style={{ padding: '8px 14px', fontSize: 12.5 }} disabled={savingMin} onClick={() => saveMinWithdraw(null)}>
-                          <X size={13} /> Reset ke default
-                        </button>
-                      )}
-                    </div>
-                    <div className="text-muted" style={{ fontSize: 11.5, marginTop: 6 }}>
-                      Syarat total belanja minimum supaya user ini bisa tarik saldo. Kosongkan + Simpan = ikut default global{globalMin != null ? ` (Rp ${globalMin.toLocaleString('id-ID')})` : ''}. Isi 0 = langsung bisa tarik kapan saja.
-                    </div>
-                  </div>
+
 
                   {/* Save message */}
                   <AnimatePresence>
@@ -507,7 +410,7 @@ export default function AdminUsers() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {detail.balanceTransactions.slice(0, 15).map((tx) => {
                           const isIn = tx.type === 'refund' || tx.type === 'checkin'
-                          const typeLabel = tx.type === 'refund' ? 'Refund' : tx.type === 'purchase' ? 'Bayar' : tx.type === 'withdraw' ? 'Tarik' : tx.type === 'checkin' ? 'Check-in' : 'Transaksi'
+                          const typeLabel = tx.type === 'refund' ? 'Refund' : tx.type === 'purchase' ? 'Bayar' : tx.type === 'checkin' ? 'Check-in' : 'Transaksi'
                           return (
                             <div key={tx.id}
                               style={{

@@ -26,7 +26,6 @@ const FILTER_OPTIONS = [
   { value: 'all', labelKey: 'tx.all' },
   { value: 'refund', labelKey: 'tx.refund' },
   { value: 'purchase', labelKey: 'tx.purchase' },
-  { value: 'withdraw', labelKey: 'tx.withdraw' },
   { value: 'checkin', labelKey: 'tx.checkin' },
 ]
 
@@ -111,13 +110,6 @@ export default function Balance() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
-  // Cleanup lockedAlert timeout
-  useEffect(() => {
-    if (!lockedAlert) return
-    const id = setTimeout(() => setLockedAlert(false), 4000)
-    return () => clearTimeout(id)
-  }, [lockedAlert])
-
   const fmt = (n) => formatCurrency(n, lang)
   const fmtCompact = (n) => {
     // Compact untuk quick amount: hilangkan .### di IDR, tampilkan penuh untuk non-IDR
@@ -146,9 +138,7 @@ export default function Balance() {
     }
   }
 
-  const handleLockedClick = () => {
-    setLockedAlert(true)
-  }
+
 
 
   // ── Top-up: kalkulasi ──

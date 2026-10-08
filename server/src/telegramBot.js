@@ -179,11 +179,9 @@ const S = {
     en: '\n🎁 Old bot balance <b>{amount}</b> has been moved to your website account.',
   },
   balance: {
-    id: '💰 <b>Saldo kamu</b>\n\nJumlah: <b>{balance}</b>\nTotal belanja: <b>{spent}</b>\nTarik saldo: {eligible}\n\n📡 Real-time dari evolusiai.xyz',
-    en: '💰 <b>Your Balance</b>\n\nAmount: <b>{balance}</b>\nTotal spent: <b>{spent}</b>\nWithdraw: {eligible}\n\n📡 Real-time from evolusiai.xyz',
+    id: '💰 <b>Saldo kamu</b>\n\nJumlah: <b>{balance}</b>\nTotal belanja: <b>{spent}</b>\n\n📡 Real-time dari evolusiai.xyz',
+    en: '💰 <b>Your Balance</b>\n\nAmount: <b>{balance}</b>\nTotal spent: <b>{spent}</b>\n\n📡 Real-time from evolusiai.xyz',
   },
-  eligible: { id: '✅ sudah memenuhi syarat', en: '✅ eligible' },
-  notEligible: { id: '⏳ belum memenuhi minimal ({min})', en: '⏳ not yet (min {min})' },
   checkinStatus: {
     id: '📅 <b>Check-in Harian</b>\n\nStreak: <b>{streak}</b> hari\nHadiah hari ini: <b>{reward}</b>\n\n{can}\n\n🔥 Hari ke-7 = bonus Rp 2.000 🎉',
     en: '📅 <b>Daily Check-in</b>\n\nStreak: <b>{streak}</b> days\nToday reward: <b>{reward}</b>\n\n{can}\n\n🔥 Day 7 = Rp 2,000 bonus 🎉',
@@ -387,12 +385,10 @@ export async function notifyLinked(telegramId, user, migrated = 0) {
 // ── Fitur: Saldo ──
 async function showBalance(chatId, user, lang) {
   if (!user) return reply(chatId, s_('notLinked', lang))
-  const [spent, min] = await Promise.all([spendOf(user.id), minWithdrawGlobal()])
-  const eligible = spent >= min
+  const spent = await spendOf(user.id)
   return reply(chatId, s_('balance', lang, {
     balance: rp(user.balance),
     spent: rp(spent),
-    eligible: eligible ? s_('eligible', lang) : s_('notEligible', lang, { min: rp(min) }),
   }))
 }
 
