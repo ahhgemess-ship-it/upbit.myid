@@ -159,7 +159,7 @@ export default function Home() {
             </div>
 
             <a
-              href="https://t.me/upbitstorebot"
+              href="https://t.me/evolusiaibot"
               target="_blank"
               rel="noopener noreferrer"
               className="pill"

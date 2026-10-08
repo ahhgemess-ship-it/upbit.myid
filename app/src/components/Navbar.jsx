@@ -98,7 +98,7 @@ export default function Navbar() {
 
           {/* Telegram */}
           <a
-            href="https://t.me/upbitstorebot"
+            href="https://t.me/evolusiaibot"
             target="_blank"
             rel="noopener noreferrer"
             className="pill"
@@ -213,7 +213,7 @@ export default function Navbar() {
               <div className="nav-mobile-lang"><LanguageSwitcher variant="mobile" /></div>
               <div className="nav-mobile-sep" />
               <a
-                href="https://t.me/upbitstorebot"
+                href="https://t.me/evolusiaibot"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="nav-mobile-item"

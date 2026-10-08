@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Wallet, ArrowUpRight, ArrowRight, Clock, AlertCircle, Check, History,
   QrCode, Landmark, RefreshCw, ShoppingBag, Banknote, Lock, Info, DollarSign,
-  Calendar, Gift, Star, Send, ExternalLink, Plus, CreditCard, Coins, ArrowLeft,
+  Calendar, Gift, Star, ExternalLink, Plus, CreditCard, Coins, ArrowLeft,
 } from 'lucide-react'
 import Asterisk from '../components/Asterisk.jsx'
+import { useToast } from '../context/ToastContext.jsx'
 import { useBalance } from '../context/BalanceContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
@@ -38,6 +39,7 @@ export default function Balance() {
     checkInStreak, canCheckIn, checkInReward, checkInBonus, checkInCycle,
     fetchCheckInStatus, doCheckIn,
   } = useBalance()
+  const { toast } = useToast()
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState('qris')
   const [submitting, setSubmitting] = useState(false)
@@ -46,11 +48,8 @@ export default function Balance() {
   const [filter, setFilter] = useState('all')
   const [checkInMsg, setCheckInMsg] = useState(null)
   const [lockedAlert, setLockedAlert] = useState(false)
-  // Telegram link (satu dompet dengan bot) — tanpa kode: deep-link dari bot
-  const [tgLinked, setTgLinked] = useState(null)
-  const [tgBotUser, setTgBotUser] = useState('evolusiaibot')
-  const [tgMsg, setTgMsg] = useState(null)
-  const [tgBusy, setTgBusy] = useState(false)
+  // Telegram link (satu dompet dengan bot) — tanpa kode: diproses otomatis dari
+  // deep-link tombol bot (?link=), tanpa kartu/kode di website.
   // ── Top-up saldo (wizard 3 langkah) ──
   const [tuStep, setTuStep] = useState(1)         // 1: nominal · 2: bayar · 3: konfirmasi
   const [tuDir, setTuDir] = useState(1)           // arah animasi antar langkah: 1 maju · -1 mundur
@@ -85,31 +84,18 @@ export default function Balance() {
 
   useEffect(() => { fetchHistory() }, [fetchHistory])
 
-  // Status koneksi Telegram
-  useEffect(() => {
-    if (!user) return
-    api.telegramStatus().then((s) => {
-      setTgLinked(!!s?.linked)
-      if (s?.botUsername) setTgBotUser(s.botUsername)
-    }).catch(() => setTgLinked(false))
-  }, [user])
-
   // Hubungkan akun TANPA kode: bot mengirim tombol deep-link ?link=<telegramId> →
-  // user login di web → otomatis tersambung. Belum login? ID ditunda di
+  // user login di web → otomatis tersambung (notifikasi toast). Belum login? ID ditunda di
   // localStorage dan diproses begitu user kembali ke /balance dalam keadaan login.
   const TG_LINK_KEY = 'upbit_tg_link_pending'
   const doTgLink = async (tgId, cleanUrl) => {
-    setTgBusy(true)
     try {
       await api.telegramLink(tgId)
       try { localStorage.removeItem(TG_LINK_KEY) } catch { /* abaikan */ }
       if (cleanUrl) window.history.replaceState({}, '', '/balance')
-      setTgLinked(true)
-      setTgMsg({ type: 'success', text: lang.startsWith('en') ? '✅ Telegram linked! Check the bot chat.' : '✅ Telegram berhasil terhubung! Cek chat bot-nya ya.' })
+      toast(lang.startsWith('en') ? '✅ Telegram linked! Check the bot chat.' : '✅ Telegram berhasil terhubung! Cek chat bot-nya ya.')
     } catch (e) {
-      setTgMsg({ type: 'error', text: e.message || (lang.startsWith('en') ? 'Failed to link Telegram.' : 'Gagal menghubungkan Telegram.') })
-    } finally {
-      setTgBusy(false)
+      toast(e.message || (lang.startsWith('en') ? 'Failed to link Telegram.' : 'Gagal menghubungkan Telegram.'), 'error')
     }
   }
   useEffect(() => {
@@ -515,65 +501,7 @@ export default function Balance() {
           </motion.button>
         </motion.div>
 
-        {/* Telegram */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="card"
-          style={{ padding: 'clamp(18px, 3vw, 24px)', display: 'flex', flexDirection: 'column', gap: 14 }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ display: 'grid', placeItems: 'center', width: 42, height: 42, borderRadius: 13, background: tgLinked ? 'var(--lime)' : 'var(--surface-2)', border: '1.5px solid ' + (tgLinked ? 'var(--ink)' : 'var(--line-soft)'), flexShrink: 0 }}>
-              <Send size={18} color={tgLinked ? 'var(--ink)' : 'var(--muted)'} />
-            </span>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: 14.5 }}>
-                {tgLinked ? t('tg.linked') : t('tg.link')}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 2 }}>
-                {tgLinked ? t('tg.synced') : t('tg.expired')}
-              </div>
-            </div>
-          </div>
-
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-            {!tgLinked && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
-                {tgMsg && (
-                  <div style={{
-                    fontSize: 12.5, fontWeight: 700, padding: '9px 12px', borderRadius: 10,
-                    background: tgMsg.type === 'success' ? 'var(--lime)' : 'rgba(220,38,38,.1)',
-                    color: tgMsg.type === 'success' ? 'var(--ink)' : '#dc2626',
-                    border: '1.5px solid ' + (tgMsg.type === 'success' ? 'var(--ink)' : '#dc2626'),
-                  }}>{tgMsg.text}</div>
-                )}
-                <motion.a
-                  whileTap={{ scale: 0.96 }}
-                  href={`https://t.me/${tgBotUser}`}
-                  target="_blank" rel="noreferrer"
-                  style={{
-                    cursor: 'pointer', textDecoration: 'none',
-                    background: 'var(--ink)', color: 'var(--lime)', border: '1.5px solid var(--ink)',
-                    borderRadius: 999, padding: '11px 20px', fontSize: 13, fontWeight: 800,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-                  }}
-                >
-                  <Send size={15} /> {t('tg.link')}
-                </motion.a>
-                <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', lineHeight: 1.5 }}>
-                  {lang.startsWith('en')
-                    ? 'Tap the button → in the bot tap "🔗 Link Website Account" → you come back here and it connects automatically. No code needed.'
-                    : 'Tekan tombol → di bot pilih "🔗 Hubungkan Akun Website" → kamu dibawa balik ke halaman ini, otomatis tersambung tanpa kode.'}
-                </div>
-              </div>
-            )}
-            {tgLinked && (
-              <div className="text-muted" style={{ fontSize: 12.5 }}>
-                {t('tg.synced')}
-              </div>
-            )}
-          </div>
-        </motion.div>
+        {/* Telegram — link hanya lewat tombol di bot (deep-link), tanpa kartu di website */}
       </div>
       </>
       )}
