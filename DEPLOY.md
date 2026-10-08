@@ -28,7 +28,7 @@ Kode **sudah disiapkan** untuk Vercel:
    JWT_SECRET="<string acak panjang>"
    ENCRYPTION_KEY="<64 hex>"            # opsional
    GOOGLE_CLIENT_ID="...apps.googleusercontent.com"
-   ADMIN_EMAILS="ikhwanda466@gmail.com"
+   ADMIN_EMAILS="admin@example.com"
    ```
    Contoh secret siap pakai (boleh diganti):
    - `JWT_SECRET` = `peTgGqQVXRVitPNlA9xo_WbvJfwrynCQW8iOp7RWNhKaIPkBdWNfHz56LtWMMPSH`
