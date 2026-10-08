@@ -49,7 +49,25 @@ export async function requireAuth(req, res, next) {
   }
 }
 
+// Middleware: opsional login. Menaruh user di req.user bila ada token valid, lanjut jika tidak ada.
+export async function optionalAuth(req, res, next) {
+  try {
+    const header = req.headers.authorization || ''
+    const token = header.startsWith('Bearer ') ? header.slice(7) : null
+    if (!token) return next()
+    const payload = jwt.verify(token, JWT_SECRET)
+    const user = await prisma.user.findUnique({ where: { id: payload.uid } })
+    if (user && !user.blocked) {
+      req.user = user
+    }
+  } catch {
+    // token tidak valid / kadaluarsa — abaikan di optionalAuth
+  }
+  next()
+}
+
 export function requireAdmin(req, res, next) {
   if (req.user?.role !== 'ADMIN') return res.status(403).json({ error: 'Khusus admin' })
   next()
 }
+

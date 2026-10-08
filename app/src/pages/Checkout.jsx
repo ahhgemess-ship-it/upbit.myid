@@ -14,6 +14,7 @@ import { api } from '../api.js'
 import { useCart } from '../context/CartContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useBalance } from '../context/BalanceContext.jsx'
+import { useCatalog } from '../context/CatalogContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 import { localizeTier } from '../i18n/productContent.js'
@@ -26,6 +27,7 @@ export default function Checkout() {
   const { items, clear } = useCart()
   const { user } = useAuth()
   const { balance, fetchBalance } = useBalance()
+  const { refresh: refreshCatalog } = useCatalog()
   const { toast } = useToast()
   const [useSaldo, setUseSaldo] = useState(false)
   const { t } = useLang()
@@ -253,6 +255,7 @@ export default function Checkout() {
         form.append('useBalance', String(balanceDiscountIdr))
       }
       const { order } = await api.createOrder(form)
+      refreshCatalog().catch(() => {})
       toast(t('co.paymentSent'), 'success', 3200)
       if (useSaldo && balanceDiscount > 0) fetchBalance().catch(() => {})
       // Navigasi dulu, baru clear — cegah flash Gate (keranjang kosong) sebelum pindah halaman

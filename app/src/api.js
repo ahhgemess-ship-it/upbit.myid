@@ -11,9 +11,11 @@ let fallbackUntil = 0 // timestamp sampai kapan pakai API lokal (auto-pulih sete
 
 async function req(path, { method = 'GET', body, form, auth = true } = {}) {
   const headers = {}
+  const t = getToken()
   if (auth) {
-    const t = getToken()
     if (!t) throw new Error('Tidak ada token — silakan login ulang')
+    headers.Authorization = `Bearer ${t}`
+  } else if (t) {
     headers.Authorization = `Bearer ${t}`
   }
   let payload

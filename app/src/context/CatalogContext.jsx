@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react'
 import { api } from '../api.js'
 import { products as staticProducts, splitCatalog } from '../data/products.js'
+import { useAuth } from './AuthContext.jsx'
 
 // Katalog dari database (sumber tunggal). Memakai katalog statis sebagai
 // tampilan awal/fallback supaya halaman langsung terisi & tetap jalan bila
@@ -9,6 +10,7 @@ import { products as staticProducts, splitCatalog } from '../data/products.js'
 const CatalogContext = createContext(null)
 
 export function CatalogProvider({ children }) {
+  const { user } = useAuth()
   const [products, setProducts] = useState(staticProducts)
   const [loaded, setLoaded] = useState(false)
 
@@ -21,7 +23,7 @@ export function CatalogProvider({ children }) {
     }
   }, [])
 
-  useEffect(() => { refresh() }, [refresh])
+  useEffect(() => { refresh() }, [refresh, user?.id])
 
   const byId = useMemo(() => Object.fromEntries(products.map((p) => [p.id, p])), [products])
   const getProduct = useCallback((id) => byId[id], [byId])

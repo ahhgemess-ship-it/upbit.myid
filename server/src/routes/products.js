@@ -67,13 +67,31 @@ export function formatProduct(p, { admin = false } = {}) {
   }
 }
 
-// GET /api/products — katalog publik (hanya produk aktif)
-router.get('/', async (req, res) => {
+import { optionalAuth } from '../auth.js'
+
+// GET /api/products — katalog publik (hanya produk aktif; tandai stok habis per user bila login)
+router.get('/', optionalAuth, async (req, res) => {
   const products = await prisma.product.findMany({
     where: { active: true },
     orderBy: { createdAt: 'asc' },
   })
-  res.json(products.map((p) => formatProduct(p)))
+  let userExhaustedSet = new Set()
+  if (req.user?.id) {
+    const exhausted = await prisma.userProductStock.findMany({
+      where: { userId: req.user.id },
+      select: { productId: true },
+    })
+    userExhaustedSet = new Set(exhausted.map((e) => e.productId))
+  }
+  res.json(
+    products.map((p) => {
+      const formatted = formatProduct(p)
+      if (userExhaustedSet.has(p.id)) {
+        formatted.stockOut = true
+      }
+      return formatted
+    })
+  )
 })
 
 export default router

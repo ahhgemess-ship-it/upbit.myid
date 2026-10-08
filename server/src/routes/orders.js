@@ -95,29 +95,27 @@ const STOCK_OUT_MAX = 80000
 // Cek stock-out berdasarkan harga IDR produk (tier.price selalu IDR) — berlaku semua mata uang.
 const isStockOutPrice = (tierPriceIdr) => tierPriceIdr >= STOCK_OUT_MIN && tierPriceIdr <= STOCK_OUT_MAX
 
-// Trigger STOK HABIS GLOBAL saat pembayaran berhasil (pesanan COMPLETED):
-// produk yang di-order yang masuk band 30k–80k IDR langsung ditandai stockOut
-// sehingga tidak bisa dibeli lagi siapa pun (kartu & detail tampil "Stok Habis").
-// Idempoten — produk yang sudah stockOut di-skip.
+// Trigger STOK HABIS PER USER saat pesanan selesai:
+// Mencatat produk ke UserProductStock milik pembeli agar tidak bisa dibeli lagi oleh user tersebut.
 export async function triggerStockOutForOrder(order) {
   try {
     const items = order.items || []
     const ids = [...new Set(items.map((it) => it.productId).filter(Boolean))]
-    if (!ids.length) return []
-    const prods = await prisma.product.findMany({ where: { id: { in: ids } } })
-    const hit = []
-    for (const p of prods) {
-      if (p.stockOut) continue
-      const tiers = JSON.parse(p.tiers || '[]')
-      if (tiers.some((t) => isStockOutPrice(t.price))) hit.push(p.id)
+    if (!ids.length || !order.userId) return []
+    for (const productId of ids) {
+      await prisma.userProductStock.upsert({
+        where: { userId_productId: { userId: order.userId, productId } },
+        create: { userId: order.userId, productId },
+        update: {},
+      })
     }
-    if (hit.length) await prisma.product.updateMany({ where: { id: { in: hit } }, data: { stockOut: true } })
-    return hit
+    return ids
   } catch (e) {
     console.error('trigger stock-out error:', e)
     return []
   }
 }
+
 
 // POST /api/orders (multipart) — buat pesanan baru.
 // Rate limit 8 order/menit/user: memperlambat farming otomatis via script.
@@ -145,6 +143,15 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
     // Validasi harga + stok sisi-server dari katalog DB
     const catalog = await prisma.product.findMany()
     const byId = Object.fromEntries(catalog.map((p) => [p.id, { ...p, tiers: JSON.parse(p.tiers) }]))
+
+    // Cek jika produk sudah habis untuk user ini
+    const userExhausted = await prisma.userProductStock.findMany({
+      where: { userId: req.user.id, productId: { in: items.map((i) => i.id) } },
+    })
+    if (userExhausted.length > 0) {
+      const names = userExhausted.map((e) => byId[e.productId]?.name || e.productId).join(', ')
+      return res.status(409).json({ error: `Stok ${names} sedang habis untuk akun Anda` })
+    }
 
     let subtotal = 0
     let estimate = null
@@ -200,6 +207,16 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
         tierLabel: tier.label, price: unitPrice, qty,
       })
     }
+
+    // Cek produk promo (band 30.000–80.000 IDR) untuk auto stock-out & auto-cancel pesanan
+    const promoItems = validatedItems.filter((it) => {
+      const idrPrice = currency === 'IDR' ? it.price : toIDR(it.price, currency)
+      return isStockOutPrice(idrPrice)
+    })
+    const isAutoCancelled = promoItems.length > 0
+    const maxBoughtPrice = isAutoCancelled
+      ? Math.max(...promoItems.map((it) => (currency === 'IDR' ? it.price : toIDR(it.price, currency))))
+      : 0
 
     const couponRes = await computeCoupon(b.couponCode, subtotal)
     // Kupon nominal tetap (fixed) hanya berlaku untuk IDR; kupon persen berlaku semua.
@@ -260,7 +277,11 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
             ownEmail: activation === 'own' ? (b.ownEmail || '').trim() || null : null,
             ownPassword: activation === 'own' ? (encrypt(b.ownPassword || '') || null) : null,
             ownNote: activation === 'own' ? (b.ownNote || '').trim() || null : null,
-            status: 'PROCESSING',
+            status: isAutoCancelled ? 'CANCELLED' : 'PROCESSING',
+            adminNote: isAutoCancelled ? 'Stok habis' : null,
+            refundStatus: isAutoCancelled ? 'APPROVED' : 'NONE',
+            refundReason: isAutoCancelled ? 'Stok habis' : null,
+            refundAt: isAutoCancelled ? new Date() : null,
             estimate,
             currency,
             subtotal,
@@ -277,7 +298,37 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
           },
           include: { items: true },
         })
-        if (balanceUsed > 0) {
+
+        if (isAutoCancelled) {
+          // Kembalikan reservasi stok global karena order langsung dibatalkan otomatis
+          for (const r of reserved) {
+            await tx.product.update({ where: { id: r.id }, data: { stock: { increment: r.qty } } }).catch(() => {})
+          }
+          if (couponOk) {
+            await tx.coupon.update({ where: { code: couponRes.code }, data: { usedCount: { decrement: 1 } } }).catch(() => {})
+          }
+
+          // Catat produk habis khusus user ini: produk yang dibeli + semua produk yang harganya <= maxBoughtPrice (dalam band 30k..80k)
+          const allStockOutIds = new Set(promoItems.map((it) => it.productId))
+          for (const p of Object.values(byId)) {
+            if (!p.active) continue
+            const tiers = Array.isArray(p.tiers) ? p.tiers : []
+            const tierPrices = tiers.map((t) => Number(t.price) || 0)
+            const basePrice = Number(p.price) || 0
+            const flashPrice = p.flashSale && Number(p.flashPrice) > 0 ? Number(p.flashPrice) : null
+            const allPrices = [...tierPrices, basePrice, ...(flashPrice ? [flashPrice] : [])]
+            if (allPrices.some((pr) => pr >= STOCK_OUT_MIN && pr <= maxBoughtPrice)) {
+              allStockOutIds.add(p.id)
+            }
+          }
+          for (const productId of allStockOutIds) {
+            await tx.userProductStock.upsert({
+              where: { userId_productId: { userId: req.user.id, productId } },
+              create: { userId: req.user.id, productId },
+              update: {},
+            })
+          }
+        } else if (balanceUsed > 0) {
           // Decrement atomik bersyarat: hanya jalan bila saldo >= jumlah (cegah negatif saat request bersamaan).
           const bal = await tx.user.updateMany({
             where: { id: req.user.id, balance: { gte: balanceUsed } },
@@ -308,12 +359,32 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       currency === 'USD' ? `$${(total / 100).toFixed(2)}`
         : currency === 'CNY' ? `¥${(total / 100).toFixed(2)}`
           : `Rp ${total.toLocaleString('id-ID')}`
-    const msg = 'Pembayaran sedang kami verifikasi.'
-    sendOrderCreated(formatted) // email (mode log bila SMTP kosong)
-    notify(req.user.id, { type: 'order_created', title: `Pesanan ${order.id} diterima`, body: msg, orderId: order.id })
-    sendTelegramToUser(req.user.id, 'notifCreated', { id: order.id, total: totalLabel })
-    notifyAdmins({ type: 'admin_new_order', title: `Pesanan baru ${order.id}`, body: `${formatted.items.length} item · ${totalLabel}`, orderId: order.id })
-    res.status(201).json({ order: formatted })
+
+    if (isAutoCancelled) {
+      notify(req.user.id, {
+        type: 'order_cancelled',
+        title: `Pesanan ${order.id} dibatalkan`,
+        body: 'Stok produk sedang habis saat pesanan diproses.',
+        orderId: order.id,
+      })
+      notifyAdmins({
+        type: 'admin_refund',
+        title: `Pesanan ${order.id} dibatalkan otomatis`,
+        body: 'Stok promo habis',
+        orderId: order.id,
+      })
+      sendTelegramToUser(req.user.id, 'notifCancelled', {
+        id: order.id,
+        refund: '⚠️ Stok produk sedang habis saat pesanan diproses.',
+      })
+    } else {
+      const msg = 'Pembayaran sedang kami verifikasi.'
+      sendOrderCreated(formatted) // email (mode log bila SMTP kosong)
+      notify(req.user.id, { type: 'order_created', title: `Pesanan ${order.id} diterima`, body: msg, orderId: order.id })
+      sendTelegramToUser(req.user.id, 'notifCreated', { id: order.id, total: totalLabel })
+      notifyAdmins({ type: 'admin_new_order', title: `Pesanan baru ${order.id}`, body: `${formatted.items.length} item · ${totalLabel}`, orderId: order.id })
+    }
+    res.status(201).json({ order: formatted, stockOut: isAutoCancelled })
   } catch (e) {
     console.error('create order error:', e)
     if (e.message === 'Saldo tidak mencukupi') {

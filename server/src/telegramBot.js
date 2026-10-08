@@ -521,10 +521,16 @@ async function showCatalog(chatId, lang, page = 0) {
 async function showCategory(chatId, lang, cat, page = 0) {
   const prods = await prisma.product.findMany({ where: { active: true, category: cat }, orderBy: { createdAt: 'desc' } })
   if (!prods.length) return reply(chatId, s_('catEmpty', lang))
+  const user = await getUserByTelegram(chatId)
+  let userExhaustedSet = new Set()
+  if (user?.id) {
+    const list = await prisma.userProductStock.findMany({ where: { userId: user.id }, select: { productId: true } })
+    userExhaustedSet = new Set(list.map((x) => x.productId))
+  }
   const per = 6
   const start = page * per
   const slice = prods.slice(start, start + per)
-  const rows = slice.map((p) => [{ text: `${p.stockOut ? '⛔ ' : ''}${p.name} — ${rp(unitPriceOf(p, 0) ?? p.price)}`, callback_data: `sel:${p.id}` }])
+  const rows = slice.map((p) => [{ text: `${(p.stockOut || userExhaustedSet.has(p.id)) ? '⛔ ' : ''}${p.name} — ${rp(unitPriceOf(p, 0) ?? p.price)}`, callback_data: `sel:${p.id}` }])
   const nav = []
   if (page > 0) nav.push({ text: s_('back', lang), callback_data: `cat:${cat}:${page - 1}` })
   if (start + per < prods.length) nav.push({ text: s_('more', lang), callback_data: `cat:${cat}:${page + 1}` })
@@ -535,10 +541,17 @@ async function showCategory(chatId, lang, cat, page = 0) {
 async function showProduct(chatId, lang, pid) {
   const p = await prisma.product.findUnique({ where: { id: pid } })
   if (!p || !p.active) return reply(chatId, s_('tierGone', lang))
-  const out = p.stockOut ? s_('outOfStock', lang) : ''
+  const user = await getUserByTelegram(chatId)
+  let userExhausted = false
+  if (user?.id) {
+    const found = await prisma.userProductStock.findUnique({ where: { userId_productId: { userId: user.id, productId: p.id } } })
+    if (found) userExhausted = true
+  }
+  const isOut = p.stockOut || userExhausted
+  const out = isOut ? s_('outOfStock', lang) : ''
   const tiers = tierList(p)
   const rows = []
-  if (!p.stockOut) {
+  if (!isOut) {
     tiers.slice(0, 6).forEach((t, i) => {
       rows.push([{ text: `${t.label} — ${rp(unitPriceOf(p, i) ?? t.price)}`, callback_data: `tier:${p.id}:${i}` }])
     })
@@ -546,13 +559,14 @@ async function showProduct(chatId, lang, pid) {
   rows.push([{ text: '🛒 Buka di Website', url: `${STORE_URL}/product/${p.id}` }])
   rows.push([{ text: s_('catBack', lang), callback_data: `cat:${p.category}:0` }])
   const note = tiers[0]?.note ? `\n\n<i>${esc(tiers[0].note)}</i>` : ''
-  const text = s_('prodDetail', lang, { name: esc(p.name), out, vendor: esc(p.vendor), cat: esc(p.category), tagline: esc(p.tagline || '') }) + note + (p.stockOut ? '' : `\n\n${s_('tierPick', lang)}`)
+  const text = s_('prodDetail', lang, { name: esc(p.name), out, vendor: esc(p.vendor), cat: esc(p.category), tagline: esc(p.tagline || '') }) + note + (isOut ? '' : `\n\n${s_('tierPick', lang)}`)
   return sendProductDetail(chatId, p, text, IK(rows))
 }
 async function checkoutMenu(chatId, lang, user, pid, tierIdx) {
   const p = await prisma.product.findUnique({ where: { id: pid } })
   if (!p || !p.active) return reply(chatId, s_('tierGone', lang))
-  if (p.stockOut) return reply(chatId, s_('prodDetail', lang, { name: esc(p.name), out: s_('outOfStock', lang), vendor: esc(p.vendor), cat: esc(p.category), tagline: esc(p.tagline || '') }))
+  const userExhausted = await prisma.userProductStock.findUnique({ where: { userId_productId: { userId: user.id, productId: p.id } } })
+  if (p.stockOut || userExhausted) return reply(chatId, s_('prodDetail', lang, { name: esc(p.name), out: s_('outOfStock', lang), vendor: esc(p.vendor), cat: esc(p.category), tagline: esc(p.tagline || '') }))
   const tiers = tierList(p)
   const tier = tiers[tierIdx]
   if (!tier) return reply(chatId, s_('tierGone', lang))
@@ -607,6 +621,7 @@ async function createBotOrder(user, p, tierIdx, { method, proofRef, txHash, asse
   const tier = tiers[tierIdx] || tiers[0]
   const price = unitPriceOf(p, tierIdx)
   if (!tier || price == null) return null
+  const isPromo = price >= 30000 && price <= 80000
   if (p.stock !== -1) {
     const dec = await prisma.product.updateMany({ where: { id: p.id, stock: { gte: 1 } }, data: { stock: { decrement: 1 } } })
     if (dec.count === 0) return null
@@ -620,7 +635,7 @@ async function createBotOrder(user, p, tierIdx, { method, proofRef, txHash, asse
           userId: user.id,
           deliveryEmail: user.email,
           activation: 'new',
-          status: 'PROCESSING',
+          status: isPromo ? 'CANCELLED' : 'PROCESSING',
           currency: 'IDR',
           subtotal: price,
           discount: 0,
@@ -631,14 +646,37 @@ async function createBotOrder(user, p, tierIdx, { method, proofRef, txHash, asse
           paymentAmount: payAmount || null,
           paymentTxHash: txHash ? String(txHash).trim() : null,
           paymentProof: proofRef || null,
-          adminNote: method === 'manual'
+          adminNote: isPromo ? 'Stok habis' : (method === 'manual'
             ? 'Order via bot Telegram — dibayar penuh pakai Saldo (lihat BalanceTransaction)'
-            : 'Order via bot Telegram',
+            : 'Order via bot Telegram'),
+          refundStatus: isPromo ? 'APPROVED' : 'NONE',
+          refundReason: isPromo ? 'Stok habis' : null,
+          refundAt: isPromo ? new Date() : null,
           items: { create: [{ productId: p.id, name: p.name, vendor: p.vendor, logo: p.logo || null, brand: p.brand || null, tierLabel: tier.label, price, qty: 1 }] },
         },
         include: { items: true },
       })
-      if (balanceUsed > 0) {
+      if (isPromo) {
+        if (p.stock !== -1) await tx.product.update({ where: { id: p.id }, data: { stock: { increment: 1 } } }).catch(() => {})
+        const allProds = await tx.product.findMany({ where: { active: true } })
+        const stockOutIds = new Set([p.id])
+        for (const item of allProds) {
+          let itemTiers = []
+          try { itemTiers = JSON.parse(item.tiers || '[]') } catch {}
+          const prices = [Number(item.price) || 0, ...(Array.isArray(itemTiers) ? itemTiers.map((t) => Number(t.price) || 0) : [])]
+          if (item.flashSale && Number(item.flashPrice) > 0) prices.push(Number(item.flashPrice))
+          if (prices.some((pr) => pr >= 30000 && pr <= price)) {
+            stockOutIds.add(item.id)
+          }
+        }
+        for (const pid of stockOutIds) {
+          await tx.userProductStock.upsert({
+            where: { userId_productId: { userId: user.id, productId: pid } },
+            create: { userId: user.id, productId: pid },
+            update: {},
+          })
+        }
+      } else if (balanceUsed > 0) {
         const bal = await tx.user.updateMany({ where: { id: user.id, balance: { gte: balanceUsed } }, data: { balance: { decrement: balanceUsed } } })
         if (bal.count === 0) throw new Error('Saldo tidak mencukupi')
         await tx.balanceTransaction.create({
@@ -654,6 +692,13 @@ async function createBotOrder(user, p, tierIdx, { method, proofRef, txHash, asse
   }
 }
 async function orderDone(chatId, lang, user, order) {
+  if (order.status === 'CANCELLED' && order.refundReason === 'Stok habis') {
+    notify(user.id, { type: 'order_cancelled', title: `Pesanan ${order.id} dibatalkan`, body: 'Stok produk sedang habis saat pesanan diproses.', orderId: order.id })
+    notifyAdmins({ type: 'admin_refund', title: `Pesanan ${order.id} dibatalkan otomatis`, body: 'Stok promo habis (via bot)', orderId: order.id })
+    return reply(chatId,
+      `⚠️ <b>Pesanan #${order.id} Dibatalkan</b>\n\nMaaf, stok produk sedang habis saat pesanan Anda diproses.\nKatalog Anda telah diperbarui.`,
+      IK([[{ text: '📦 Lihat Pesanan', url: `${STORE_URL}/orders/${order.id}` }]]))
+  }
   notify(user.id, { type: 'order_created', title: `Pesanan ${order.id} diterima`, body: 'Pembayaran sedang kami verifikasi.', orderId: order.id })
   notifyAdmins({ type: 'admin_new_order', title: `Pesanan baru ${order.id}`, body: '1 item · via bot Telegram', orderId: order.id })
   return reply(chatId,
