@@ -25,7 +25,19 @@ export function CatalogProvider({ children }) {
 
   const byId = useMemo(() => Object.fromEntries(products.map((p) => [p.id, p])), [products])
   const getProduct = useCallback((id) => byId[id], [byId])
-  const discountFor = useCallback((id) => byId[id]?.discountPercent || 0, [byId])
+  // Diskon efektif dengan jadwal — SAMA dengan server (effectiveDiscount):
+  // price>0 + sekarang di dalam rentang mulai/berakhir. Tanpa ini FE bisa
+  // menampilkan harga diskon yang tidak diizinkan server saat checkout.
+  const discountFor = useCallback((id) => {
+    const p = byId[id]
+    if (!p) return 0
+    const pct = Math.max(0, Math.min(90, p.discountPercent || 0))
+    if (!pct) return 0
+    const now = Date.now()
+    if (p.discountStart && now < new Date(p.discountStart).getTime()) return 0
+    if (p.discountEnd && now > new Date(p.discountEnd).getTime()) return 0
+    return pct
+  }, [byId])
   const categories = useMemo(() => [...new Set(products.map((p) => p.category))], [products])
 
   const value = useMemo(

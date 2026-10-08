@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { prisma } from '../db.js'
 import { effectiveDiscount } from '../discount.js'
+import { USD_TO_IDR } from '../money.js'
 
 const router = Router()
 
@@ -16,6 +17,11 @@ const parseJsonArray = (value) => {
 // Bentuk produk untuk klien. `discountPercent` = diskon EFEKTIF (sudah cek jadwal).
 export function formatProduct(p, { admin = false } = {}) {
   const pct = effectiveDiscount(p)
+  // USD flash turunan dari Rp bila kosong — cocok dengan perhitungan checkout
+  // server, agar pembeli USD/CNY tidak kehilangan harga flash di kartu/detail.
+  const flashUsd = p.flashSale && Number(p.flashPrice) > 0
+    ? (Number(p.flashPriceIntl) > 0 ? p.flashPriceIntl : Math.max(1, Math.round((Number(p.flashPrice) * 100) / USD_TO_IDR)))
+    : p.flashPriceIntl
   const tiers = parseJsonArray(p.tiers)
   // Beberapa produk lama tersimpan tanpa tier. Tetap kirim satu tier valid agar
   // kartu flash sale dan editor admin tidak crash saat stok diubah.
@@ -45,7 +51,7 @@ export function formatProduct(p, { admin = false } = {}) {
     flashSale: p.flashSale,
     stockOut: p.stockOut,
     flashPrice: p.flashPrice,
-    flashPriceIntl: p.flashPriceIntl,
+    flashPriceIntl: flashUsd,
     discountPercent: pct,
     // Dipakai frontend (Home) untuk menampilkan produk terbaru/teredit dulu.
     createdAt: p.createdAt,

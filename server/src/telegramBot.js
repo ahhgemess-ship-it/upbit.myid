@@ -477,7 +477,8 @@ function unitPriceOf(prod, tierIdx) {
   const tiers = tierList(prod)
   const tier = tiers[tierIdx] || tiers[0]
   if (!tier) return null
-  return (tierIdx <= 0 && prod.flashSale && prod.flashPrice) ? prod.flashPrice : (tier.price ?? prod.price)
+  // Sama dengan server (orders.js): flashPrice hanya sah bila > 0; 0/null = harga normal.
+  return (tierIdx <= 0 && prod.flashSale && Number(prod.flashPrice) > 0) ? Number(prod.flashPrice) : (tier.price ?? prod.price)
 }
 async function showCatalog(chatId, lang, page = 0) {
   const prods = await prisma.product.findMany({ where: { active: true }, select: { category: true }, orderBy: { category: 'asc' } })

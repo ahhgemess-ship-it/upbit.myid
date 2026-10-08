@@ -10,7 +10,7 @@ import { sendOrderCreated } from '../mailer.js'
 import { effectiveDiscount, salePrice } from '../discount.js'
 import { notify, notifyAdmins } from '../notify.js'
 import { saveUpload } from '../storage.js'
-import { toIDR, fromIDR, USD_TO_CNY, MYR_RATE, PAYMENT_FEE_IDR } from '../money.js'
+import { toIDR, fromIDR, USD_TO_CNY, USD_TO_IDR, MYR_RATE, PAYMENT_FEE_IDR } from '../money.js'
 import { userRateLimit } from '../rateLimit.js'
 import { sendTelegramToUser } from '../telegramBot.js'
 
@@ -161,8 +161,15 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       const tier = tierIdx >= 0 ? prod.tiers[tierIdx] : prod.tiers[0]
       // Harga flash hanya untuk tier utama (pertama) — konsisten dengan tampilan detail
       // produk. Tier lain selalu memakai harga katalognya, apa pun labelnya.
-      const selectedTier = flashTier && prod.flashSale && tierIdx <= 0
-        ? { ...tier, price: prod.flashPrice ?? prod.price, priceIntl: prod.flashPriceIntl ?? prod.priceIntl }
+      // flashPrice harus > 0 untuk dianggap promo (0/null = pakai harga normal),
+      // dan USD flash diturunkan dari Rp bila flashPriceIntl kosong — jangan pernah
+      // menagih pembeli internasional harga penuh padahal tampilan kartu memakai flash.
+      const flashIdr = prod.flashSale && Number(prod.flashPrice) > 0 ? Number(prod.flashPrice) : null
+      const flashUsd = flashIdr != null
+        ? (Number(prod.flashPriceIntl) > 0 ? Number(prod.flashPriceIntl) : Math.max(1, Math.round((flashIdr * 100) / USD_TO_IDR)))
+        : null
+      const selectedTier = flashTier && flashIdr != null && tierIdx <= 0
+        ? { ...tier, price: flashIdr, priceIntl: flashUsd }
         : tier
       const qty = Math.max(1, Math.min(99, parseInt(raw.qty, 10) || 1))
       // Cek stok (−1 = tak terbatas). ANTI-REFUND-FARMING: tidak ada pengecualian harga —
