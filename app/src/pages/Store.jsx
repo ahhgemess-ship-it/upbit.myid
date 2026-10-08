@@ -1,13 +1,11 @@
 import { useState, useMemo } from 'react'
-import { Link } from 'react-router-dom'
-import { Search, Zap, ArrowUpRight } from 'lucide-react'
+import { Search } from 'lucide-react'
 import ProductCard from '../components/ProductCard.jsx'
-import FlashSaleCard from '../components/FlashSaleCard.jsx'
 import Asterisk from '../components/Asterisk.jsx'
 import SortDropdown, { SORT_OPTIONS } from '../components/SortDropdown.jsx'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
-import { flashFrom, isFlashProduct, sortFlashNeat } from '../data/products.js'
+import { isFlashProduct } from '../data/products.js'
 
 export default function Store() {
   const { products, categories } = useCatalog()
@@ -26,9 +24,8 @@ export default function Store() {
     return fn ? [...list].sort(fn) : list
   }
 
-  // Katalog dipisah dua section: produk FLASH SALE (kartu khusus flash) dan
-  // produk REGULER — supaya tidak tercampur dan tidak membingungkan.
-  const flashList = useMemo(() => applySort(sortFlashNeat(flashFrom(products)).filter(matches)), [products, query, cat, sort])
+  // Katalog toko HANYA produk original/reguler. Produk flash sale dipisah ke
+  // halaman /flash-sale supaya admin & pembeli tidak bingung dua jenis harga.
   const regList = useMemo(() => applySort(products.filter((p) => !isFlashProduct(p) && matches(p))), [products, query, cat, sort])
 
   const tabs = ['Semua', ...categories]
@@ -79,55 +76,23 @@ export default function Store() {
         </div>
       </div>
 
-      {flashList.length === 0 && regList.length === 0 ? (
+      {regList.length === 0 ? (
         <div className="card" style={{ padding: 48, textAlign: 'center' }}>
           <p className="display" style={{ fontSize: 20 }}>{t('store.noResults')}</p>
           <p className="text-muted" style={{ marginTop: 8 }}>{t('store.noResultsSub')}</p>
         </div>
       ) : (
-        <>
-          {flashList.length > 0 && (
-            <section style={{ marginBottom: 52 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
-                <span
-                  className="chip"
-                  style={{
-                    background: 'var(--ink)', color: 'var(--lime)', borderColor: 'var(--ink)',
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    fontSize: 12, fontWeight: 800, letterSpacing: '.06em', padding: '7px 13px',
-                  }}
-                >
-                  <Zap size={13} fill="currentColor" /> FLASH SALE
-                </span>
-                <span className="text-muted" style={{ fontSize: 13 }}>
-                  {flashList.length} {t('flash.statProducts')}
-                </span>
-                <Link to="/flash-sale" className="btn-link" style={{ marginLeft: 'auto' }}>
-                  {t('flash.viewAll')} <ArrowUpRight size={16} />
-                </Link>
-              </div>
-              <div className="product-grid">
-                {flashList.map((p, i) => (
-                  <FlashSaleCard key={p.id} product={p} index={i} />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {regList.length > 0 && (
-            <section>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                <Asterisk size={22} />
-                <span className="eyebrow">{t('store.regularSection')}</span>
-              </div>
-              <div className="product-grid">
-                {regList.map((p, i) => (
-                  <ProductCard key={p.id} product={p} index={i} />
-                ))}
-              </div>
-            </section>
-          )}
-        </>
+        <section>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <Asterisk size={22} />
+            <span className="eyebrow">{t('store.regularSection')}</span>
+          </div>
+          <div className="product-grid">
+            {regList.map((p, i) => (
+              <ProductCard key={p.id} product={p} index={i} />
+            ))}
+          </div>
+        </section>
       )}
     </div>
   )

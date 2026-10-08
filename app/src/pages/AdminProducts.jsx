@@ -51,7 +51,9 @@ export default function AdminProducts() {
   const { refresh } = useCatalog()
   const [rows, setRows] = useState(null)
   const [editing, setEditing] = useState(null) // null | 'new' | product
-  const [filter, setFilter] = useState('semua') // 'semua' | 'flash' | 'reguler'
+  const [savingRow, setSavingRow] = useState(null) // id produk yang toggle-nya sedang diproses
+  // Dua sisi tegas: produk original (katalog toko) vs flash sale (halaman flash).
+  const [filter, setFilter] = useState('orig') // 'orig' | 'flash'
 
   const load = () => api.adminProducts().then((d) => setRows(d.products)).catch(() => setRows([]))
   useEffect(() => { if (isAdmin) load() }, [isAdmin])
@@ -92,9 +94,29 @@ export default function AdminProducts() {
   const quickBadge = (p, badge) =>
     quickSave(p, { badge: badge || null, badgeColor: badge ? badgeColorOf(badge) : null }, badge ? `Badge ${badge} dipasang` : 'Badge dihapus')
 
-  // Flash sale dulu di daftar supaya gampang dibedakan, lalu urut nama.
-  const sorted = [...(rows || [])].sort((a, b) => (isFlash(b) ? 1 : 0) - (isFlash(a) ? 1 : 0) || a.name.localeCompare(b.name))
-  const shown = sorted.filter((p) => filter === 'semua' || (filter === 'flash' ? isFlash(p) : !isFlash(p)))
+  // Toggle pindah sisi: original ↔ flash sale. Nyalakan = harga flash awal
+  // mengikuti harga normal (admin tinggal turunkan lewat kolom harga); matikan
+  // = flashPrice dibersihkan supaya tidak ada sisa harga promo basi.
+  const quickToggle = async (p) => {
+    setSavingRow(p.id)
+    try {
+      if (isFlash(p)) {
+        await quickSave(p, { flashSale: false, flashPrice: null, flashPriceIntl: null }, `"${p.name}" kembali ke produk original`)
+      } else {
+        const start = parseInt(p.price, 10) || 0
+        await quickSave(
+          p,
+          { flashSale: true, flashPrice: start, flashPriceIntl: start > 0 ? Math.round(start * 100 / USD_TO_IDR) : null },
+          `"${p.name}" masuk Flash Sale — turunkan harga flashnya`,
+        )
+      }
+    } finally {
+      setSavingRow(null)
+    }
+  }
+
+  const sorted = [...(rows || [])].sort((a, b) => a.name.localeCompare(b.name))
+  const shown = sorted.filter((p) => (filter === 'flash' ? isFlash(p) : !isFlash(p)))
   const nFlash = (rows || []).filter(isFlash).length
   const nReg = (rows || []).length - nFlash
 
@@ -110,23 +132,34 @@ export default function AdminProducts() {
         Harga, stok, stok habis, terjual, diskon & jenis/durasi produk. Perubahan langsung tampil di storefront.
       </p>
 
-      {/* Filter: pisahkan flash sale vs reguler biar tidak membingungkan */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 18 }}>
+      {/* Dua sisi tegas: produk original hanya tampil di katalog toko,
+          flash sale hanya di halaman flash sale. Toggle di tiap baris
+          memindahkan produk antar sisi. */}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
         {[
-          ['semua', `Semua (${(rows || []).length})`],
+          ['orig', `📦 Produk Original (${nReg})`],
           ['flash', `⚡ Flash Sale (${nFlash})`],
-          ['reguler', `Reguler (${nReg})`],
         ].map(([k, label]) => (
           <button
             key={k}
             className="chip"
-            style={{ cursor: 'pointer', background: filter === k ? 'var(--ink)' : 'var(--surface-2)', color: filter === k ? '#fff' : 'var(--ink)' }}
+            style={{
+              cursor: 'pointer', padding: '9px 18px', fontSize: 13.5, fontWeight: 800,
+              background: filter === k ? 'var(--ink)' : 'var(--surface-2)',
+              color: filter === k ? (k === 'flash' ? 'var(--lime)' : '#fff') : 'var(--ink)',
+              borderColor: 'var(--ink)',
+            }}
             onClick={() => setFilter(k)}
           >
             {label}
           </button>
         ))}
       </div>
+      <p className="text-muted" style={{ fontSize: 12.5, marginTop: 10, maxWidth: 640 }}>
+        {filter === 'orig'
+          ? 'Produk di sini hanya tampil di katalog toko (/store) dengan harga normal & diskon biasa. Nyalakan toggle ⚡ di kanan untuk memindahkan produk ke Flash Sale.'
+          : 'Produk di sini hanya tampil di halaman Flash Sale (/flash-sale) dengan harga flash tier utama. Matikan toggle untuk mengembalikan ke produk original. Kolom harga = harga flash (tier utama); ubah harga semua tier lewat ikon pensil.'}
+      </p>
 
       {rows === null ? (
         <p className="text-muted" style={{ marginTop: 28 }}>Memuat…</p>
@@ -140,6 +173,13 @@ export default function AdminProducts() {
               ? (official && official.price > (p.flashPrice ?? p.price) ? official.price : (p.price > (p.flashPrice ?? p.price) ? p.price : null))
               : (p.discountPercent > 0 ? p.price : null)
             const durs = (p.tiers || []).map((x) => durId(x.label)).filter(Boolean).join(' / ')
+            // Ringkasan harga per tier — admin langsung lihat isi paket tanpa buka form.
+            const tierLine = (p.tiers || [])
+              .map((t, i) => {
+                const harga = flash && i === 0 && Number(p.flashPrice) > 0 ? p.flashPrice : t.price
+                return `${t.label || 'Tier ' + (i + 1)}: ${formatIDR(harga)}${flash && i === 0 && Number(p.flashPrice) > 0 ? ' (flash)' : ''}`
+              })
+              .join(' · ')
             return (
               <div key={p.id} className="card prod-row" style={flash ? { border: '1.5px solid var(--lime-deep)' } : undefined}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
@@ -166,12 +206,29 @@ export default function AdminProducts() {
                       {orig ? <> · normal <s>{formatIDR(orig)}</s></> : null}
                       {' · '}{p.stock === -1 ? 'stok ∞' : p.stockOut ? 'stok habis' : `stok ${p.stock}`}
                     </span>
+                    {tierLine && (
+                      <span className="text-muted" style={{ fontSize: 12, display: 'block', marginTop: 2 }}>
+                        🏷️ {tierLine}
+                      </span>
+                    )}
                   </div>
                 </div>
-                {/* Edit cepat: badge + harga jual langsung dari daftar, tanpa buka form */}
+                {/* Edit cepat: badge + harga jual + toggle flash, tanpa buka form */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <QuickBadge p={p} onChange={quickBadge} />
                   <PriceCell p={p} onSave={quickPrice} />
+                  <button
+                    className="icon-btn"
+                    onClick={() => quickToggle(p)}
+                    disabled={savingRow === p.id}
+                    aria-label={flash ? 'Kembalikan ke produk original' : 'Pindahkan ke Flash Sale'}
+                    title={flash ? 'Kembalikan ke produk original (katalog toko)' : 'Pindahkan ke Flash Sale'}
+                    style={flash
+                      ? { background: 'var(--lime)', borderColor: 'var(--ink)', color: 'var(--ink)' }
+                      : { color: 'var(--muted)' }}
+                  >
+                    <Zap size={16} fill={flash ? 'currentColor' : 'none'} />
+                  </button>
                   <button className="icon-btn" onClick={() => setEditing(p)} aria-label="Edit"><Pencil size={16} /></button>
                   <button className="icon-btn danger" onClick={() => del(p)} aria-label="Hapus"><Trash2 size={16} /></button>
                 </div>
@@ -359,31 +416,40 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
             </div>
           </div>
 
-          <div className="form-section-title">Paket / durasi (tier)</div>
+          <div className="form-section-title">📦 Paket / durasi (tier) — harga per paket di sini</div>
           {f.tiers.map((t, i) => (
             <div key={t._uid || i} className="tier-edit-row">
               <input className="input" placeholder="Label (mis. 1 Bulan / 3 Bulan / 1 Tahun)" value={t.label} onChange={(e) => setTier(i, 'label', e.target.value)} />
               <input className="input" type="number" placeholder="Harga (Rp)" value={t.price} onChange={(e) => setTierRpPrice(i, e.target.value)} style={{ maxWidth: 150 }} title="Harga tier (Rp) — USD otomatis mengikuti" />
+              {i === 0 && f.flashSale && <span className="chip" style={{ fontSize: 10, background: 'var(--lime)', borderColor: 'var(--ink)', fontWeight: 800, whiteSpace: 'nowrap' }}><Zap size={10} fill="currentColor" /> harga flash</span>}
               <button className="icon-btn danger" onClick={() => rmTier(i)} disabled={f.tiers.length === 1}><Trash2 size={15} /></button>
             </div>
           ))}
-          <button className="btn-link" style={{ marginTop: 4 }} onClick={addTier}><Plus size={15} /> Tambah tier</button>
+          <button className="btn-link" style={{ marginTop: 4 }} onClick={addTier}><Plus size={15} /> Tambah paket</button>
           <p className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
-            Tier = varian/jenis produk (1bln, 3bln, 1thn…), jadi badge durasi di katalog. USD otomatis mengikuti harga Rp.
+            {f.flashSale
+              ? 'Yang dibeli pembeli = paket di atas. Paket pertama pakai HARGA FLASH di bawah; paket lain selalu harga di atas (bukan harga flash).'
+              : 'Tier = varian/jenis produk (1bln, 3bln, 1thn…) — jadi badge durasi di katalog. Semua paket memakai harga di kolomnya. USD otomatis mengikuti harga Rp.'}
           </p>
 
           <div className="form-section-title">Harga</div>
-          <label className="check-row" style={{ paddingTop: 0 }}>
-            <input type="checkbox" checked={f.flashSale} onChange={(e) => onToggleFlash(e.target.checked)} />
-            <Zap size={14} /> Produk Flash Sale — "harga jual" jadi harga flash
-          </label>
           <div className="form-grid">
             <Field label="Harga normal — dicoret (Rp)"><input className="input" type="number" value={f.price} onChange={(e) => setRpPrice(e.target.value)} /></Field>
-            <Field label={f.flashSale ? 'Harga jual — flash (Rp)' : 'Harga jual (Rp)'}>
-              <input className="input" type="number" value={nowInput} onChange={(e) => setPriceNow(e.target.value)} />
-            </Field>
+            {f.flashSale ? (
+              <Field label="⚡ Harga flash — paket pertama (Rp)">
+                <input className="input" type="number" value={nowInput} onChange={(e) => setPriceNow(e.target.value)} />
+              </Field>
+            ) : (
+              <Field label="Harga jual — diskon % otomatis (Rp)">
+                <input className="input" type="number" value={nowInput} onChange={(e) => setPriceNow(e.target.value)} />
+              </Field>
+            )}
           </div>
           <p className="text-muted" style={{ fontSize: 12, marginTop: -4 }}>{hint}</p>
+          <label className="check-row" style={{ paddingTop: 0 }}>
+            <input type="checkbox" checked={f.flashSale} onChange={(e) => onToggleFlash(e.target.checked)} />
+            <Zap size={14} /> {f.flashSale ? 'Produk Flash Sale — tampil hanya di halaman Flash Sale' : 'Jadikan Flash Sale — tampil hanya di halaman Flash Sale'}
+          </label>
 
           <div className="form-section-title">Badge (opsional)</div>
           <div className="form-grid">
