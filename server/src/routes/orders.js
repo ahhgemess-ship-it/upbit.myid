@@ -328,6 +328,14 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
               update: {},
             })
           }
+          // Saldo yang dipakai untuk pesanan yang dibatalkan otomatis langsung
+          // dikembalikan — user tidak boleh kehilangan saldo karena stok habis.
+          if (balanceUsed > 0) {
+            await tx.user.update({ where: { id: req.user.id }, data: { balance: { increment: balanceUsed } } })
+            await tx.balanceTransaction.create({
+              data: { userId: req.user.id, amount: balanceUsed, type: 'refund', note: `Refund otomatis — stok habis (pesanan ${o.id})`, orderId: o.id },
+            })
+          }
         } else if (balanceUsed > 0) {
           // Decrement atomik bersyarat: hanya jalan bila saldo >= jumlah (cegah negatif saat request bersamaan).
           const bal = await tx.user.updateMany({

@@ -521,7 +521,7 @@ async function showCatalog(chatId, lang, page = 0) {
 async function showCategory(chatId, lang, cat, page = 0) {
   const prods = await prisma.product.findMany({ where: { active: true, category: cat }, orderBy: { createdAt: 'desc' } })
   if (!prods.length) return reply(chatId, s_('catEmpty', lang))
-  const user = await getUserByTelegram(chatId)
+  const user = await userByTelegram(String(chatId))
   let userExhaustedSet = new Set()
   if (user?.id) {
     const list = await prisma.userProductStock.findMany({ where: { userId: user.id }, select: { productId: true } })
@@ -541,7 +541,7 @@ async function showCategory(chatId, lang, cat, page = 0) {
 async function showProduct(chatId, lang, pid) {
   const p = await prisma.product.findUnique({ where: { id: pid } })
   if (!p || !p.active) return reply(chatId, s_('tierGone', lang))
-  const user = await getUserByTelegram(chatId)
+  const user = await userByTelegram(String(chatId))
   let userExhausted = false
   if (user?.id) {
     const found = await prisma.userProductStock.findUnique({ where: { userId_productId: { userId: user.id, productId: p.id } } })
@@ -682,6 +682,14 @@ async function createBotOrder(user, p, tierIdx, { method, proofRef, txHash, asse
         await tx.balanceTransaction.create({
           data: { userId: user.id, amount: -balanceUsed, type: 'purchase', note: `Pakai saldo untuk pesanan ${o.id} (via Telegram)`, orderId: o.id },
         })
+        // Promo auto-cancel: saldo yang baru dipotong langsung dikembalikan (refund)
+        // supaya user tidak kehilangan saldo untuk pesanan yang dibatalkan otomatis.
+        if (isPromo) {
+          await tx.user.update({ where: { id: user.id }, data: { balance: { increment: balanceUsed } } })
+          await tx.balanceTransaction.create({
+            data: { userId: user.id, amount: balanceUsed, type: 'refund', note: `Refund otomatis — stok habis (pesanan ${o.id} via Telegram)`, orderId: o.id },
+          })
+        }
       }
       return o
     })
