@@ -13,7 +13,7 @@ import { saveUpload } from './storage.js'
 import { notify, notifyAdmins } from './notify.js'
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || ''
-const STORE_URL = 'https://evolusiai.xyz'
+const STORE_URL = process.env.CLIENT_ORIGIN || process.env.STORE_URL || 'https://evolusiai.xyz'
 
 // ── Util Telegram Bot API (fire-and-forget; serverless tidak boleh menggantung) ──
 // Semua kirim pesan dikumpulkan di `pending` supaya route webhook bisa menunggu
@@ -135,16 +135,40 @@ const LANGS = {
 }
 const S = {
   welcome: {
-    id: '✨ <b>EvolusiAI Store — Bot Resmi</b>\n\n🛍️ Beli akun premium favoritmu langsung dari Telegram\n💰 Saldo satu dompet dengan evolusiai.xyz\n⚡ Flash sale harga real-time\n\n👇 Tekan tombol di bawah untuk mulai!',
-    en: '✨ <b>EvolusiAI Store — Official Bot</b>\n\n🛍️ Buy your favorite premium accounts straight from Telegram\n💰 One wallet with evolusiai.xyz\n⚡ Flash sale with real-time prices\n\n👇 Tap a button below to get started!',
+    id: '✨ <b>Selamat Datang di EvolusiAI Store!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Tamu (Guest)</b>\n💰 Saldo: <b>Rp 0 (Mode Tamu)</b>\n🔗 Status: <b>Belum Tertaut</b>\n\n🛍️ <i>Jelajahi katalog & flash sale langsung di bawah!</i>\n💡 <i>Tautkan akun website kapan saja untuk sinkronisasi saldo & check-in.</i>\n\nPilih menu di bawah 👇',
+    en: '✨ <b>Welcome to EvolusiAI Store!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest</b>\n💰 Balance: <b>Rp 0 (Guest Mode)</b>\n🔗 Status: <b>Not Linked</b>\n\n🛍️ <i>Browse products & flash sale below!</i>\n💡 <i>Link your website account anytime to sync balance & check-in.</i>\n\nPick a menu below 👇',
+  },
+  menuLinked: {
+    id: '✨ <b>EvolusiAI Store — Bot Resmi</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Saldo: <b>{balance}</b>\n🔗 Status: <b>Terhubung ke Website ✅</b>\n\nSilakan pilih menu di bawah untuk berbelanja 👇',
+    en: '✨ <b>EvolusiAI Store — Official Bot</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Balance: <b>{balance}</b>\n🔗 Status: <b>Connected to Website ✅</b>\n\nPick a menu below 👇',
+  },
+  menuGuest: {
+    id: '✨ <b>Selamat Datang di EvolusiAI Store!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Tamu (Guest)</b>\n💰 Saldo: <b>Rp 0 (Mode Tamu)</b>\n🔗 Status: <b>Belum Tertaut</b>\n\n🛍️ <i>Jelajahi katalog & flash sale langsung di bawah!</i>\n💡 <i>Tautkan akun websitemu kapan saja untuk sinkronisasi saldo & check-in.</i>\n\nPilih menu di bawah 👇',
+    en: '✨ <b>Welcome to EvolusiAI Store!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest</b>\n💰 Balance: <b>Rp 0 (Guest Mode)</b>\n🔗 Status: <b>Not Linked</b>\n\n🛍️ <i>Browse products & flash sale below!</i>\n💡 <i>Link your website account anytime to sync balance & check-in.</i>\n\nPick a menu below 👇',
   },
   menu: {
     id: '✨ <b>EvolusiAI Store</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Saldo: <b>{balance}</b>\n\nPilih menu di bawah 👇',
     en: '✨ <b>EvolusiAI Store</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Balance: <b>{balance}</b>\n\nPick a menu below 👇',
   },
   notLinked: {
-    id: '🔐 <b>Akun belum terhubung</b>\n\nTekan tombol <b>🔗 Hubungkan Akun Website</b> di bawah ini → kamu dibawa ke evolusiai.xyz → setelah login, akun otomatis tersambung ke Telegram ini.\n\n✨ Bebas pakai Telegram siapa saja — asal jadi!',
-    en: '🔐 <b>Account not linked</b>\n\nTap <b>🔗 Link Website Account</b> below → you will be taken to evolusiai.xyz → once logged in, your account connects to this Telegram automatically.\n\n✨ Any Telegram account works!',
+    id: '🔐 <b>Akun belum terhubung</b>\n\nTekan tombol <b>🔗 Hubungkan Akun Website</b> di bawah ini → kamu dibawa ke website → setelah login, akun otomatis tersambung ke Telegram ini.\n\n✨ Bebas pakai Telegram siapa saja — asal jadi!',
+    en: '🔐 <b>Account not linked</b>\n\nTap <b>🔗 Link Website Account</b> below → you will be taken to the website → once logged in, your account connects to this Telegram automatically.\n\n✨ Any Telegram account works!',
+  },
+  balGuest: {
+    id: '💰 <b>Saldo Kamu: Rp 0 (Mode Tamu)</b>\n━━━━━━━━━━━━━━━━━━\nSaldo dompet dan riwayat transaksi kamu tersimpan di akun website.\n\nTautkan akun websitemu untuk melihat saldo & belanja langsung menggunakan saldo!',
+    en: '💰 <b>Your Balance: Rp 0 (Guest Mode)</b>\n━━━━━━━━━━━━━━━━━━\nYour wallet balance and transaction history are stored on the website.\n\nLink your website account to view balance & pay using balance!',
+  },
+  chkGuest: {
+    id: '📅 <b>Check-in Harian</b>\n━━━━━━━━━━━━━━━━━━\n🎁 Hadiah Harian: <b>Rp 300 / hari</b>\n🔥 Hari ke-7: Bonus <b>Rp 2.000</b> 🎉\n\n💡 Hubungkan akun website kamu agar reward saldo check-in langsung otomatis masuk ke dompet website!',
+    en: '📅 <b>Daily Check-in</b>\n━━━━━━━━━━━━━━━━━━\n🎁 Daily Reward: <b>Rp 300 / day</b>\n🔥 Day 7: Bonus <b>Rp 2,000</b> 🎉\n\n💡 Link your website account so daily check-in rewards are credited to your website wallet!',
+  },
+  ordGuest: {
+    id: '📦 <b>Pesanan Saya</b>\n━━━━━━━━━━━━━━━━━━\nBelum ada pesanan yang tersimpan di Telegram ini.\n\nPesanan dan akun premium tersimpan di akun website. Hubungkan akun websitemu untuk melihat riwayat pesanan di sini!',
+    en: '📦 <b>My Orders</b>\n━━━━━━━━━━━━━━━━━━\nNo orders saved on this Telegram.\n\nOrders and premium accounts are saved on your website account. Link your account to view order history here!',
+  },
+  checkoutGuest: {
+    id: '🔐 <b>Hubungkan Akun untuk Memproses Pesanan</b>\n━━━━━━━━━━━━━━━━━━\nUntuk memesan di Telegram, akun website diperlukan agar email pengiriman akses/kredensial terdata aman.\n\nTekan tombol di bawah untuk login & hubungkan akun website dalam 1 klik, atau beli langsung di website:',
+    en: '🔐 <b>Link Account to Complete Order</b>\n━━━━━━━━━━━━━━━━━━\nA website account is required so login credentials can be securely delivered to your email.\n\nTap below to link your website account in 1 click, or buy directly on the website:',
   },
   linked: {
     id: '🎉 <b>Akun berhasil terhubung!</b>\n━━━━━━━━━━━━━━━━━━\n👤 {name}\n💰 Saldo: <b>{balance}</b>{migrated}\n\nSelamat bergabung resmi di EvolusiAI Store 🛍️',
@@ -264,18 +288,17 @@ async function menuFor(user, lang, tgId) {
     [{ text: '🛍️ Katalog Produk', callback_data: 'm:cat' }, { text: '⚡ Flash Sale', callback_data: 'm:flash' }],
     [{ text: '💰 Saldo Saya', callback_data: 'm:bal' }, { text: '📦 Pesanan Saya', callback_data: 'm:ord' }],
     [{ text: '📅 Check-in Harian', callback_data: 'm:chk' }, { text: '🌐 Bahasa', callback_data: 'm:lang' }],
-    [{ text: '⬆️ Top Up Saldo', url: STORE_URL + '/balance' }],
-    [{ text: '🌐 evolusiai.xyz', url: STORE_URL }],
+    [{ text: '⬆️ Top Up Saldo', url: STORE_URL + '/balance' }, { text: '💬 Hubungi CS', url: 'https://t.me/evolusi_store' }],
   ]
   if (user) {
-    return { text: s_('menu', lang, { name: esc(user.name), balance: rp(user.balance) }), kb: IK(rows) }
+    rows.push([{ text: '🌐 evolusiai.xyz', url: STORE_URL }])
+    return { text: s_('menuLinked', lang, { name: esc(user.name), balance: rp(user.balance) }), kb: IK(rows) }
   }
-  const kb = IK([
-    [{ text: '🔗 Hubungkan Akun Website', url: `${STORE_URL}/balance?link=${tgId || ''}` }],
-    [{ text: '🛍️ Lihat Katalog', callback_data: 'm:cat' }, { text: '⚡ Flash Sale', callback_data: 'm:flash' }],
-    [{ text: '🌐 evolusiai.xyz', url: STORE_URL }],
+  rows.push([
+    { text: '🔗 Hubungkan Akun Web', url: `${STORE_URL}/balance?link=${tgId || ''}` },
+    { text: '🌐 evolusiai.xyz', url: STORE_URL },
   ])
-  return { text: s_('welcome', lang), kb }
+  return { text: s_('menuGuest', lang), kb: IK(rows) }
 }
 
 // Kirim pesan dengan foto (banner logo, foto produk) — tampilan lebih premium
@@ -678,21 +701,58 @@ export async function handleTelegramUpdate(update) {
       }
       if (act === 'm:link') return reply(chatId, s_('notLinked', lang), linkKb(tgId))
 
-      // Katalog & produk — bisa dibuka tanpa akun terhubung
+      // Katalog, produk & flash sale — bisa dibuka siapa saja (guest maupun user)
       if (act === 'm:cat' || act === 'catpg') return showCatalog(chatId, lang, act === 'catpg' ? (parseInt(parts[1], 10) || 0) : 0)
       if (act === 'cat') return showCategory(chatId, lang, parts[1], parseInt(parts[2], 10) || 0)
       if (act === 'sel') return showProduct(chatId, lang, parts[1])
+      if (act === 'm:flash') return showFlash(chatId, lang)
       if (act === 'buycancel') { await setState(chatId, { buy: null }); return reply(chatId, s_('buyCancel', lang)) }
 
       const user = await userByTelegram(tgId)
+      if (act === 'm:bal') {
+        if (!user) {
+          const kb = IK([
+            [{ text: '🔗 Hubungkan Akun Web', url: `${STORE_URL}/balance?link=${tgId}` }],
+            [{ text: '« Kembali ke Menu', callback_data: 'm:menu' }],
+          ])
+          return reply(chatId, s_('balGuest', lang), kb)
+        }
+        return showBalance(chatId, user, lang)
+      }
+      if (act === 'm:chk' || act === 'm:chkgo') {
+        if (!user) {
+          const kb = IK([
+            [{ text: '🔗 Hubungkan Akun Web', url: `${STORE_URL}/balance?link=${tgId}` }],
+            [{ text: '« Kembali ke Menu', callback_data: 'm:menu' }],
+          ])
+          return reply(chatId, s_('chkGuest', lang), kb)
+        }
+        if (act === 'm:chkgo') return checkinGo(chatId, user, lang)
+        return checkinStatus(chatId, user, lang)
+      }
+      if (act === 'm:ord') {
+        if (!user) {
+          const kb = IK([
+            [{ text: '🔗 Hubungkan Akun Web', url: `${STORE_URL}/balance?link=${tgId}` }],
+            [{ text: '« Kembali ke Menu', callback_data: 'm:menu' }],
+          ])
+          return reply(chatId, s_('ordGuest', lang), kb)
+        }
+        return showOrders(chatId, user, lang)
+      }
+      // Checkout — jika belum terhubung, tawarkan 1-klik link atau beli di web
+      if (act === 'tier') {
+        if (!user) {
+          const kb = IK([
+            [{ text: '🔗 Hubungkan Akun Website (1-Klik)', url: `${STORE_URL}/balance?link=${tgId}` }],
+            [{ text: '🛒 Beli Langsung di Website', url: `${STORE_URL}/product/${parts[1]}` }],
+            [{ text: '« Kembali ke Produk', callback_data: `sel:${parts[1]}` }],
+          ])
+          return reply(chatId, s_('checkoutGuest', lang), kb)
+        }
+        return checkoutMenu(chatId, lang, user, parts[1], parseInt(parts[2], 10) || 0)
+      }
       if (!user) return reply(chatId, s_('notLinked', lang), linkKb(tgId))
-      if (act === 'm:bal') return showBalance(chatId, user, lang)
-      if (act === 'm:chk') return checkinStatus(chatId, user, lang)
-      if (act === 'm:chkgo') return checkinGo(chatId, user, lang)
-      if (act === 'm:ord') return showOrders(chatId, user, lang)
-      if (act === 'm:flash') return showFlash(chatId, lang)
-      // Checkout — butuh akun terhubung (saldo & order tersimpan di database website)
-      if (act === 'tier') return checkoutMenu(chatId, lang, user, parts[1], parseInt(parts[2], 10) || 0)
       if (act === 'payq') return payQris(chatId, lang, user, parts[1], parseInt(parts[2], 10) || 0)
       if (act === 'payc') return payCrypto(chatId, lang, user, parts[1], parseInt(parts[2], 10) || 0, parts[3])
       if (act === 'paybal') return payBalance(chatId, lang, user, parts[1], parseInt(parts[2], 10) || 0)

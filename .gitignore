@@ -30,8 +30,3 @@ server/uploads/*
 .vercel
 .env*
 
-# bot runtime data (saldo & state) & bytecode
-bot/data/*
-!bot/data/.gitkeep
-**/__pycache__/
-*.pyc
