@@ -579,12 +579,12 @@ ul { list-style: none; }
   position: absolute; border-radius: 999px; pointer-events: none;
 }
 
-/* ─── Aksi dompet di hero (Top Up · Tarik · Riwayat) ─── */
+/* ─── Aksi dompet di hero (Top Up · Riwayat) ─── */
 .wallet-actions {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 9px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
   margin-top: 22px;
 }
 

@@ -34,20 +34,15 @@ export default function Balance() {
   const { t, lang } = useLang()
   const { user } = useAuth()
   const {
-    balance, totalSpent, withdrawEligible, minWithdraw,
-    history, loaded, fetchBalance, fetchHistory, withdraw,
+    balance, totalSpent,
+    history, loaded, fetchBalance, fetchHistory,
     checkInStreak, canCheckIn, checkInReward, checkInBonus, checkInCycle,
     fetchCheckInStatus, doCheckIn,
   } = useBalance()
   const { toast } = useToast()
-  const [amount, setAmount] = useState('')
-  const [method, setMethod] = useState('qris')
-  const [submitting, setSubmitting] = useState(false)
-  const [message, setMessage] = useState(null)
   const [showHistory, setShowHistory] = useState(false)
   const [filter, setFilter] = useState('all')
   const [checkInMsg, setCheckInMsg] = useState(null)
-  const [lockedAlert, setLockedAlert] = useState(false)
   // Telegram link (satu dompet dengan bot) — tanpa kode: diproses otomatis dari
   // deep-link tombol bot (?link=), tanpa kartu/kode di website.
   // ── Top-up saldo (wizard 3 langkah) ──
@@ -132,31 +127,11 @@ export default function Balance() {
     }
     return fmt(n)
   }
-  const parsedAmount = parseInt(amount, 10) || 0
-  const canWithdraw = withdrawEligible && balance > 0 && parsedAmount > 0 && parsedAmount <= balance
-  const quickAmounts = [25000, 50000, 100000]
-
   // Filtered history
   const filteredHistory = useMemo(() => {
     if (filter === 'all') return history
     return history.filter(tx => tx.type === filter)
   }, [history, filter])
-
-  const handleWithdraw = async () => {
-    if (!canWithdraw || submitting) return
-    setSubmitting(true)
-    setMessage(null)
-    try {
-      await withdraw(parsedAmount, method)
-      setAmount('')
-      setMessage({ type: 'success', text: `${t('balance.withdrawSuccess')} ${fmt(parsedAmount)}` })
-      fetchHistory()
-    } catch (e) {
-      setMessage({ type: 'error', text: e.message || t('balance.withdrawFailed') })
-    } finally {
-      setSubmitting(false)
-    }
-  }
 
   const handleCheckIn = async () => {
     setCheckInMsg(null)
@@ -245,7 +220,6 @@ export default function Balance() {
     setTuStep(n)
   }
 
-  const scrollWithdraw = () => setTimeout(() => document.getElementById('withdraw-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
   const scrollHistory = () => {
     setShowHistory(true)
     fetchHistory()
@@ -353,15 +327,12 @@ export default function Balance() {
           </div>
           <span className="chip" style={{
             fontSize: 11, fontWeight: 700, padding: '5px 10px',
-            background: withdrawEligible ? 'var(--lime)' : 'rgba(255,255,255,.1)',
-            color: withdrawEligible ? 'var(--ink)' : 'rgba(255,255,255,.75)',
-            border: '1.5px solid ' + (withdrawEligible ? 'var(--bg)' : 'rgba(255,255,255,.25)'),
+            background: 'var(--lime)',
+            color: 'var(--ink)',
+            border: '1.5px solid var(--bg)',
             display: 'inline-flex', alignItems: 'center', gap: 5,
           }}>
-            {withdrawEligible
-              ? <><Check size={11} strokeWidth={3} /> {t('balance.withdrawOpen')}</>
-              : <><Lock size={11} /> {t('balance.withdrawLocked')}</>
-            }
+            <Check size={11} strokeWidth={3} /> {t('balance.activeBalance')}
           </span>
         </div>
 
@@ -372,7 +343,7 @@ export default function Balance() {
           {t('balance.totalTx')}: <strong style={{ color: 'var(--bg)' }}>{fmt(totalSpent)}</strong>
         </div>
 
-        {/* Aksi dompet: Top Up · Tarik · Riwayat */}
+        {/* Aksi dompet: Top Up · Riwayat */}
         <div className="wallet-actions">
           <motion.button
             whileTap={{ scale: 0.96 }}
@@ -384,17 +355,6 @@ export default function Balance() {
             }}
           >
             <Plus size={16} strokeWidth={2.8} /> {t('tu.go')}
-          </motion.button>
-          <motion.button
-            whileTap={{ scale: 0.96 }}
-            onClick={scrollWithdraw}
-            style={{
-              cursor: 'pointer', background: 'transparent', color: 'var(--bg)',
-              border: '1.5px solid rgba(255,255,255,.32)', borderRadius: 999, padding: '12px 18px',
-              fontSize: 13.5, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-            }}
-          >
-            <ArrowUpRight size={16} /> {t('balance.withdrawBtn')}
           </motion.button>
           <motion.button
             whileTap={{ scale: 0.96 }}
@@ -836,184 +796,6 @@ export default function Balance() {
         </motion.div>
         )}
 
-        {!tuView && (
-        <motion.div
-          id="withdraw-card"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08 }}
-          className="card"
-          style={{ padding: 'clamp(22px, 3vw, 30px)', scrollMarginTop: 16 }}
-        >
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-            <h3 className="display" style={{ fontSize: 19, display: 'flex', alignItems: 'center', gap: 9 }}>
-              <span style={{ display: 'grid', placeItems: 'center', width: 30, height: 30, borderRadius: 9, background: 'var(--indigo)', color: '#fff' }}>
-                <ArrowUpRight size={16} strokeWidth={2.6} />
-              </span>
-              {t('balance.withdrawTitle')}
-            </h3>
-
-            {/* Tombol Tarik Saldo — selalu di kanan */}
-            {withdrawEligible && balance > 0 ? (
-              <motion.button
-                whileTap={{ scale: canWithdraw ? 0.97 : 1 }}
-                onClick={handleWithdraw}
-                disabled={!canWithdraw || submitting}
-                className="pill pill-indigo"
-                style={{
-                  justifyContent: 'center', padding: '10px 24px', fontSize: 14, fontWeight: 800,
-                  opacity: canWithdraw ? 1 : 0.5, flexShrink: 0,
-                }}
-              >
-                {submitting ? t('balance.processing') : `${t('balance.withdrawBtn')} ${parsedAmount > 0 ? fmt(parsedAmount) : ''}`}
-                <span className="pill-ic"><ArrowUpRight size={16} strokeWidth={2.6} /></span>
-              </motion.button>
-            ) : (
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={handleLockedClick}
-                className="pill pill-indigo"
-                style={{
-                  justifyContent: 'center', padding: '10px 24px', fontSize: 14, fontWeight: 800,
-                  opacity: withdrawEligible && balance <= 0 ? 0.5 : 1, flexShrink: 0,
-                  background: 'var(--surface-2)', color: 'var(--muted)', borderColor: 'var(--line-soft)',
-                }}
-              >
-                <Lock size={14} style={{ marginRight: 5 }} />
-                {t('balance.withdrawLockedBtn')}
-              </motion.button>
-            )}
-          </div>
-
-          {/* Locked alert — muncul di atas saat tombol terkunci diklik */}
-          <AnimatePresence>
-            {lockedAlert && !withdrawEligible && (
-              <motion.div
-                initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                animate={{ opacity: 1, height: 'auto', marginTop: 14 }}
-                exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                style={{ overflow: 'hidden' }}
-              >
-                <div style={{
-                  padding: '12px 16px', borderRadius: 10, fontSize: 13,
-                  background: 'rgba(255,193,7,.12)', color: '#b45309',
-                  border: '1px solid rgba(255,193,7,.3)',
-                  display: 'flex', alignItems: 'center', gap: 8,
-                }}>
-                  <Info size={15} style={{ flexShrink: 0 }} />
-                  {t('balance.withdrawLockedAlert')} {fmt(minWithdraw)}{t('balance.withdrawLockedAlertSuffix')}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Konten form withdraw — hanya tampil jika eligible & punya saldo */}
-          {withdrawEligible && balance > 0 && loaded ? (
-            <div style={{ marginTop: 16 }}>
-              <label className="field-label">{t('balance.amount')}</label>
-              <div style={{ display: 'flex', gap: 7, margin: '8px 0 12px', flexWrap: 'wrap' }}>
-                {quickAmounts.map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => setAmount(String(q))}
-                    style={{
-                      cursor: 'pointer', borderRadius: 999, padding: '6px 13px', fontSize: 12.5, fontWeight: 700,
-                      background: parsedAmount === q ? 'var(--indigo)' : 'var(--surface-2)',
-                      color: parsedAmount === q ? '#fff' : 'var(--ink)',
-                      border: '1.5px solid ' + (parsedAmount === q ? 'var(--indigo)' : 'var(--line-soft)'),
-                      transition: 'background .15s ease, color .15s ease',
-                    }}
-                  >
-                    {fmtCompact(q)}
-                  </button>
-                ))}
-                <button
-                  onClick={() => setAmount(String(balance))}
-                  style={{
-                    cursor: 'pointer', borderRadius: 999, padding: '6px 13px', fontSize: 12.5, fontWeight: 700,
-                    background: parsedAmount === balance ? 'var(--indigo)' : 'var(--surface-2)',
-                    color: parsedAmount === balance ? '#fff' : 'var(--ink)',
-                    border: '1.5px solid ' + (parsedAmount === balance ? 'var(--indigo)' : 'var(--line-soft)'),
-                    transition: 'background .15s ease, color .15s ease',
-                  }}
-                >
-                  {t('balance.max')}
-                </button>
-              </div>
-
-              <div className="input-ic">
-                <span style={{ fontWeight: 700, fontSize: 15, paddingLeft: 12 }}>{CURRENCY[lang]?.symbol || 'Rp'}</span>
-                <input
-                  className="input"
-                  type="number"
-                  placeholder="Contoh: 100000"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  min={1000}
-                  max={balance}
-                  style={{ paddingLeft: 4 }}
-                />
-              </div>
-              <div style={{ fontSize: 12, marginTop: 6, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
-                <span className="text-muted">{t('balance.available')}: <strong style={{ color: 'var(--ink)' }}>{fmt(balance)}</strong></span>
-                {parsedAmount > balance && (
-                  <span style={{ color: '#dc2626', fontWeight: 700 }}>{t('balance.exceedsBalance')}</span>
-                )}
-              </div>
-
-              <label className="field-label" style={{ marginTop: 16 }}>{t('balance.method')}</label>
-              <div style={{ display: 'flex', gap: 8, marginTop: 6, marginBottom: 18 }}>
-                {[['qris', t('balance.qris'), QrCode], ['bank_transfer', t('balance.bank'), Landmark]].map(([m, label, Icon]) => (
-                  <button
-                    key={m}
-                    onClick={() => setMethod(m)}
-                    style={{
-                      cursor: 'pointer', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                      padding: '11px 12px', borderRadius: 12, fontWeight: 700, fontSize: 13.5,
-                      background: method === m ? 'var(--ink)' : 'var(--surface-2)',
-                      color: method === m ? '#fff' : 'var(--ink)',
-                      border: '1.5px solid ' + (method === m ? 'var(--ink)' : 'var(--line-soft)'),
-                      transition: 'background .15s ease, color .15s ease',
-                    }}
-                  >
-                    <Icon size={17} /> {label}
-                  </button>
-                ))}
-              </div>
-
-              <AnimatePresence>
-                {message && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    style={{
-                      padding: 10, borderRadius: 10, marginBottom: 14, fontSize: 13.5,
-                      background: message.type === 'success' ? 'rgba(37,211,102,.1)' : 'rgba(255,77,77,.1)',
-                      color: message.type === 'success' ? '#16a34a' : '#dc2626',
-                      display: 'flex', alignItems: 'center', gap: 8,
-                    }}
-                  >
-                    {message.type === 'success' ? <Check size={16} /> : <AlertCircle size={16} />}
-                    {message.text}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ) : loaded && balance <= 0 ? (
-            <div style={{ textAlign: 'center', padding: '20px 8px', color: 'var(--muted)', marginTop: 16 }}>
-              <DollarSign size={36} />
-              <p style={{ marginTop: 12, fontSize: 14 }}>{t('balance.emptyBalance')}</p>
-              <p style={{ fontSize: 13, marginTop: 4 }}>{t('balance.emptyHint')}</p>
-            </div>
-          ) : !loaded ? (
-            <div style={{ textAlign: 'center', padding: '20px 8px', color: 'var(--muted)', marginTop: 16 }}>
-              <DollarSign size={36} />
-              <p style={{ marginTop: 12, fontSize: 14 }}>{t('balance.loading')}</p>
-            </div>
-          ) : null}
-        </motion.div>
-        )}
       </div>
 
       {!tuView && (
@@ -1044,7 +826,7 @@ export default function Balance() {
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 700 }}>{t(s.tk)}</div>
                   <div className="text-muted" style={{ fontSize: 12.5, lineHeight: 1.5, marginTop: 2 }}>
-                    {s.n === '3' ? `${t(s.dk)} ${fmt(minWithdraw)}.` : t(s.dk)}
+                    {t(s.dk)}
                   </div>
                 </div>
               </div>
@@ -1052,11 +834,7 @@ export default function Balance() {
           </div>
         </div>
       </motion.div>
-      </>
-      )}
 
-      {!tuView && (
-      <>
       {/* ============ History ============ */}
       <div id="wallet-history" style={{ marginTop: 36, scrollMarginTop: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
