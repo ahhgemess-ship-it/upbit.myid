@@ -20,20 +20,26 @@ const STORE_URL = 'https://evolusiai.xyz'
 // sampai SEMUA terkirim sebelum membalas 200 — di Vercel serverless, fungsi
 // dibekukan begitu respons terkirim, jadi fire-and-forget murni hilang.
 const pending = new Set()
+// Return true bila terkirim OK, false bila gagal (dipakai untuk fallback foto produk).
 async function tg(method, payload) {
-  if (!BOT_TOKEN) return
+  if (!BOT_TOKEN) return false
+  const isForm = typeof FormData !== 'undefined' && payload instanceof FormData
   const p = (async () => {
     try {
       const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        ...(isForm ? { body: payload } : {
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }),
       })
       if (!r.ok) {
         const j = await r.json().catch(() => null)
         console.error(`tg ${method} gagal:`, j?.description || r.status)
+        return false
       }
-    } catch (e) { console.error(`tg ${method} error:`, e?.message || e) }
+      return true
+    } catch (e) { console.error(`tg ${method} error:`, e?.message || e); return false }
   })()
   pending.add(p)
   p.then(() => pending.delete(p), () => pending.delete(p))
@@ -272,10 +278,10 @@ async function menuFor(user, lang, tgId) {
   return { text: s_('welcome', lang), kb }
 }
 
-// Kirim pesan dengan banner logo (foto berwarna) — tampilan start lebih premium
-async function sendBanner(chatId, caption, kb) {
+// Kirim pesan dengan foto (banner logo, foto produk) — tampilan lebih premium
+async function sendBanner(chatId, caption, kb, photoUrl = BANNER_URL) {
   return tg('sendPhoto', {
-    chat_id: chatId, photo: BANNER_URL, caption,
+    chat_id: chatId, photo: photoUrl, caption,
     parse_mode: 'HTML', link_preview_options: { is_disabled: true },
     ...(kb ? { reply_markup: kb } : {}),
   })
@@ -285,6 +291,41 @@ async function sendStart(chatId, tgId) {
   const lang = (await getState(chatId)).lang
   const m = await menuFor(user, lang, tgId)
   return sendBanner(chatId, m.text, m.kb)
+}
+
+// Detail produk dengan foto (p.logo): URL https langsung, path '/…' → STORE_URL,
+// data-URL base64 (produk kecil di serverless) → unggah multipart. Tanpa logo → teks biasa.
+async function sendProductDetail(chatId, p, text, kb) {
+  const logo = p.logo || ''
+  let photo = null
+  let form = null
+  if (/^https:\/\//i.test(logo)) {
+    photo = logo
+  } else if (logo.startsWith('/')) {
+    photo = STORE_URL + logo
+  } else if (/^data:(image\/[a-z0-9.+-]+);base64,/i.test(logo)) {
+    const m = logo.match(/^data:(image\/[a-z0-9.+-]+);base64,([\s\S]+)$/i)
+    const buf = m ? Buffer.from(m[2], 'base64') : null
+    if (buf && buf.length <= 10 * 1024 * 1024) {
+      form = new FormData()
+      form.append('chat_id', String(chatId))
+      form.append('photo', new Blob([buf], { type: m[1] }), `product.${(m[1].split('/')[1] || 'png').replace('jpeg', 'jpg')}`)
+      if (kb) form.append('reply_markup', JSON.stringify(kb))
+    }
+  }
+  if (!photo && !form) return reply(chatId, text, kb)
+  // Caption foto maks ±1024 UTF-8 — sisakan margin
+  if (Buffer.byteLength(text, 'utf8') <= 1000) {
+    const ok = photo
+      ? await sendBanner(chatId, text, kb, photo)
+      : await tg('sendPhoto', (() => { form.append('caption', text); form.append('parse_mode', 'HTML'); form.append('link_preview_options', JSON.stringify({ is_disabled: true })); return form })())
+    if (ok) return
+    return reply(chatId, text, kb)
+  }
+  // Detail > batas caption → foto dulu tanpa caption, teks penuh menyusul sebagai pesan terpisah
+  if (photo) await tg('sendPhoto', { chat_id: chatId, photo, link_preview_options: { is_disabled: true } })
+  else await tg('sendPhoto', form)
+  return reply(chatId, text, kb)
 }
 
 // ── Hubungkan akun (dipanggil dari website) ──
@@ -481,9 +522,8 @@ async function showProduct(chatId, lang, pid) {
   rows.push([{ text: '🛒 Buka di Website', url: `${STORE_URL}/product/${p.id}` }])
   rows.push([{ text: s_('catBack', lang), callback_data: `cat:${p.category}:0` }])
   const note = tiers[0]?.note ? `\n\n<i>${esc(tiers[0].note)}</i>` : ''
-  return reply(chatId,
-    s_('prodDetail', lang, { name: esc(p.name), out, vendor: esc(p.vendor), cat: esc(p.category), tagline: esc(p.tagline || '') }) + note + (p.stockOut ? '' : `\n\n${s_('tierPick', lang)}`),
-    IK(rows))
+  const text = s_('prodDetail', lang, { name: esc(p.name), out, vendor: esc(p.vendor), cat: esc(p.category), tagline: esc(p.tagline || '') }) + note + (p.stockOut ? '' : `\n\n${s_('tierPick', lang)}`)
+  return sendProductDetail(chatId, p, text, IK(rows))
 }
 async function checkoutMenu(chatId, lang, user, pid, tierIdx) {
   const p = await prisma.product.findUnique({ where: { id: pid } })
