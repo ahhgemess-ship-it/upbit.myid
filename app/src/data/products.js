@@ -19,8 +19,24 @@ const withIntl = (p) => ({
 // Produk multi-durasi (1 Bulan/3 Bulan/1 Tahun, dst.) tetap SATU kartu — durasi
 // dipilih lewat dropdown di kartu katalog & halaman detail, bukan dipecah jadi
 // kartu terpisah. Fungsi dipertahankan (identitas) agar pemanggil lama tetap jalan.
+// Pecah produk multi-durasi jadi SATU KARTU PER PLAN: tiap durasi (1 Bulan,
+// 3 Bulan, 1 Tahun…) jadi produk tampilannya sendiri dengan badge durasi khusus
+// (1bln/3bln/1thn) — tidak ada lagi dropdown durasi dalam satu kartu.
+// `_srcId` + label tier asli dipertahankan agar checkout & review tetap
+// mengenali produk induknya di database.
+const slug = (s) => (s || '').toLowerCase().replace(/\+/g, 'plus').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 function splitFamily(p) {
-  return [{ ...p, _srcId: p.id }]
+  if (!p.tiers || p.tiers.length <= 1) return [{ ...p, _srcId: p.id }]
+  return p.tiers.map((tier, i) => ({
+    ...p,
+    _srcId: p.id,
+    id: `${p.id}-${slug(tier.label)}`,
+    price: tier.price,
+    priceIntl: tier.priceIntl,
+    // Harga flash hanya milik paket utama (pertama); plan lain memakai harga katalognya.
+    ...(i === 0 ? {} : { flashPrice: null, flashPriceIntl: null }),
+    tiers: [tier],
+  }))
 }
 
 const FAMILIES = [
@@ -530,11 +546,11 @@ const FAMILIES = [
   },
 ]
 
-// Katalog final: harga internasional terisi. Produk multi-durasi utuh sebagai satu
-// kartu (pilihan durasi via dropdown di UI).
+// Katalog final: harga internasional terisi, lalu dipecah — 1 plan = 1 kartu
+// dengan badge durasinya sendiri.
 export const products = FAMILIES.flatMap((p) => splitFamily(withIntl(p)))
 
-// Kompat: dulu memecah daftar produk per durasi; kini identitas (sudah tidak dipecah).
+// Pecah daftar produk dari DB jadi satu kartu per plan/durasi (aturan sama).
 export const splitCatalog = (list) => (list || []).flatMap(splitFamily)
 
 export const formatIDR = (n) =>
