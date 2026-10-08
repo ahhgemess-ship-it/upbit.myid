@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Check, Star, ShoppingCart, ShieldCheck, Zap, ChevronDown, ArrowUpRight } from 'lucide-react'
@@ -21,19 +21,10 @@ export default function ProductDetail() {
   const { getProduct, products, discountFor } = useCatalog()
   const product = localizedProduct(getProduct(id), lang)
   const { addItem } = useCart()
-  const [tierIdx, setTierIdx] = useState(0)
+  // Plan terkunci ke yang diklik di katalog — tidak ada state pilihan durasi.
+  const tierIdx = 0
   const [added, setAdded] = useState(false)
   const [descOpen, setDescOpen] = useState(false)
-  const [tierOpen, setTierOpen] = useState(false)
-  const tierRef = useRef(null)
-
-  useEffect(() => {
-    const onClick = (e) => {
-      if (tierRef.current && !tierRef.current.contains(e.target)) setTierOpen(false)
-    }
-    document.addEventListener('mousedown', onClick)
-    return () => document.removeEventListener('mousedown', onClick)
-  }, [])
 
   if (!product) {
     return (
@@ -179,64 +170,19 @@ export default function ProductDetail() {
             ))}
           </ul>
 
-          {/* tier selector — dropdown. Hanya bila produk punya >1 durasi; katalog
-              sudah dipecah per durasi, jadi umumnya tiap produk satu pilihan. */}
-          {product.tiers.length > 1 && <div style={{ marginTop: 8 }} ref={tierRef}>
+          {/* DURASI TERKUNCI ke plan yang diklik — tidak ada dropdown pilihan durasi.
+              Katalog sudah 1 plan = 1 kartu; mau durasi lain, klik kartu plan lain.
+              Info plan tampil sebagai pill statis di bawah. */}
+          {product.tiers.length > 1 && <div style={{ marginTop: 8 }}>
             <span className="eyebrow">{t('pd.pickDuration')}</span>
-            <div style={{ position: 'relative', marginTop: 12 }}>
-              <button
-                type="button"
-                onClick={() => setTierOpen((o) => !o)}
-                className="tier-trigger"
-                aria-expanded={tierOpen}
+            <div style={{ marginTop: 10 }}>
+              <span
+                className="chip chip-lime"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 14px', fontSize: 13.5 }}
               >
-                <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontWeight: 600, fontSize: 15 }}>{localizeTier(tier.label, t)}</span>
-                  {tier.note && <span className="chip chip-lime" style={{ fontSize: 11, padding: '3px 9px' }}>{localizeNote(tier.note, t)}</span>}
-                </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  {(percent > 0 || (isFlashTier && flashOff > 0)) && (
-                    <span className="pc-strike" style={{ fontSize: 13 }}>{percent > 0 ? fmt(tierBase) : fmt(flashBase)}</span>
-                  )}
-                  <span className="display" style={{ fontSize: 18 }}>{fmt(salePrice)}</span>
-                  <motion.span animate={{ rotate: tierOpen ? 180 : 0 }} transition={{ duration: 0.2 }} style={{ display: 'grid', placeItems: 'center', color: 'var(--muted)' }}>
-                    <ChevronDown size={20} />
-                  </motion.span>
-                </span>
-              </button>
-
-              <AnimatePresence>
-                {tierOpen && (
-                  <motion.ul
-                    initial={{ opacity: 0, y: -8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.18 }}
-                    className="tier-menu"
-                  >
-                    {product.tiers.map((ti, i) => (
-                      <li key={ti.label}>
-                        <button
-                          type="button"
-                          onClick={() => { setTierIdx(i); setTierOpen(false) }}
-                          className={`tier-option ${tierIdx === i ? 'is-active' : ''}`}
-                        >
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <span style={{ fontWeight: 600, fontSize: 14.5 }}>{localizeTier(ti.label, t)}</span>
-                            {ti.note && <span style={{ fontSize: 11.5, color: 'var(--indigo)', fontWeight: 600 }}>{localizeNote(ti.note, t)}</span>}
-                          </span>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            {percent > 0 && <span className="pc-strike" style={{ fontSize: 12.5 }}>{fmt(amountOf(ti))}</span>}
-                            {percent === 0 && i === 0 && flashOff > 0 && <span className="pc-strike" style={{ fontSize: 12.5 }}>{fmt(flashBase)}</span>}
-                            <span className="display" style={{ fontSize: 15 }}>{fmt(applyDiscount(amountOf(tierPriceOf(ti, i)), percent))}</span>
-                            {tierIdx === i && <Check size={16} strokeWidth={3} color="var(--indigo)" />}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </motion.ul>
-                )}
-              </AnimatePresence>
+                <span style={{ fontWeight: 700 }}>{localizeTier(tier.label, t)}</span>
+                {tier.note && <span style={{ fontWeight: 600 }}>{localizeNote(tier.note, t)}</span>}
+              </span>
             </div>
           </div>}
 
