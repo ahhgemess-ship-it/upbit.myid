@@ -33,11 +33,15 @@ export function pricesOfProduct(p = {}) {
 // `tx` opsional (Prisma transaction client); tanpa tx → prisma global.
 export async function cascadeUserStockOut(tx, userId, maxIdr, { min = STOCK_OUT_MIN, extraIds = [] } = {}) {
   const db = tx || prisma
-  if (!userId || !(maxIdr >= min && extraIds.length)) return []
+  // Produk yang dibeli sendiri selalu tercatat habis, terlepas dari harganya.
+  // Cascade ke produk LAIN hanya berlaku bila harga beli mencapai batas bawah band.
+  if (!userId) return []
   const ids = new Set(extraIds)
-  const products = await db.product.findMany({ where: { active: true } })
-  for (const p of products) {
-    if (pricesOfProduct(p).some((pr) => pr >= min && pr <= maxIdr)) ids.add(p.id)
+  if (maxIdr >= min) {
+    const products = await db.product.findMany({ where: { active: true } })
+    for (const p of products) {
+      if (pricesOfProduct(p).some((pr) => pr >= min && pr <= maxIdr)) ids.add(p.id)
+    }
   }
   for (const productId of ids) {
     await db.userProductStock.upsert({
