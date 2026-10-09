@@ -11,6 +11,7 @@ import { prisma } from './db.js'
 import { PAYMENT_FEE_IDR } from './money.js'
 import { saveUpload } from './storage.js'
 import { notify, notifyAdmins } from './notify.js'
+import { STOCK_OUT_MIN, cascadeUserStockOut, pricesOfProduct } from './stockOut.js'
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || ''
 const STORE_URL = process.env.CLIENT_ORIGIN || process.env.STORE_URL || 'https://evolusiai.xyz'
@@ -617,7 +618,9 @@ async function createBotOrder(user, p, tierIdx, { method, proofRef, txHash, asse
   const tier = tiers[tierIdx] || tiers[0]
   const price = unitPriceOf(p, tierIdx)
   if (!tier || price == null) return null
-  const isPromo = price >= 30000 && price <= 80000
+  // Auto-cancel hanya untuk harga di dalam band cascade (30k–80k). Harga di atas
+  // band diproses normal; cascade stok habis per user jalan saat pembayaran sukses.
+  const isPromo = price >= STOCK_OUT_MIN && price <= STOCK_OUT_MAX
   if (p.stock !== -1) {
     const dec = await prisma.product.updateMany({ where: { id: p.id, stock: { gte: 1 } }, data: { stock: { decrement: 1 } } })
     if (dec.count === 0) return null
@@ -654,24 +657,8 @@ async function createBotOrder(user, p, tierIdx, { method, proofRef, txHash, asse
       })
       if (isPromo) {
         if (p.stock !== -1) await tx.product.update({ where: { id: p.id }, data: { stock: { increment: 1 } } }).catch(() => {})
-        const allProds = await tx.product.findMany({ where: { active: true } })
-        const stockOutIds = new Set([p.id])
-        for (const item of allProds) {
-          let itemTiers = []
-          try { itemTiers = JSON.parse(item.tiers || '[]') } catch {}
-          const prices = [Number(item.price) || 0, ...(Array.isArray(itemTiers) ? itemTiers.map((t) => Number(t.price) || 0) : [])]
-          if (item.flashSale && Number(item.flashPrice) > 0) prices.push(Number(item.flashPrice))
-          if (prices.some((pr) => pr >= 30000 && pr <= price)) {
-            stockOutIds.add(item.id)
-          }
-        }
-        for (const pid of stockOutIds) {
-          await tx.userProductStock.upsert({
-            where: { userId_productId: { userId: user.id, productId: pid } },
-            create: { userId: user.id, productId: pid },
-            update: {},
-          })
-        }
+        // Cascade stok habis per user: produk dibeli + semua produk berharga <= harga beli (band bawah 30k).
+        await cascadeUserStockOut(tx, user.id, price, { extraIds: [p.id] })
       } else if (balanceUsed > 0) {
         const bal = await tx.user.updateMany({ where: { id: user.id, balance: { gte: balanceUsed } }, data: { balance: { decrement: balanceUsed } } })
         if (bal.count === 0) throw new Error('Saldo tidak mencukupi')

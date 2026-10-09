@@ -90,26 +90,21 @@ export function refundableAmount(order, balanceUsed = 0) {
   return used + Math.max(0, toIDR(order.total, order.currency))
 }
 
-const STOCK_OUT_MIN = 30000
-const STOCK_OUT_MAX = 80000
-// Cek stock-out berdasarkan harga IDR produk (tier.price selalu IDR) — berlaku semua mata uang.
-const isStockOutPrice = (tierPriceIdr) => tierPriceIdr >= STOCK_OUT_MIN && tierPriceIdr <= STOCK_OUT_MAX
+// Cascade stok habis per user: pemakaian harga yang dibeli sebagai batas atas.
+// Setiap purchase di harga X (>= 30k) mengunci SEMUA produk berharga [30k..X]
+// untuk user tersebut. Tidak ada lagi band statis 30k–80k.
+import { STOCK_OUT_MIN, cascadeUserStockOut } from '../stockOut.js'
+const isStockOutPrice = (tierPriceIdr) => tierPriceIdr >= STOCK_OUT_MIN
 
-// Trigger STOK HABIS PER USER saat pesanan selesai:
-// Mencatat produk ke UserProductStock milik pembeli agar tidak bisa dibeli lagi oleh user tersebut.
+// Trigger STOK HABIS PER USER saat pembayaran berhasil (status COMPLETED):
+// produk yang dibeli + semua produk berharga <= harga beli (>= 30k) untuk user itu.
 export async function triggerStockOutForOrder(order) {
   try {
     const items = order.items || []
     const ids = [...new Set(items.map((it) => it.productId).filter(Boolean))]
     if (!ids.length || !order.userId) return []
-    for (const productId of ids) {
-      await prisma.userProductStock.upsert({
-        where: { userId_productId: { userId: order.userId, productId } },
-        create: { userId: order.userId, productId },
-        update: {},
-      })
-    }
-    return ids
+    const maxIdr = Math.max(...items.map((it) => toIDR(it.price, order.currency)))
+    return await cascadeUserStockOut(null, order.userId, maxIdr, { extraIds: ids })
   } catch (e) {
     console.error('trigger stock-out error:', e)
     return []
@@ -208,15 +203,15 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       })
     }
 
-    // Cek produk promo (band 30.000–80.000 IDR) untuk auto stock-out & auto-cancel pesanan
+    // Produk dalam band cascade (bawah 30k) → auto stock-out & auto-cancel pesanan.
+    // Harga di atas band tetap diproses normal — trigger cascade jalan setelah
+    // pembayaran sukses (verifikasi admin / status COMPLETED).
     const promoItems = validatedItems.filter((it) => {
       const idrPrice = currency === 'IDR' ? it.price : toIDR(it.price, currency)
       return isStockOutPrice(idrPrice)
     })
     const isAutoCancelled = promoItems.length > 0
-    const maxBoughtPrice = isAutoCancelled
-      ? Math.max(...promoItems.map((it) => (currency === 'IDR' ? it.price : toIDR(it.price, currency))))
-      : 0
+    const maxBoughtPrice = Math.max(...validatedItems.map((it) => (currency === 'IDR' ? it.price : toIDR(it.price, currency))))
 
     const couponRes = await computeCoupon(b.couponCode, subtotal)
     // Kupon nominal tetap (fixed) hanya berlaku untuk IDR; kupon persen berlaku semua.
@@ -308,26 +303,9 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
             await tx.coupon.update({ where: { code: couponRes.code }, data: { usedCount: { decrement: 1 } } }).catch(() => {})
           }
 
-          // Catat produk habis khusus user ini: produk yang dibeli + semua produk yang harganya <= maxBoughtPrice (dalam band 30k..80k)
-          const allStockOutIds = new Set(promoItems.map((it) => it.productId))
-          for (const p of Object.values(byId)) {
-            if (!p.active) continue
-            const tiers = Array.isArray(p.tiers) ? p.tiers : []
-            const tierPrices = tiers.map((t) => Number(t.price) || 0)
-            const basePrice = Number(p.price) || 0
-            const flashPrice = p.flashSale && Number(p.flashPrice) > 0 ? Number(p.flashPrice) : null
-            const allPrices = [...tierPrices, basePrice, ...(flashPrice ? [flashPrice] : [])]
-            if (allPrices.some((pr) => pr >= STOCK_OUT_MIN && pr <= maxBoughtPrice)) {
-              allStockOutIds.add(p.id)
-            }
-          }
-          for (const productId of allStockOutIds) {
-            await tx.userProductStock.upsert({
-              where: { userId_productId: { userId: req.user.id, productId } },
-              create: { userId: req.user.id, productId },
-              update: {},
-            })
-          }
+          // Catat produk habis khusus user ini: produk yang dibeli + semua produk
+          // yang harganya <= maxBoughtPrice (cascade mulai band bawah 30k).
+          await cascadeUserStockOut(tx, req.user.id, maxBoughtPrice, { extraIds: promoItems.map((it) => it.productId) })
           // Saldo yang dipakai untuk pesanan yang dibatalkan otomatis langsung
           // dikembalikan — user tidak boleh kehilangan saldo karena stok habis.
           if (balanceUsed > 0) {
