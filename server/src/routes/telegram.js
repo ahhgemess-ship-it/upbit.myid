@@ -12,19 +12,26 @@ const router = Router()
 // tidak pernah terkirim (bug "bot tidak merespon"). Telegram bersedia menunggu
 // respons hingga 60 detik; handler ini selesai dalam 1–3 detik.
 router.post('/webhook', async (req, res) => {
-  // Validasi secret header (diset saat setWebhook; opsional tapi disarankan)
+  // ═══ BOT TELEGRAM NONAKTIF SEMENTARA ═══
+  // Update dari Telegram di-ACK (200) tapi TIDAK diproses — bot diam tanpa
+  // error/retry di sisi Telegram. Untuk mengaktifkan kembali: kembalikan kode
+  // di bawah (validasi secret + handleTelegramUpdate + flushPending).
+  return res.json({ ok: true, disabled: true })
+
+  /* // aslinya — aktifkan lagi dengan menghapus comment:
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET || ''
   if (secret && req.get('x-telegram-bot-api-secret-token') !== secret) {
     return res.status(401).json({ ok: false })
   }
   try {
     if (req.body?.update_id) await handleTelegramUpdate(req.body)
-    await flushPending() // tunggu semua sendMessage/answerCallback selesai
+    await flushPending()
   } catch (e) {
     console.error('telegram webhook error:', e?.message || e)
   } finally {
     res.json({ ok: true })
   }
+  */
 })
 
 // Semua endpoint di bawah butuh login website
