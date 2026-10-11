@@ -260,12 +260,7 @@ async function spendOf(userId) {
   })
   return orders.reduce((sum, o) => sum + (o.currency === 'IDR' ? o.total : Math.round(o.total * 17650 / 100)), 0)
 }
-// Min. tarik saldo (Setting global — sama dengan balance.js)
-async function minWithdrawGlobal() {
-  const s = await prisma.setting.findUnique({ where: { key: 'minWithdraw' } })
-  const v = s ? parseInt(s.value, 10) : NaN
-  return Number.isSafeInteger(v) && v >= 0 ? v : 310000
-}
+// Fitur tarik saldo (withdraw) dihapus — saldo hanya untuk belanja di toko.
 
 // ── Menu utama ──
 const BANNER_URL = STORE_URL + '/logo.png'

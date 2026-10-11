@@ -8,8 +8,6 @@ export function BalanceProvider({ children }) {
   const { user } = useAuth()
   const [balance, setBalance] = useState(0)
   const [totalSpent, setTotalSpent] = useState(0)
-  const [withdrawEligible, setWithdrawEligible] = useState(false)
-  const [minWithdraw, setMinWithdraw] = useState(310000)
   const [history, setHistory] = useState([])
   const [loaded, setLoaded] = useState(false)
 
@@ -27,14 +25,11 @@ export function BalanceProvider({ children }) {
       const data = await api.getBalance()
       setBalance(data.balance || 0)
       setTotalSpent(data.totalSpent || 0)
-      setWithdrawEligible(data.withdrawEligible || false)
-      setMinWithdraw(data.minWithdraw || 310000)
       setLoaded(true)
     } catch {
       // Backend tidak terjangkau — tampilkan 0 (jangan saldo palsu, abaikan demo_balance lama).
       setBalance(0)
       setTotalSpent(0)
-      setWithdrawEligible(false)
       setLoaded(true)
     }
   }, [user])
@@ -98,25 +93,19 @@ export function BalanceProvider({ children }) {
     fetchBalance()
   }, [fetchBalance])
 
-  // Withdraw
-  const withdraw = useCallback(async (amount, method) => {
-    const res = await api.withdrawBalance(amount, method)
-    setBalance(res.balance)
-    fetchHistory()
-    return res
-  }, [fetchHistory])
+  // Fitur withdraw dihapus — saldo dipakai hanya untuk belanja di toko.
 
   const value = useMemo(() => ({
-    balance, totalSpent, withdrawEligible, minWithdraw,
+    balance, totalSpent,
     history, loaded,
-    fetchBalance, fetchHistory, withdraw,
+    fetchBalance, fetchHistory,
     // Check-in
     checkInStreak, canCheckIn, checkInReward, checkInBonus, checkInCycle,
     fetchCheckInStatus, doCheckIn,
   }), [
-    balance, totalSpent, withdrawEligible, minWithdraw,
+    balance, totalSpent,
     history, loaded,
-    fetchBalance, fetchHistory, withdraw,
+    fetchBalance, fetchHistory,
     checkInStreak, canCheckIn, checkInReward, checkInBonus, checkInCycle,
     fetchCheckInStatus, doCheckIn,
   ])

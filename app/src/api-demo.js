@@ -160,12 +160,7 @@ export const demoApi = {
     const balance = parseInt(localStorage.getItem('demo_balance') || '0', 10)
     const orders = load(ORDER_KEY)
     const totalSpent = orders.filter(o => o.status === 'completed').reduce((s, o) => s + (o.total || 0), 0)
-    return {
-      balance,
-      totalSpent,
-      minWithdraw: 310000,
-      withdrawEligible: totalSpent >= 310000,
-    }
+    return { balance, totalSpent }
   },
   getBalanceHistory: async () => {
     const raw = localStorage.getItem('demo_balance_history')
@@ -184,26 +179,6 @@ export const demoApi = {
     localStorage.setItem('demo_balance_history', JSON.stringify(history.slice(0, 50)))
     return { success: true, balance: newBalance }
   },
-  withdrawBalance: async (amount, method) => {
-    const balance = parseInt(localStorage.getItem('demo_balance') || '0', 10)
-    const orders = load(ORDER_KEY)
-    const totalSpent = orders.filter(o => o.status === 'completed').reduce((s, o) => s + (o.total || 0), 0)
-    if (totalSpent < 310000) {
-      throw new Error(`Total transaksi minimal Rp 310.000 untuk bisa tarik saldo. Total Anda: Rp ${totalSpent.toLocaleString('id-ID')}`)
-    }
-    if (balance < amount) throw new Error('Saldo tidak mencukupi')
-    const newBalance = balance - amount
-    localStorage.setItem('demo_balance', String(newBalance))
-    const history = JSON.parse(localStorage.getItem('demo_balance_history') || '[]')
-    history.unshift({
-      id: uid(), amount: -amount, type: 'withdraw',
-      note: `Tarik saldo via ${method || 'manual'} — Rp ${amount.toLocaleString('id-ID')}`,
-      createdAt: new Date().toISOString(),
-    })
-    localStorage.setItem('demo_balance_history', JSON.stringify(history.slice(0, 50)))
-    return { success: true, balance: newBalance, withdrawn: amount }
-  },
-
   // check-in
   checkInStatus: async () => {
     const lastCheckIn = localStorage.getItem('demo_last_checkin')

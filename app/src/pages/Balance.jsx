@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, Fragment } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Wallet, ArrowUpRight, ArrowRight, Clock, AlertCircle, Check, History,
-  QrCode, Landmark, RefreshCw, ShoppingBag, Banknote, Lock, Info, DollarSign,
+  QrCode, Landmark, RefreshCw, ShoppingBag, Lock, Info, DollarSign,
   Calendar, Gift, Star, ExternalLink, Plus, CreditCard, Coins, ArrowLeft,
 } from 'lucide-react'
 import Asterisk from '../components/Asterisk.jsx'
@@ -18,8 +18,9 @@ import { QRCodeSVG } from 'qrcode.react'
 const txMeta = {
   refund: { labelKey: 'tx.refund', icon: RefreshCw },
   purchase: { labelKey: 'tx.purchase', icon: ShoppingBag },
-  withdraw: { labelKey: 'tx.withdraw', icon: Banknote },
   checkin: { labelKey: 'tx.checkin', icon: Gift },
+  // 'withdraw' dihapus — fitur tarik saldo tidak ada lagi. Riwayat lama bertipe
+  // withdraw tetap aman: transaksi tak dikenal jatuh ke ikon default umum.
 }
 
 const FILTER_OPTIONS = [

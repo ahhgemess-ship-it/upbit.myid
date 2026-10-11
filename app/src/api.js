@@ -109,7 +109,6 @@ const _real = {
   // balance
   getBalance: () => req('/api/balance'),
   getBalanceHistory: () => req('/api/balance/history'),
-  withdrawBalance: (amount, method) => req('/api/balance/withdraw', { method: 'POST', body: { amount, method } }),
   checkInStatus: () => req('/api/balance/checkin/status'),
   checkIn: () => req('/api/balance/checkin', { method: 'POST' }),
   // Telegram link (satu dompet dengan bot) — tanpa kode, deep-link dari bot
@@ -171,7 +170,6 @@ export const api = {
   // balance
   getBalance: withFallback(_real.getBalance, demoApi.getBalance),
   getBalanceHistory: withFallback(_real.getBalanceHistory, demoApi.getBalanceHistory),
-  withdrawBalance: withFallback(_real.withdrawBalance, demoApi.withdrawBalance),
   checkInStatus: withFallback(_real.checkInStatus, demoApi.checkInStatus),
   checkIn: withFallback(_real.checkIn, demoApi.checkIn),
   // Telegram link (butuh backend)

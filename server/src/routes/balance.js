@@ -5,22 +5,8 @@ import { toIDR } from '../money.js'
 
 const router = Router()
 
-// Minimal total transaksi untuk bisa withdraw — default global (bisa diubah admin
-// lewat panel), dan bisa dioverride per user (User.minWithdraw, diatur di detail user).
-const DEFAULT_MIN_WITHDRAW = 310000 // Rp 310.000
-
-async function getGlobalMinWithdraw() {
-  const s = await prisma.setting.findUnique({ where: { key: 'minWithdraw' } })
-  const v = s ? parseInt(s.value, 10) : NaN
-  return Number.isSafeInteger(v) && v >= 0 ? v : DEFAULT_MIN_WITHDRAW
-}
-
-// Min efektif untuk seorang user: override per-user menang atas default global.
-async function getMinWithdrawFor(user) {
-  const perUser = user && Number.isSafeInteger(user.minWithdraw) ? user.minWithdraw : null
-  if (perUser !== null && perUser >= 0) return perUser
-  return getGlobalMinWithdraw()
-}
+// Fitur tarik saldo (withdraw) telah dihapus seluruhnya — saldo hanya dipakai
+// untuk belanja di toko. Seluruh endpoint, syarat, dan UI-nya dibersihkan.
 
 // Reward check-in harian: Rp 300/hari, bonus Rp 2.000 di hari ke-7
 const CHECKIN_REWARD = 300
@@ -39,20 +25,6 @@ function isYesterdayUtc(d, now = new Date()) {
   return isSameUtcDay(d, yesterday)
 }
 
-// Cek apakah user eligible untuk withdraw (total transaksi >= min tarik saldo efektifnya)
-async function checkWithdrawEligible(userId) {
-  const [user, orders] = await Promise.all([
-    prisma.user.findUnique({ where: { id: userId }, select: { minWithdraw: true } }),
-    prisma.order.findMany({
-      where: { userId, status: 'COMPLETED' },
-      select: { total: true, currency: true },
-    }),
-  ])
-  const min = await getMinWithdrawFor(user)
-  const totalIdr = orders.reduce((s, o) => s + toIDR(o.total, o.currency), 0)
-  return totalIdr >= min
-}
-
 // GET /api/balance — lihat saldo & total transaksi
 router.get('/', requireAuth, async (req, res) => {
   try {
@@ -62,14 +34,7 @@ router.get('/', requireAuth, async (req, res) => {
       select: { total: true, currency: true },
     })
     const totalSpent = orders.reduce((s, o) => s + toIDR(o.total, o.currency), 0)
-    const minWithdraw = await getMinWithdrawFor(user)
-    const eligible = totalSpent >= minWithdraw
-    res.json({
-      balance: user.balance,
-      totalSpent,
-      minWithdraw,
-      withdrawEligible: eligible,
-    })
+    res.json({ balance: user.balance, totalSpent })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
@@ -89,61 +54,7 @@ router.get('/history', requireAuth, async (req, res) => {
   }
 })
 
-// POST /api/balance/withdraw — tarik saldo (syarat: total transaksi >= 250k)
-router.post('/withdraw', requireAuth, async (req, res) => {
-  try {
-    const { amount, method } = req.body // method: "qris" | "bank_transfer"
-    const parsedAmount = parseInt(amount, 10)
-
-    if (!parsedAmount || parsedAmount <= 0) {
-      return res.status(400).json({ error: 'Jumlah tidak valid' })
-    }
-
-    // Cek eligible (total transaksi >= min tarik saldo efektif user, dalam IDR)
-    const me = await prisma.user.findUnique({ where: { id: req.user.id }, select: { minWithdraw: true } })
-    const min = await getMinWithdrawFor(me)
-    const eligible = await checkWithdrawEligible(req.user.id)
-    if (!eligible) {
-      return res.status(400).json({
-        error: 'Belum bisa tarik saldo',
-        detail: `Total transaksi Anda harus minimal Rp ${min.toLocaleString('id-ID')} untuk bisa menarik saldo.`,
-        minWithdraw: min,
-      })
-    }
-
-    // Deduksi saldo ATOMIK bersyarat — anti race condition (saldo tidak bisa minus).
-    const result = await prisma.$transaction(async (tx) => {
-      const deducted = await tx.user.updateMany({
-        where: { id: req.user.id, balance: { gte: parsedAmount } },
-        data: { balance: { decrement: parsedAmount } },
-      })
-      if (deducted.count !== 1) return null
-      const updatedUser = await tx.user.findUnique({ where: { id: req.user.id } })
-      const txn = await tx.balanceTransaction.create({
-        data: {
-          userId: req.user.id,
-          amount: -parsedAmount,
-          type: 'withdraw',
-          note: `Tarik saldo via ${method || 'manual'} — Rp ${parsedAmount.toLocaleString('id-ID')}`,
-        },
-      })
-      return { updatedUser, txn }
-    })
-
-    if (!result) {
-      return res.status(400).json({ error: 'Saldo tidak mencukupi' })
-    }
-
-    res.json({
-      success: true,
-      balance: result.updatedUser.balance,
-      withdrawn: parsedAmount,
-      transaction: result.txn,
-    })
-  } catch (e) {
-    res.status(500).json({ error: e.message })
-  }
-})
+// POST /api/balance/withdraw dihapus — fitur tarik saldo tidak ada lagi.
 
 // GET /api/balance/checkin/status — status check-in harian
 router.get('/checkin/status', requireAuth, async (req, res) => {
