@@ -31,7 +31,7 @@ export default function Store() {
   const tabs = ['Semua', ...categories]
 
   return (
-    <div className="container section">
+    <div className="container section store-page">
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
         <Asterisk size={30} />
         <span className="eyebrow">{t('store.eyebrow')}</span>
@@ -39,11 +39,11 @@ export default function Store() {
       <h1 className="display h-lg" style={{ maxWidth: 620 }}>{t('store.title')}</h1>
 
       {/* controls */}
-      <div style={{
+      <div className="store-toolbar" style={{
         display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center',
         justifyContent: 'space-between', margin: '30px 0 26px',
       }}>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div className="store-category-tabs" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {tabs.map((tab) => (
             <button
               key={tab}

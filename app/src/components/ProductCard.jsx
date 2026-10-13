@@ -113,8 +113,8 @@ export default function ProductCard({ product: rawProduct, index = 0 }) {
           </span>
         </div>
 
-        <div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+        <div className="pc-meta">
+          <div className="pc-badges" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
             {isFlash ? (
               <span className="chip" style={{ background: 'var(--ink)', color: 'var(--lime)', borderColor: 'var(--ink)', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 800, letterSpacing: '.05em' }}>
                 <Zap size={11} fill="currentColor" /> FLASH SALE

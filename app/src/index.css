@@ -179,6 +179,7 @@ ul { list-style: none; }
   display: grid; gap: 22px;
   grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
 }
+.product-grid > * { min-width: 0; }
 
 /* ============ Detail: collapsible & dropdown ============ */
 .desc-toggle {
@@ -383,6 +384,15 @@ ul { list-style: none; }
   transition: background .2s ease;
 }
 .pc-add:hover { background: var(--indigo-ink); }
+.product-card:focus-visible,
+.sale-card:focus-visible,
+.pc-buy:focus-visible,
+.pc-add:focus-visible,
+.sort-trigger:focus-visible,
+.store-category-tabs .chip:focus-visible {
+  outline: 3px solid var(--indigo);
+  outline-offset: 2px;
+}
 
 /* ============ Hero showcase ============ */
 .hero-showcase {
@@ -868,45 +878,122 @@ ul { list-style: none; }
     padding-top: 12px; border-top: 1.5px solid var(--line-soft);
   }
 
-  /* katalog produk: 2 kolom kompak di mobile.
-     minmax(0,1fr) agar track bisa menyusut di bawah min-content (nama nowrap) */
-  .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-  .product-card { min-width: 0; padding: 13px; gap: 10px; overflow: hidden; }
-  .product-card .corner-arrow { width: 28px; height: 28px; }
-  .pc-top span:first-child { width: 46px !important; height: 46px !important; }
+  /* Tablet memakai tiga kolom agar katalog tidak membentuk daftar vertikal panjang. */
+  .product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+
+  /* Kartu mobile memakai header horizontal: logo di kiri, metadata di kanan.
+     Ini memangkas tinggi tanpa menghilangkan nama, durasi, harga, atau aksi. */
+  .product-card {
+    display: grid !important;
+    grid-template-columns: 42px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: 10px !important;
+    row-gap: 10px !important;
+    min-width: 0;
+    padding: 12px !important;
+    overflow: hidden;
+  }
+  .pc-top { grid-column: 1; grid-row: 1; }
+  .pc-top .corner-arrow { display: none; }
+  .pc-top > span:first-child { width: 42px !important; height: 42px !important; border-radius: 12px !important; }
+  .pc-top > span:first-child img { width: 24px !important; height: 24px !important; }
+  .pc-meta {
+    grid-column: 2; grid-row: 1; align-self: center;
+    display: flex; flex-direction: column; min-width: 0;
+  }
+  .pc-badges {
+    gap: 4px !important; margin-bottom: 5px !important;
+    flex-wrap: nowrap !important; min-width: 0;
+  }
+  .pc-badges .chip-lime { padding: 3px 7px; font-size: 9.5px !important; }
+  .pc-badges > span:not(.chip-lime):not(.pc-chip) { display: none !important; }
   .pc-chip { display: none; }
   .pc-name {
-    font-size: 14.5px !important; margin-top: 0 !important; line-height: 1.15;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-size: 14px !important; margin-top: 0 !important; line-height: 1.15;
+    display: -webkit-box; overflow: hidden;
+    -webkit-box-orient: vertical; -webkit-line-clamp: 2;
   }
   .pc-tagline { display: none; }
   .pc-rating { display: none !important; }   /* rating disembunyikan agar ringkas */
-  .pc-foot { padding-top: 10px !important; }
-  .pc-price-row { margin-bottom: 10px !important; }
-  .pc-price { font-size: 16px !important; }
+  .pc-foot {
+    grid-column: 1 / -1; grid-row: 2;
+    margin-top: 0 !important; padding-top: 9px !important;
+  }
+  .pc-price-row { margin-bottom: 8px !important; }
+  .pc-price { font-size: clamp(14px, 2.2vw, 16px) !important; line-height: 1.1; }
+  .pc-period { font-size: 11px !important; color: var(--ink-soft); }
 
-  /* tombol: Beli melebar + bulat add menempel kanan */
-  .pc-buy { height: 40px; font-size: 13.5px; padding: 0 10px; white-space: nowrap; }
+  /* Tombol tetap 44px agar nyaman disentuh meski kartunya lebih pendek. */
+  .pc-actions { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 7px; }
+  .pc-buy { min-width: 0; height: 44px; font-size: 13px; padding: 0 6px; white-space: nowrap; }
   .pc-buy-full { display: none; }
   .pc-buy-short { display: inline; }
-  .pc-add { width: 40px; height: 40px; }
+  .pc-add { width: 44px; height: 44px; }
 
-  /* kartu flash sale — disamakan dengan kartu katalog reguler */
-  .sale-card { min-width: 0; padding: 13px; gap: 10px; }
-  .sale-card-top span:first-child { width: 46px !important; height: 46px !important; }
-  .sale-name { font-size: 14.5px !important; line-height: 1.15; gap: 6px; }
+  /* Kartu flash sale memakai komposisi ringkas yang sama. */
+  .sale-card {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
+    grid-template-areas: "logo name" "price price" "stock stock" "actions actions";
+    column-gap: 10px; row-gap: 9px;
+    min-width: 0; padding: 12px;
+  }
+  .sale-card-top { grid-area: logo; align-self: center; }
+  .sale-card-top > span:first-child { width: 42px !important; height: 42px !important; border-radius: 12px !important; }
+  .sale-card-top > span:first-child img { width: 24px !important; height: 24px !important; }
+  .sale-card-top > span:not(:first-child) { display: none !important; }
+  .sale-name { grid-area: name; align-self: center; font-size: 14px !important; line-height: 1.15; gap: 5px; padding-right: 26px; }
   .sale-name-text {
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    max-width: 100%;
+    display: -webkit-box; overflow: hidden; max-width: 100%;
+    -webkit-box-orient: vertical; -webkit-line-clamp: 2;
   }
   .sale-dur { font-size: 9.5px; padding: 2.5px 6px; }
-  .sale-price-row { gap: 8px; margin-top: -2px; }
-  .sale-price { font-size: 16px !important; }
-  .sale-price-old { font-size: 12px !important; }
+  .sale-price-row { grid-area: price; gap: 7px; margin-top: 0; }
+  .sale-price { font-size: clamp(14px, 2.2vw, 16px) !important; }
+  .sale-price-old { font-size: 12px !important; color: var(--ink-soft); }
+  .sale-stock { grid-area: stock; }
   .sale-stock-bar { height: 6px; }
   .sale-stock-label { font-size: 11px !important; margin-top: 6px; }
-  .sale-buy { height: 40px; font-size: 13px; padding: 0 8px; gap: 5px; }
+  .sale-stock-label .text-muted { color: var(--ink-soft); }
+  .sale-card .pc-actions { grid-area: actions; }
+  .sale-buy { height: 44px; font-size: 12.5px; padding: 0 5px; gap: 4px; }
   .sale-buy span { white-space: nowrap; }
+  .sale-badge { font-size: 11px; padding: 5px 8px; border-bottom-left-radius: 11px; }
+}
+@media (max-width: 620px) {
+  .store-page { padding-top: 38px; }
+  .store-toolbar { gap: 12px !important; margin: 22px 0 24px !important; }
+  .store-category-tabs {
+    width: calc(100% + 36px);
+    margin-left: -18px; margin-right: -18px;
+    padding: 0 18px 4px;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .store-category-tabs::-webkit-scrollbar { display: none; }
+  .store-category-tabs .chip { min-height: 44px; flex: 0 0 auto; padding: 8px 12px; }
+  .store-controls {
+    display: grid !important;
+    grid-template-columns: minmax(0, .92fr) minmax(0, 1.35fr);
+    gap: 8px !important;
+    width: 100%;
+  }
+  .store-controls .sort-dd,
+  .store-controls .sort-trigger,
+  .store-controls .store-search { width: 100%; min-width: 0 !important; }
+  .store-controls .sort-trigger { justify-content: space-between; padding: 0 11px; gap: 6px; }
+  .store-controls .sort-trigger-label { display: none; }
+  .store-controls .sort-trigger-lead { min-width: 0; gap: 6px; }
+  .store-controls .sort-trigger-value {
+    min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .store-controls .store-search .input { height: 49px; padding-left: 39px !important; padding-right: 10px; }
+}
+@media (max-width: 560px) {
+  .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 }
 @media (max-width: 520px) {
   .container { padding: 0 18px; }

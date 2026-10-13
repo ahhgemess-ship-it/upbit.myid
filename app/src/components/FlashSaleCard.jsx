@@ -21,7 +21,7 @@ export default function FlashSaleCard({ product, index = 0 }) {
   const { fmt, region } = usePricing()
   const navigate = useNavigate()
   const [added, setAdded] = useState(false)
-  const stockOut = !!product.stockOut
+  const stockOut = !!product.stockOut || !!product.balanceStockOut
   // Kartu flash = PREVIEW produk: selalu durasi utama (tier pertama) dengan harga
   // flash. Pilihan durasi lengkap ada di halaman detail produk.
   const tier = (product.tiers || [])[0] || { label: product.period || 'Produk', price: product.price, priceIntl: product.priceIntl }
