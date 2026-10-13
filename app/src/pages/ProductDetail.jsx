@@ -37,9 +37,8 @@ export default function ProductDetail() {
 
   const tier = product.tiers[tierIdx]
   const isFlashSale = product.flashSale === true && Number(product.flashPrice) > 0
-  // Stok habis (global): ditandai admin atau ter-trigger pembayaran berhasil.
-  // Produk terkunci untuk semua user — tidak bisa dibuka/dibeli sampai di-restock.
-  const stockHabis = !!product.stockOut || product.stock === 0
+  // Stok global dan stok khusus akun sama-sama mengunci pembelian.
+  const stockHabis = !!product.stockOut || !!product.balanceStockOut || product.stock === 0
   // Harga flash hanya berlaku untuk tier utama (pertama). Tier lain tetap memakai
   // harga katalognya — edit harga flash di panel admin tidak menyamakan semua durasi.
   const isFlashTier = isFlashSale && tierIdx === 0

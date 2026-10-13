@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { prisma } from '../db.js'
 import { effectiveDiscount } from '../discount.js'
 import { USD_TO_IDR } from '../money.js'
+import { isTierStockOutForBalance } from '../stockOut.js'
 
 const router = Router()
 
@@ -15,7 +16,7 @@ const parseJsonArray = (value) => {
 }
 
 // Bentuk produk untuk klien. `discountPercent` = diskon EFEKTIF (sudah cek jadwal).
-export function formatProduct(p, { admin = false } = {}) {
+export function formatProduct(p, { admin = false, userBalance } = {}) {
   const pct = effectiveDiscount(p)
   // USD flash turunan dari Rp bila kosong — cocok dengan perhitungan checkout
   // server, agar pembeli USD/CNY tidak kehilangan harga flash di kartu/detail.
@@ -25,9 +26,13 @@ export function formatProduct(p, { admin = false } = {}) {
   const tiers = parseJsonArray(p.tiers)
   // Beberapa produk lama tersimpan tanpa tier. Tetap kirim satu tier valid agar
   // kartu flash sale dan editor admin tidak crash saat stok diubah.
-  const safeTiers = tiers.length
+  const baseTiers = tiers.length
     ? tiers
     : [{ label: p.period || 'Produk', price: p.price, priceIntl: p.priceIntl || 0 }]
+  const safeTiers = baseTiers.map((tier, index) => ({
+    ...tier,
+    balanceStockOut: isTierStockOutForBalance(p, tier, index, userBalance),
+  }))
   return {
     id: p.id,
     name: p.name,
@@ -50,6 +55,7 @@ export function formatProduct(p, { admin = false } = {}) {
     stock: p.stock, // -1 = tak terbatas
     flashSale: p.flashSale,
     stockOut: p.stockOut,
+    balanceStockOut: safeTiers[0]?.balanceStockOut || false,
     flashPrice: p.flashPrice,
     flashPriceIntl: flashUsd,
     discountPercent: pct,
@@ -85,7 +91,7 @@ router.get('/', optionalAuth, async (req, res) => {
   }
   res.json(
     products.map((p) => {
-      const formatted = formatProduct(p)
+      const formatted = formatProduct(p, { userBalance: req.user?.balance })
       if (userExhaustedSet.has(p.id)) {
         formatted.stockOut = true
       }

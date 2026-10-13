@@ -20,11 +20,10 @@ export default function ProductCard({ product: rawProduct, index = 0 }) {
   const product = localizedProduct(rawProduct, lang)
   const navigate = useNavigate()
   const [added, setAdded] = useState(false)
-  // Stok habis (global): admin menandai stockOut / trigger pembayaran berhasil /
-  // stok terbatas habis. Kartu terkunci — semua user bisa membeli berkali-kali
-  // selama produk belum stok habis; tidak ada penandaan "sudah dibeli" per user.
+  // Stok dapat habis secara global atau khusus akun. Status khusus akun berasal
+  // dari riwayat stok user dan aturan harga efektif di bawah saldo aktif.
   const stockNum = Number.isFinite(product.stock) ? product.stock : -1
-  const habis = !!product.stockOut || stockNum === 0
+  const habis = !!product.stockOut || !!product.balanceStockOut || stockNum === 0
   // Produk flash sale dibedakan visualnya dari produk reguler (badge + aksen).
   const isFlash = product.flashSale === true || (product.flashSale == null && product.category === 'Promo')
   // Kartu katalog = PREVIEW produk: selalu durasi utama (tier pertama).

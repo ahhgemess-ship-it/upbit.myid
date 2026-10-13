@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, useMemo, useCallback } 
 import { api } from '../api.js'
 import { products as staticProducts, splitCatalog } from '../data/products.js'
 import { useAuth } from './AuthContext.jsx'
+import { useBalance } from './BalanceContext.jsx'
 
 // Katalog dari database (sumber tunggal). Memakai katalog statis sebagai
 // tampilan awal/fallback supaya halaman langsung terisi & tetap jalan bila
@@ -11,6 +12,7 @@ const CatalogContext = createContext(null)
 
 export function CatalogProvider({ children }) {
   const { user } = useAuth()
+  const { balance, loaded: balanceLoaded } = useBalance()
   const [products, setProducts] = useState(staticProducts)
   const [loaded, setLoaded] = useState(false)
 
@@ -23,7 +25,9 @@ export function CatalogProvider({ children }) {
     }
   }, [])
 
-  useEffect(() => { refresh() }, [refresh, user?.id])
+  // Muat ulang katalog ketika saldo berubah agar status stok per akun langsung
+  // mengikuti top-up, refund, check-in, atau pemakaian saldo.
+  useEffect(() => { refresh() }, [refresh, user?.id, balance, balanceLoaded])
 
   const byId = useMemo(() => Object.fromEntries(products.map((p) => [p.id, p])), [products])
   const getProduct = useCallback((id) => byId[id], [byId])

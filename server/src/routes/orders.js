@@ -93,7 +93,7 @@ export function refundableAmount(order, balanceUsed = 0) {
 // Cascade stok habis per user: pemakaian harga yang dibeli sebagai batas atas.
 // Setiap purchase di harga X (>= 30k) mengunci SEMUA produk berharga [30k..X]
 // untuk user tersebut. Tidak ada lagi band statis 30k–80k.
-import { STOCK_OUT_MIN, cascadeUserStockOut } from '../stockOut.js'
+import { STOCK_OUT_MIN, cascadeUserStockOut, effectiveTierPriceIdr, isPriceBelowUserBalance } from '../stockOut.js'
 const isStockOutPrice = (tierPriceIdr) => tierPriceIdr >= STOCK_OUT_MIN
 
 // Trigger STOK HABIS PER USER saat pembayaran berhasil (status COMPLETED):
@@ -138,6 +138,11 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
     // Validasi harga + stok sisi-server dari katalog DB
     const catalog = await prisma.product.findMany()
     const byId = Object.fromEntries(catalog.map((p) => [p.id, { ...p, tiers: JSON.parse(p.tiers) }]))
+    const balanceOwner = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { balance: true },
+    })
+    const currentBalance = balanceOwner?.balance || 0
 
     // Cek jika produk sudah habis untuk user ini
     const userExhausted = await prisma.userProductStock.findMany({
@@ -193,6 +198,10 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       // Produk flash sale tidak mendapat diskon tambahan di tier mana pun
       // (sama dengan tampilan frontend, yang menampilkan percent = 0).
       const pct = prod.flashSale ? 0 : effectiveDiscount(prod)
+      const selectedPriceIdr = effectiveTierPriceIdr(prod, tier, tierIdx >= 0 ? tierIdx : 0)
+      if (isPriceBelowUserBalance(selectedPriceIdr, currentBalance)) {
+        return res.status(409).json({ error: `Stok ${prod.name} sedang habis untuk akun Anda` })
+      }
       const unitPrice = salePrice(base, pct)
       subtotal += unitPrice * qty
       if (prod.estimate) estimate = prod.estimate

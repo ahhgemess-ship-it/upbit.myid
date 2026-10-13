@@ -6,6 +6,7 @@
 // aktif dengan harga di [MIN_BAND, X] sebagai stok habis — untuk akun itu saja
 // (tabel UserProductStock, tidak mengubah stok global).
 import { prisma } from './db.js'
+import { effectiveDiscount, salePrice } from './discount.js'
 
 // Batas bawah cascade. Harga di bawah ini tidak ikut dicatat habis.
 export const STOCK_OUT_MIN = 30000
@@ -25,6 +26,29 @@ export function pricesOfProduct(p = {}) {
   const list = [Number(p.price) || 0, ...tiers.map((t) => Number(t?.price) || 0)]
   if (p.flashSale && Number(p.flashPrice) > 0) list.push(Number(p.flashPrice))
   return list.filter((n) => n > 0)
+}
+
+// Harga efektif tier dalam IDR untuk aturan stok berbasis saldo. IDR menjadi
+// sumber tunggal; pilihan bahasa/mata uang di frontend hanya mengubah tampilan.
+export function effectiveTierPriceIdr(p = {}, tier = {}, tierIndex = 0) {
+  const flashPrice = Number(p.flashPrice) || 0
+  const basePrice = p.flashSale && tierIndex === 0 && flashPrice > 0
+    ? flashPrice
+    : (Number(tier?.price) || Number(p.price) || 0)
+  const discount = p.flashSale ? 0 : effectiveDiscount(p)
+  return salePrice(basePrice, discount)
+}
+
+// "Di bawah saldo" bersifat strict: harga yang sama persis dengan saldo masih
+// tersedia. Saldo nol tidak pernah menutup produk.
+export function isPriceBelowUserBalance(priceIdr, balanceIdr) {
+  const price = Number(priceIdr) || 0
+  const balance = Number(balanceIdr) || 0
+  return price > 0 && balance > 0 && price < balance
+}
+
+export function isTierStockOutForBalance(p, tier, tierIndex, balanceIdr) {
+  return isPriceBelowUserBalance(effectiveTierPriceIdr(p, tier, tierIndex), balanceIdr)
 }
 
 // Tandai produk-produk habis untuk SATU user:
