@@ -6,6 +6,7 @@ import Asterisk from '../components/Asterisk.jsx'
 import GoogleButton from '../components/GoogleButton.jsx'
 import AuthMascot from '../components/AuthMascot.jsx'
 import AuthBrandField from '../components/AuthBrandField.jsx'
+import Brand from '../components/Brand.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 
 export default function Auth() {
@@ -28,8 +29,8 @@ export default function Auth() {
           <Asterisk size={40} color="var(--lime)" spin />
         </div>
 
-        <Link to="/" aria-label="EvolusiAI" style={{ position: 'relative', zIndex: 2 }}>
-          <img src="/logo-white.png" alt="EvolusiAI" className="brand-logo" style={{ height: 44 }} />
+        <Link to="/" aria-label="Upbit Store" style={{ position: 'relative', zIndex: 2 }}>
+          <Brand light />
         </Link>
 
         <div style={{ position: 'relative', zIndex: 2 }}>
@@ -63,7 +64,7 @@ export default function Auth() {
           </div>
         </div>
 
-        <span style={{ color: '#86857c', fontSize: 13, position: 'relative', zIndex: 2 }}>© 2026 EvolusiAI</span>
+        <span style={{ color: '#86857c', fontSize: 13, position: 'relative', zIndex: 2 }}>© 2026 Upbit Store</span>
       </aside>
 
       {/* Right panel — Google login only */}

@@ -9,6 +9,7 @@ import { useLang } from '../context/LanguageContext.jsx'
 import { formatCurrencyCompact } from '../i18n/translations.js'
 import NotificationBell from './NotificationBell.jsx'
 import LanguageSwitcher from './LanguageSwitcher.jsx'
+import Brand from './Brand.jsx'
 
 const links = [
   { to: '/', key: 'nav.home', end: true },
@@ -50,8 +51,8 @@ export default function Navbar() {
         className="container site-nav-inner"
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
       >
-        <Link to="/" className="brand-link" onClick={() => setOpen(false)} aria-label="EvolusiAI">
-          <img src="/logo.png" alt="EvolusiAI" className="brand-logo" />
+        <Link to="/" className="brand-link" onClick={() => setOpen(false)} aria-label="Upbit Store">
+          <Brand />
         </Link>
 
         {/* desktop nav */}

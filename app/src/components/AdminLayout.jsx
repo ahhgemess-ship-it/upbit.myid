@@ -3,7 +3,7 @@ import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, ShoppingBag, Users, Package, Tag, Zap, Wallet,
-  Menu, X, ExternalLink, LogOut, ShieldCheck,
+  Menu, X, ExternalLink, LogOut,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 
@@ -42,9 +42,9 @@ export default function AdminLayout({ children }) {
       {/* ===== Sidebar ===== */}
       <aside className={`admin-sidebar ${open ? 'is-open' : ''}`}>
         <div className="admin-brand">
-          <span className="admin-brand-mark"><ShieldCheck size={20} /></span>
+          <span className="admin-brand-mark"><img src="/upbit-store-mark.png" alt="" width="28" height="28" /></span>
           <div>
-            <div className="admin-brand-name">EvolusiAI</div>
+            <div className="admin-brand-name">Upbit Store</div>
             <div className="admin-brand-sub">Admin Panel</div>
           </div>
           <button className="admin-sidebar-close" onClick={() => setOpen(false)} aria-label="Tutup menu">

@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer'
 
 const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM, CLIENT_ORIGIN } = process.env
-const FROM = MAIL_FROM || 'EvolusiAI <no-reply@upbitstore.local>'
+const FROM = MAIL_FROM || 'Upbit Store <no-reply@upbitstore.local>'
 const SITE = (CLIENT_ORIGIN || 'http://localhost:5173').split(',')[0]
 
 // Transport hanya dibuat bila SMTP dikonfigurasi. Tanpa itu → mode log (dev).
@@ -42,7 +42,7 @@ const shell = (title, bodyHtml) => `
       ${bodyHtml}
     </div>
     <div style="padding:16px 24px;border-top:1px solid #e0ddd4;color:#8a887e;font-size:12px">
-      Email otomatis dari EvolusiAI. Mohon jangan balas email ini.
+      Email otomatis dari Upbit Store. Mohon jangan balas email ini.
     </div>
   </div>
 </div>`
@@ -64,7 +64,7 @@ export function sendOrderCreated(order) {
     </table>
     <a href="${SITE}/orders/${order.id}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;font-weight:600;padding:12px 22px;border-radius:999px;font-size:14px">Lihat status pesanan</a>
   `)
-  send(order.deliveryEmail, `Pesanan ${order.id} diterima — EvolusiAI`, html)
+  send(order.deliveryEmail, `Pesanan ${order.id} diterima — Upbit Store`, html)
 }
 
 export function sendOrderCompleted(order) {

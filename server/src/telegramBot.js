@@ -235,7 +235,7 @@ const S = {
 const s_ = (key, lang, vars = {}) => {
   let text = S[key]?.[lang] ?? S[key]?.id ?? ''
   for (const [k, v] of Object.entries(vars)) text = text.split(`{${k}}`).join(String(v))
-  return text
+  return text.replaceAll('EvolusiAI', 'Upbit Store').replaceAll('EVOLUSIAI', 'UPBIT STORE')
 }
 const rp = (n) => 'Rp ' + (Number(n) || 0).toLocaleString('id-ID')
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

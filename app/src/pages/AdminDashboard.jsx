@@ -51,7 +51,7 @@ export default function AdminDashboard() {
       <div className="admin-dash-head">
         <div>
           <h2 className="admin-dash-greet">Selamat datang, {user?.name?.split(' ')[0] || 'Admin'} 👋</h2>
-          <p className="admin-dash-sub">Ringkasan performa toko EvolusiAI hari ini.</p>
+          <p className="admin-dash-sub">Ringkasan performa toko Upbit Store hari ini.</p>
         </div>
         <div className="admin-dash-actions">
           <Link to="/admin/products" className="admin-btn admin-btn-ghost">

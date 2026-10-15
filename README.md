@@ -1,9 +1,9 @@
-# EvolusiAI
+# Upbit Store
 
 Marketplace produk digital (akun & langganan AI premium) — React + Vite (frontend) & Express + Prisma + Postgres (backend) dalam satu repo, siap deploy ke Vercel.
 
 - **Frontend:** `app/` (React 18, Vite, multi-bahasa, 3 mata uang IDR/USD/CNY)
-- **Backend:** `server/` (Express, Prisma, Neon Postgres, JWT, Vercel Blob)
+- **Backend:** `server/` (Express, Prisma, PostgreSQL, JWT, Vercel Blob)
 - **Entry serverless Vercel:** `api/index.js`
 
 ## Jalankan lokal
