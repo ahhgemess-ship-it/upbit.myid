@@ -10,6 +10,7 @@ import { sendOrderCreated } from '../mailer.js'
 import { effectiveDiscount, salePrice } from '../discount.js'
 import { notify, notifyAdmins } from '../notify.js'
 import { saveUpload } from '../storage.js'
+import { SAFE_IMAGE_MIMES, sanitizeUploadedImage } from '../imageUpload.js'
 import { toIDR, fromIDR, USD_TO_CNY, USD_TO_IDR, MYR_RATE, PAYMENT_FEE_IDR } from '../money.js'
 import { userRateLimit } from '../rateLimit.js'
 import { sendTelegramToUser } from '../telegramBot.js'
@@ -20,7 +21,7 @@ const router = Router()
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => cb(null, file.mimetype.startsWith('image/')),
+  fileFilter: (req, file, cb) => cb(null, SAFE_IMAGE_MIMES.has(file.mimetype)),
 })
 
 function makeOrderId() {
@@ -126,6 +127,14 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
     const method = b.method === 'crypto' ? 'crypto' : 'qris'
     if (method === 'qris' && !req.file) return res.status(400).json({ error: 'Bukti transaksi (QRIS) wajib diunggah' })
     if (method === 'crypto' && (b.txHash || '').trim().length < 10) return res.status(400).json({ error: 'Tx Hash tidak valid' })
+    let safeProof = null
+    if (req.file) {
+      try {
+        safeProof = await sanitizeUploadedImage(req.file)
+      } catch (e) {
+        return res.status(400).json({ error: e.message })
+      }
+    }
     // Cegah pemakaian ulang bukti pembayaran crypto (txHash harus unik)
     if (method === 'crypto') {
       const dupe = await prisma.order.findFirst({ where: { paymentTxHash: (b.txHash || '').trim() } })
@@ -264,8 +273,10 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
     const total = Math.max(0, totalBeforeBalance - fromIDR(balanceUsed, currency))
 
     // Simpan bukti pembayaran (disk lokal / Vercel Blob) → referensi disimpan di DB.
-    const proofRef = req.file
-      ? await saveUpload(req.file.buffer, { prefix: 'proof', originalname: req.file.originalname, contentType: req.file.mimetype })
+    const proofRef = safeProof
+      ? await saveUpload(safeProof.buffer, {
+        prefix: 'proof', originalname: safeProof.originalname, contentType: safeProof.contentType, sensitive: true,
+      })
       : null
 
     const activation = b.activation === 'own' ? 'own' : 'new'

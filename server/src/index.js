@@ -16,19 +16,56 @@ import balanceRoutes from './routes/balance.js'
 import { startRatingShuffler, shuffleSeedRatings, refreshReviewDates, addDailyReviews } from './reviewShuffle.js'
 
 const app = express()
+app.disable('x-powered-by')
 app.set('trust proxy', 1) // di belakang proxy (Vite/Vercel) — agar rate-limit baca IP benar
+
+const CSP = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "script-src 'self' https://accounts.google.com",
+  "style-src 'self' 'unsafe-inline' https://accounts.google.com",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://accounts.google.com",
+  "frame-src https://accounts.google.com",
+  'upgrade-insecure-requests',
+].join('; ')
 
 // Header keamanan dasar (tanpa dependensi tambahan).
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff')
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN')
-  res.setHeader('X-XSS-Protection', '1; mode=block')
+  res.setHeader('X-Frame-Options', 'DENY')
+  res.setHeader('X-XSS-Protection', '0')
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups')
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-site')
+  res.setHeader('Content-Security-Policy', CSP)
+  if (IS_PROD_REQUEST()) res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
+  if (req.path.startsWith('/api/')) res.setHeader('Cache-Control', 'private, no-store')
   next()
 })
-// Auth memakai token Bearer (bukan cookie), jadi credentials tidak diperlukan.
-app.use(cors({ origin: (process.env.CLIENT_ORIGIN || '*').split(','), credentials: false }))
+
+function IS_PROD_REQUEST() {
+  return process.env.NODE_ENV === 'production' || !!process.env.VERCEL
+}
+const defaultOrigins = IS_PROD_REQUEST()
+  ? ['https://upbit.my.id', 'https://www.upbit.my.id']
+  : ['http://localhost:5173', 'http://127.0.0.1:5173']
+const allowedOrigins = process.env.CLIENT_ORIGIN
+  ? process.env.CLIENT_ORIGIN.split(',').map((s) => s.trim())
+  : defaultOrigins
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true)
+    return callback(null, false)
+  },
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+}))
 app.use(express.json({ limit: '2mb' }))
 
 // Gambar produk dilayani PUBLIK (hanya subfolder products). Bukti pembayaran di
@@ -75,6 +112,12 @@ app.use('/api/balance/topup', topupRoutes)
 app.use('/api/balance', balanceRoutes)
 import telegramRoutes from './routes/telegram.js'
 app.use('/api/telegram', telegramRoutes)
+
+app.use((err, req, res, next) => {
+  if (err?.name === 'MulterError') return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? 'Ukuran file terlalu besar' : 'Upload tidak valid' })
+  if (err) return res.status(400).json({ error: err.message || 'Permintaan tidak valid' })
+  next()
+})
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }))
 

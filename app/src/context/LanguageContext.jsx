@@ -35,7 +35,7 @@ export function LanguageProvider({ children }) {
     if (!entry) return key
     const value = entry[lang] || entry.en || key
     // Keep legacy translation entries working while the storefront changes brands.
-    return value.replaceAll('EvolusiAI', 'Upbit Store').replaceAll('EVOLUSIAI', 'UPBIT STORE')
+    return value
   }, [lang])
 
   const value = useMemo(() => ({ lang, setLang, t, langs: LANGS }), [lang, setLang, t])

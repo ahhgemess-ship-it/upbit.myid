@@ -15,6 +15,7 @@ import { sendTelegramToUser } from '../telegramBot.js'
 import { approveTopup, rejectTopup } from './topup.js'
 import { saveUpload, readUpload } from '../storage.js'
 import { toIDR } from '../money.js'
+import { SAFE_IMAGE_MIMES, sanitizeUploadedImage } from '../imageUpload.js'
 
 const router = Router()
 
@@ -22,7 +23,7 @@ const router = Router()
 const productUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 3 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => cb(null, file.mimetype.startsWith('image/')),
+  fileFilter: (req, file, cb) => cb(null, SAFE_IMAGE_MIMES.has(file.mimetype)),
 })
 
 router.use(requireAuth, requireAdmin)
@@ -167,12 +168,13 @@ router.patch('/users/:id', async (req, res) => {
 router.post('/products/upload', productUpload.single('image'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'File gambar wajib (PNG/JPG, maks 3MB)' })
   try {
-    const url = await saveUpload(req.file.buffer, {
-      prefix: 'prod', originalname: req.file.originalname, folder: 'products/', contentType: req.file.mimetype,
+    const safeImage = await sanitizeUploadedImage(req.file)
+    const url = await saveUpload(safeImage.buffer, {
+      prefix: 'prod', originalname: safeImage.originalname, folder: 'products/', contentType: safeImage.contentType,
     })
     res.status(201).json({ url })
   } catch (e) {
-    res.status(500).json({ error: 'Gagal mengunggah gambar' })
+    res.status(400).json({ error: e.message || 'Gagal mengunggah gambar' })
   }
 })
 
@@ -361,6 +363,8 @@ router.get('/orders/:id/proof', async (req, res) => {
   const file = await readUpload(order.paymentProof)
   if (!file) return res.status(404).json({ error: 'Bukti tidak ditemukan' })
   res.setHeader('Content-Type', file.contentType)
+  res.setHeader('Content-Disposition', `inline; filename="payment-proof${file.extension || '.jpg'}"`)
+  res.setHeader('Cache-Control', 'private, no-store')
   res.send(file.buffer)
 })
 

@@ -1,5 +1,5 @@
-// Klien API EvolusiAI. Token JWT disimpan di localStorage & dikirim sebagai Bearer.
-// Saat backend tidak tersedia, otomatis fallback ke API lokal (data + localStorage).
+// Klien API Upbit Store. Sesi utama memakai cookie HttpOnly; token lama hanya
+// dipakai satu kali untuk migrasi agar pengguna lama tidak langsung keluar.
 import { API_BASE } from './config.js'
 import { demoApi } from './api-demo.js'
 
@@ -7,16 +7,20 @@ const TOKEN_KEY = 'upbit_token'
 export const getToken = () => localStorage.getItem(TOKEN_KEY)
 export const setToken = (t) => (t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY))
 
+function csrfToken() {
+  const match = document.cookie.match(/(?:^|;\s*)(?:__Host-upbit_csrf|upbit_csrf)=([^;]+)/)
+  return match ? decodeURIComponent(match[1]) : ''
+}
+
 let fallbackUntil = 0 // timestamp sampai kapan pakai API lokal (auto-pulih setelah 15 detik)
 
 async function req(path, { method = 'GET', body, form, auth = true } = {}) {
   const headers = {}
   const t = getToken()
-  if (auth) {
-    if (!t) throw new Error('Tidak ada token — silakan login ulang')
-    headers.Authorization = `Bearer ${t}`
-  } else if (t) {
-    headers.Authorization = `Bearer ${t}`
+  if (t) headers.Authorization = `Bearer ${t}`
+  if (!t && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    const csrf = csrfToken()
+    if (csrf) headers['X-CSRF-Token'] = csrf
   }
   let payload
   if (form) {
@@ -27,7 +31,7 @@ async function req(path, { method = 'GET', body, form, auth = true } = {}) {
   }
   let res
   try {
-    res = await fetch(`${API_BASE}${path}`, { method, headers, body: payload })
+    res = await fetch(`${API_BASE}${path}`, { method, headers, body: payload, credentials: 'same-origin' })
   } catch {
     throw new Error('NETWORK')
   }
@@ -64,6 +68,8 @@ function withFallback(realFn, demoFn) {
 const _real = {
   googleLogin: (credential) => req('/api/auth/google', { method: 'POST', body: { credential }, auth: false }),
   me: () => req('/api/auth/me'),
+  migrateSession: () => req('/api/auth/session', { method: 'POST' }),
+  logout: () => req('/api/auth/logout', { method: 'POST' }),
   products: () => req('/api/products', { auth: false }),
   validateCoupon: (code, subtotal) => req('/api/coupons/validate', { method: 'POST', body: { code, subtotal }, auth: false }),
   createOrder: (form) => req('/api/orders', { method: 'POST', form }),
@@ -101,8 +107,8 @@ const _real = {
   adminProcessRefund: (id, action, note) => req(`/api/admin/orders/${id}/refund`, { method: 'POST', body: { action, note } }),
   adminProofBlob: async (id) => {
     const t = getToken()
-    if (!t) throw new Error('Tidak ada token — silakan login ulang')
-    const res = await fetch(`${API_BASE}/api/admin/orders/${id}/proof`, { headers: { Authorization: `Bearer ${t}` } })
+    const headers = t ? { Authorization: `Bearer ${t}` } : {}
+    const res = await fetch(`${API_BASE}/api/admin/orders/${id}/proof`, { headers, credentials: 'same-origin' })
     if (!res.ok) throw new Error('Gagal memuat bukti')
     return res.blob()
   },
@@ -133,58 +139,60 @@ const _real = {
 
 // API publik: auto fallback ke API lokal saat backend mati
 export const api = {
-  googleLogin: withFallback(_real.googleLogin, demoApi.googleLogin),
-  me: withFallback(_real.me, demoApi.me),
+  googleLogin: _real.googleLogin,
+  me: _real.me,
+  migrateSession: _real.migrateSession,
+  logout: _real.logout,
   products: withFallback(_real.products, demoApi.products),
   validateCoupon: withFallback(_real.validateCoupon, demoApi.validateCoupon),
-  createOrder: withFallback(_real.createOrder, demoApi.createOrder),
-  myOrders: withFallback(_real.myOrders, demoApi.myOrders),
-  getOrder: withFallback(_real.getOrder, demoApi.getOrder),
-  requestRefund: withFallback(_real.requestRefund, demoApi.requestRefund),
-  notifications: withFallback(_real.notifications, demoApi.notifications),
-  notifUnread: withFallback(_real.notifUnread, demoApi.notifUnread),
-  notifReadAll: withFallback(_real.notifReadAll, demoApi.notifReadAll),
-  notifRead: withFallback(_real.notifRead, demoApi.notifRead),
+  createOrder: _real.createOrder,
+  myOrders: _real.myOrders,
+  getOrder: _real.getOrder,
+  requestRefund: _real.requestRefund,
+  notifications: _real.notifications,
+  notifUnread: _real.notifUnread,
+  notifReadAll: _real.notifReadAll,
+  notifRead: _real.notifRead,
   reviews: withFallback(_real.reviews, demoApi.reviews),
-  reviewEligibility: withFallback(_real.reviewEligibility, demoApi.reviewEligibility),
-  submitReview: withFallback(_real.submitReview, demoApi.submitReview),
-  adminStats: withFallback(_real.adminStats, demoApi.adminStats),
-  adminProducts: withFallback(_real.adminProducts, demoApi.adminProducts),
-  adminCreateProduct: withFallback(_real.adminCreateProduct, demoApi.adminCreateProduct),
-  adminUploadProductImage: withFallback(_real.adminUploadProductImage, demoApi.adminUploadProductImage),
-  adminUpdateProduct: withFallback(_real.adminUpdateProduct, demoApi.adminUpdateProduct),
-  adminDeleteProduct: withFallback(_real.adminDeleteProduct, demoApi.adminDeleteProduct),
-  adminCoupons: withFallback(_real.adminCoupons, demoApi.adminCoupons),
-  adminCreateCoupon: withFallback(_real.adminCreateCoupon, demoApi.adminCreateCoupon),
-  adminUpdateCoupon: withFallback(_real.adminUpdateCoupon, demoApi.adminUpdateCoupon),
-  adminDeleteCoupon: withFallback(_real.adminDeleteCoupon, demoApi.adminDeleteCoupon),
-  adminOrders: withFallback(_real.adminOrders, demoApi.adminOrders),
-  adminOrder: withFallback(_real.adminOrder, demoApi.adminOrder),
-  adminUpdate: withFallback(_real.adminUpdate, demoApi.adminUpdate),
-  adminCreateOrder: withFallback(_real.adminCreateOrder, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
-  adminEditOrder: withFallback(_real.adminEditOrder, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
-  adminDeleteOrder: withFallback(_real.adminDeleteOrder, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
-  adminDeliver: withFallback(_real.adminDeliver, demoApi.adminDeliver),
-  adminProcessRefund: withFallback(_real.adminProcessRefund, demoApi.adminProcessRefund),
-  adminProofBlob: withFallback(_real.adminProofBlob, demoApi.adminProofBlob),
+  reviewEligibility: _real.reviewEligibility,
+  submitReview: _real.submitReview,
+  adminStats: _real.adminStats,
+  adminProducts: _real.adminProducts,
+  adminCreateProduct: _real.adminCreateProduct,
+  adminUploadProductImage: _real.adminUploadProductImage,
+  adminUpdateProduct: _real.adminUpdateProduct,
+  adminDeleteProduct: _real.adminDeleteProduct,
+  adminCoupons: _real.adminCoupons,
+  adminCreateCoupon: _real.adminCreateCoupon,
+  adminUpdateCoupon: _real.adminUpdateCoupon,
+  adminDeleteCoupon: _real.adminDeleteCoupon,
+  adminOrders: _real.adminOrders,
+  adminOrder: _real.adminOrder,
+  adminUpdate: _real.adminUpdate,
+  adminCreateOrder: _real.adminCreateOrder,
+  adminEditOrder: _real.adminEditOrder,
+  adminDeleteOrder: _real.adminDeleteOrder,
+  adminDeliver: _real.adminDeliver,
+  adminProcessRefund: _real.adminProcessRefund,
+  adminProofBlob: _real.adminProofBlob,
   // balance
-  getBalance: withFallback(_real.getBalance, demoApi.getBalance),
-  getBalanceHistory: withFallback(_real.getBalanceHistory, demoApi.getBalanceHistory),
-  checkInStatus: withFallback(_real.checkInStatus, demoApi.checkInStatus),
-  checkIn: withFallback(_real.checkIn, demoApi.checkIn),
+  getBalance: _real.getBalance,
+  getBalanceHistory: _real.getBalanceHistory,
+  checkInStatus: _real.checkInStatus,
+  checkIn: _real.checkIn,
   // Telegram link (butuh backend)
-  telegramStatus: withFallback(_real.telegramStatus, () => Promise.resolve({ linked: false })),
-  telegramLink: withFallback(_real.telegramLink, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
+  telegramStatus: _real.telegramStatus,
+  telegramLink: _real.telegramLink,
   // Top-up (butuh backend)
-  createTopup: withFallback(_real.createTopup, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
-  topupHistory: withFallback(_real.topupHistory, () => Promise.resolve([])),
-  adminTopups: withFallback(_real.adminTopups, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
-  adminApproveTopup: withFallback(_real.adminApproveTopup, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
-  adminRejectTopup: withFallback(_real.adminRejectTopup, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
-  adminUsers: withFallback(_real.adminUsers, demoApi.adminUsers),
-  adminGetUser: withFallback(_real.adminGetUser, demoApi.adminGetUser),
-  adminUpdateUser: withFallback(_real.adminUpdateUser, demoApi.adminUpdateUser),
-  adminSetBalance: withFallback(_real.adminSetBalance, demoApi.adminSetBalance),
-  adminGetSettings: withFallback(_real.adminGetSettings, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
-  adminUpdateSettings: withFallback(_real.adminUpdateSettings, () => Promise.reject(new Error('Butuh backend untuk fitur ini'))),
+  createTopup: _real.createTopup,
+  topupHistory: _real.topupHistory,
+  adminTopups: _real.adminTopups,
+  adminApproveTopup: _real.adminApproveTopup,
+  adminRejectTopup: _real.adminRejectTopup,
+  adminUsers: _real.adminUsers,
+  adminGetUser: _real.adminGetUser,
+  adminUpdateUser: _real.adminUpdateUser,
+  adminSetBalance: _real.adminSetBalance,
+  adminGetSettings: _real.adminGetSettings,
+  adminUpdateSettings: _real.adminUpdateSettings,
 }

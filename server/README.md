@@ -1,4 +1,4 @@
-# EvolusiAI — Backend API
+# Upbit Store — Backend API
 
 Express + Prisma + SQLite. Auth Google (verifikasi server-side) + JWT, pesanan, ulasan, kupon, dan panel admin (kelola pesanan + kirim kredensial manual).
 

@@ -16,15 +16,16 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
-    "@vercel/blob": "^2.4.0",
+    "@vercel/blob": "^2.8.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-    "express": "^4.21.1",
-    "express-rate-limit": "^8.5.2",
-    "google-auth-library": "^9.14.2",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "google-auth-library": "^11.3.0",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^1.4.5-lts.1",
-    "nodemailer": "^8.0.10"
+    "multer": "^2.0.2",
+    "nodemailer": "^10.1.1",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "prisma": "^5.22.0"

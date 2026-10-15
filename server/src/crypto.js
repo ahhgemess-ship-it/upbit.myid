@@ -5,6 +5,7 @@ import crypto from 'node:crypto'
 
 const ALGO = 'aes-256-gcm'
 const PREFIX = 'enc:v1:'
+const FILE_MAGIC = Buffer.from('UPB1')
 
 function getKey() {
   const hex = process.env.ENCRYPTION_KEY
@@ -42,5 +43,36 @@ export function decrypt(blob) {
     return Buffer.concat([d.update(ct), d.final()]).toString('utf8')
   } catch {
     return null
+  }
+}
+
+export function encryptFile(buffer, contentType) {
+  const mime = Buffer.from(contentType || 'application/octet-stream', 'utf8')
+  if (mime.length > 255) throw new Error('Content-Type file terlalu panjang')
+  const iv = crypto.randomBytes(12)
+  const cipher = crypto.createCipheriv(ALGO, KEY, iv)
+  const ct = Buffer.concat([cipher.update(buffer), cipher.final()])
+  const tag = cipher.getAuthTag()
+  return Buffer.concat([FILE_MAGIC, Buffer.from([mime.length]), mime, iv, tag, ct])
+}
+
+export function decryptFile(blob) {
+  if (!Buffer.isBuffer(blob) || !blob.subarray(0, FILE_MAGIC.length).equals(FILE_MAGIC)) {
+    return { protected: false, buffer: blob, contentType: null }
+  }
+  try {
+    const mimeLength = blob[FILE_MAGIC.length]
+    const mimeStart = FILE_MAGIC.length + 1
+    const ivStart = mimeStart + mimeLength
+    const tagStart = ivStart + 12
+    const ctStart = tagStart + 16
+    if (!mimeLength || blob.length <= ctStart) throw new Error('Envelope file tidak valid')
+    const contentType = blob.subarray(mimeStart, ivStart).toString('utf8')
+    const decipher = crypto.createDecipheriv(ALGO, KEY, blob.subarray(ivStart, tagStart))
+    decipher.setAuthTag(blob.subarray(tagStart, ctStart))
+    const buffer = Buffer.concat([decipher.update(blob.subarray(ctStart)), decipher.final()])
+    return { protected: true, buffer, contentType }
+  } catch {
+    return { protected: true, buffer: null, contentType: null }
   }
 }

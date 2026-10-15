@@ -9,9 +9,14 @@ import { requireAuth } from '../auth.js'
 import { saveUpload } from '../storage.js'
 import { notify, notifyAdmins } from '../notify.js'
 import { sendTelegramToUser } from '../telegramBot.js'
+import { SAFE_IMAGE_MIMES, sanitizeUploadedImage } from '../imageUpload.js'
 
 const router = Router()
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } })
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => cb(null, SAFE_IMAGE_MIMES.has(file.mimetype)),
+})
 
 const MIN_TOPUP = 5000
 const BONUS_MIN_BASE = 50000
@@ -62,9 +67,14 @@ router.post('/', requireAuth, upload.single('proof'), async (req, res) => {
     const txRef = (b.txRef || '').trim()
     if (method === 'qris') {
       if (!req.file) return res.status(400).json({ error: 'Bukti transfer (screenshot) wajib diunggah' })
-      if (!req.file.mimetype.startsWith('image/')) return res.status(400).json({ error: 'Bukti harus berupa gambar' })
-      proofRef = await saveUpload(req.file.buffer, {
-        prefix: 'topup', originalname: req.file.originalname, contentType: req.file.mimetype,
+      let safeProof
+      try {
+        safeProof = await sanitizeUploadedImage(req.file)
+      } catch (e) {
+        return res.status(400).json({ error: e.message })
+      }
+      proofRef = await saveUpload(safeProof.buffer, {
+        prefix: 'topup', originalname: safeProof.originalname, contentType: safeProof.contentType, sensitive: true,
       })
     } else if (method === 'crypto') {
       if (!b.asset) return res.status(400).json({ error: 'Pilih aset crypto (BNB/USDT)' })

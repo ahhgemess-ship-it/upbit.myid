@@ -35,7 +35,7 @@ const shell = (title, bodyHtml) => `
 <div style="background:#efece6;padding:28px;font-family:Inter,Arial,sans-serif;color:#2b2b28">
   <div style="max-width:560px;margin:0 auto;background:#fff;border:1.5px solid #2b2b28;border-radius:18px;overflow:hidden">
     <div style="background:#2b2b28;padding:18px 24px">
-      <span style="font-family:'Space Grotesk',Arial,sans-serif;font-weight:700;font-size:18px;color:#fff;letter-spacing:.02em">EVOLUSI<span style="color:#c5f82a">AI</span></span>
+      <span style="font-family:'Space Grotesk',Arial,sans-serif;font-weight:700;font-size:18px;color:#fff;letter-spacing:.02em">UPBIT <span style="color:#c5f82a">STORE</span></span>
     </div>
     <div style="padding:24px">
       <h1 style="font-size:19px;margin:0 0 12px">${title}</h1>

@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { prisma } from '../db.js'
-import { verifyGoogleCredential, signToken, isAdminEmail, requireAuth } from '../auth.js'
+import { verifyGoogleCredential, isAdminEmail, requireAuth, setSessionCookies, clearSessionCookies } from '../auth.js'
 
 const router = Router()
 
@@ -27,7 +27,9 @@ router.post('/google', async (req, res) => {
       create: { email: profile.email, name: profile.name, picture: profile.picture, role },
     })
 
-    res.json({ token: signToken(user), user: publicUser(user) })
+    setSessionCookies(res, user)
+    res.setHeader('Cache-Control', 'private, no-store')
+    res.json({ user: publicUser(user) })
   } catch (e) {
     console.error('google auth error:', e.message)
     res.status(401).json({ error: 'Verifikasi Google gagal' })
@@ -36,7 +38,21 @@ router.post('/google', async (req, res) => {
 
 // GET /api/auth/me
 router.get('/me', requireAuth, (req, res) => {
+  res.setHeader('Cache-Control', 'private, no-store')
   res.json({ user: publicUser(req.user) })
+})
+
+// Satu kali untuk memindahkan sesi Bearer lama dari localStorage ke cookie HttpOnly.
+router.post('/session', requireAuth, (req, res) => {
+  setSessionCookies(res, req.user)
+  res.setHeader('Cache-Control', 'private, no-store')
+  res.json({ user: publicUser(req.user) })
+})
+
+router.post('/logout', requireAuth, (req, res) => {
+  clearSessionCookies(res)
+  res.setHeader('Cache-Control', 'private, no-store')
+  res.json({ ok: true })
 })
 
 export default router

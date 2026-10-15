@@ -1,10 +1,10 @@
-// Konfigurasi pembayaran EvolusiAI.
+// Konfigurasi pembayaran Upbit Store.
 // Dua metode: QRIS & Crypto (BNB / USDT on BNB Smart Chain).
 
 // Fee pembayaran (payment gateway) — flat Rupiah, ditambahkan ke total saat checkout.
 export const PAYMENT_FEE_IDR = 455
 
-// Payload QRIS statis (EvolusiAi Store / DANA) — hasil decode dari QR terbaru.
+// Payload QRIS statis dari penyedia pembayaran. Jangan ubah isi atau checksum-nya.
 const QRIS_STATIC =
   '00020101021126570011ID.DANA.WWW011893600915303397767602090339776760303UMI51440014ID.CO.QRIS.WWW0215ID10265685152290303UMI5204599953033605802ID5915EvolusiAi Store6015Kota Jakarta Se6105121106304D121'
 
@@ -22,7 +22,7 @@ function crc16(str) {
 }
 
 export const QRIS = {
-  merchant: 'EvolusiAi Store',
+  merchant: 'Upbit Store',
   nmid: 'ID1026568515229',
   // QRIS DINAMIS: sisipkan nominal (tag 54), ubah jadi dynamic (POI 11→12),
   // lalu hitung ulang CRC. Hasilnya nominal terisi otomatis di app pembayaran
@@ -98,15 +98,15 @@ export function buildCredentials(orderId, item) {
     return {
       kind: 'apikey',
       label: 'API Key',
-      value: `sk-evolusiai-${slug}-${h.toString(36)}${pin.toString(36)}`,
+      value: `sk-upbit-${slug}-${h.toString(36)}${pin.toString(36)}`,
       note: 'Simpan API key ini. Top-up saldo sudah ditambahkan ke akun.',
     }
   }
   return {
     kind: 'account',
     label: 'Akun Premium',
-    email: `${slug}.${(h % 9999).toString().padStart(4, '0')}@evolusiai-mail.id`,
-    password: `EvolusiAI#${pin}${slug.slice(0, 3).toUpperCase()}`,
+    email: `${slug}.${(h % 9999).toString().padStart(4, '0')}@upbit-mail.id`,
+    password: `Upbit Store#${pin}${slug.slice(0, 3).toUpperCase()}`,
     note: 'Login memakai kredensial di atas. Jangan ubah email pemulihan.',
   }
 }

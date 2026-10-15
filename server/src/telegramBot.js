@@ -1,9 +1,9 @@
 // ═══════════════════════════════════════════════════════════════════
-// BOT TELEGRAM EVOLUSIAI — versi serverless (webhook, tanpa VPS)
+// BOT TELEGRAM UPBIT STORE — versi serverless (webhook, tanpa VPS)
 // Satu dompet dengan website: saldo, check-in, order = database Neon.
 // State percakapan disimpan di tabel TelegramState (serverless tanpa memori).
 // SetWebhook:
-//   curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://evolusiai.xyz/api/telegram/webhook"
+//   curl "https://api.telegram.org/bot<TOKEN>/setWebhook?url=https://upbit.my.id/api/telegram/webhook"
 // Env: TELEGRAM_BOT_TOKEN=...  (atau BOT_TOKEN untuk kompatibilitas bot lama)
 // ═══════════════════════════════════════════════════════════════════
 import crypto from 'node:crypto'
@@ -12,9 +12,10 @@ import { PAYMENT_FEE_IDR } from './money.js'
 import { saveUpload } from './storage.js'
 import { notify, notifyAdmins } from './notify.js'
 import { STOCK_OUT_MIN, cascadeUserStockOut, pricesOfProduct } from './stockOut.js'
+import { sanitizeImageBuffer } from './imageUpload.js'
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || ''
-const STORE_URL = process.env.CLIENT_ORIGIN || process.env.STORE_URL || 'https://evolusiai.xyz'
+const STORE_URL = process.env.CLIENT_ORIGIN || process.env.STORE_URL || 'https://upbit.my.id'
 
 // ── Util Telegram Bot API (fire-and-forget; serverless tidak boleh menggantung) ──
 // Semua kirim pesan dikumpulkan di `pending` supaya route webhook bisa menunggu
@@ -136,20 +137,20 @@ const LANGS = {
 }
 const S = {
   welcome: {
-    id: '✨ <b>Selamat Datang di EvolusiAI Store!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Tamu (Guest)</b>\n💰 Saldo: <b>Rp 0 (Mode Tamu)</b>\n🔗 Status: <b>Belum Tertaut</b>\n\n🛍️ <i>Jelajahi katalog & flash sale langsung di bawah!</i>\n💡 <i>Tautkan akun website kapan saja untuk sinkronisasi saldo & check-in.</i>\n\nPilih menu di bawah 👇',
-    en: '✨ <b>Welcome to EvolusiAI Store!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest</b>\n💰 Balance: <b>Rp 0 (Guest Mode)</b>\n🔗 Status: <b>Not Linked</b>\n\n🛍️ <i>Browse products & flash sale below!</i>\n💡 <i>Link your website account anytime to sync balance & check-in.</i>\n\nPick a menu below 👇',
+    id: '✨ <b>Selamat Datang di Upbit Store!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Tamu (Guest)</b>\n💰 Saldo: <b>Rp 0 (Mode Tamu)</b>\n🔗 Status: <b>Belum Tertaut</b>\n\n🛍️ <i>Jelajahi katalog & flash sale langsung di bawah!</i>\n💡 <i>Tautkan akun website kapan saja untuk sinkronisasi saldo & check-in.</i>\n\nPilih menu di bawah 👇',
+    en: '✨ <b>Welcome to Upbit Store!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest</b>\n💰 Balance: <b>Rp 0 (Guest Mode)</b>\n🔗 Status: <b>Not Linked</b>\n\n🛍️ <i>Browse products & flash sale below!</i>\n💡 <i>Link your website account anytime to sync balance & check-in.</i>\n\nPick a menu below 👇',
   },
   menuLinked: {
-    id: '✨ <b>EvolusiAI Store — Bot Resmi</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Saldo: <b>{balance}</b>\n🔗 Status: <b>Terhubung ke Website ✅</b>\n\nSilakan pilih menu di bawah untuk berbelanja 👇',
-    en: '✨ <b>EvolusiAI Store — Official Bot</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Balance: <b>{balance}</b>\n🔗 Status: <b>Connected to Website ✅</b>\n\nPick a menu below 👇',
+    id: '✨ <b>Upbit Store — Bot Resmi</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Saldo: <b>{balance}</b>\n🔗 Status: <b>Terhubung ke Website ✅</b>\n\nSilakan pilih menu di bawah untuk berbelanja 👇',
+    en: '✨ <b>Upbit Store — Official Bot</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Balance: <b>{balance}</b>\n🔗 Status: <b>Connected to Website ✅</b>\n\nPick a menu below 👇',
   },
   menuGuest: {
-    id: '✨ <b>Selamat Datang di EvolusiAI Store!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Tamu (Guest)</b>\n💰 Saldo: <b>Rp 0 (Mode Tamu)</b>\n🔗 Status: <b>Belum Tertaut</b>\n\n🛍️ <i>Jelajahi katalog & flash sale langsung di bawah!</i>\n💡 <i>Tautkan akun websitemu kapan saja untuk sinkronisasi saldo & check-in.</i>\n\nPilih menu di bawah 👇',
-    en: '✨ <b>Welcome to EvolusiAI Store!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest</b>\n💰 Balance: <b>Rp 0 (Guest Mode)</b>\n🔗 Status: <b>Not Linked</b>\n\n🛍️ <i>Browse products & flash sale below!</i>\n💡 <i>Link your website account anytime to sync balance & check-in.</i>\n\nPick a menu below 👇',
+    id: '✨ <b>Selamat Datang di Upbit Store!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Tamu (Guest)</b>\n💰 Saldo: <b>Rp 0 (Mode Tamu)</b>\n🔗 Status: <b>Belum Tertaut</b>\n\n🛍️ <i>Jelajahi katalog & flash sale langsung di bawah!</i>\n💡 <i>Tautkan akun websitemu kapan saja untuk sinkronisasi saldo & check-in.</i>\n\nPilih menu di bawah 👇',
+    en: '✨ <b>Welcome to Upbit Store!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest</b>\n💰 Balance: <b>Rp 0 (Guest Mode)</b>\n🔗 Status: <b>Not Linked</b>\n\n🛍️ <i>Browse products & flash sale below!</i>\n💡 <i>Link your website account anytime to sync balance & check-in.</i>\n\nPick a menu below 👇',
   },
   menu: {
-    id: '✨ <b>EvolusiAI Store</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Saldo: <b>{balance}</b>\n\nPilih menu di bawah 👇',
-    en: '✨ <b>EvolusiAI Store</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Balance: <b>{balance}</b>\n\nPick a menu below 👇',
+    id: '✨ <b>Upbit Store</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Saldo: <b>{balance}</b>\n\nPilih menu di bawah 👇',
+    en: '✨ <b>Upbit Store</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Balance: <b>{balance}</b>\n\nPick a menu below 👇',
   },
   notLinked: {
     id: '🔐 <b>Akun belum terhubung</b>\n\nTekan tombol <b>🔗 Hubungkan Akun Website</b> di bawah ini → kamu dibawa ke website → setelah login, akun otomatis tersambung ke Telegram ini.\n\n✨ Bebas pakai Telegram siapa saja — asal jadi!',
@@ -172,16 +173,16 @@ const S = {
     en: '🔐 <b>Link Account to Complete Order</b>\n━━━━━━━━━━━━━━━━━━\nA website account is required so login credentials can be securely delivered to your email.\n\nTap below to link your website account in 1 click, or buy directly on the website:',
   },
   linked: {
-    id: '🎉 <b>Akun berhasil terhubung!</b>\n━━━━━━━━━━━━━━━━━━\n👤 {name}\n💰 Saldo: <b>{balance}</b>{migrated}\n\nSelamat bergabung resmi di EvolusiAI Store 🛍️',
-    en: '🎉 <b>Account linked successfully!</b>\n━━━━━━━━━━━━━━━━━━\n👤 {name}\n💰 Balance: <b>{balance}</b>{migrated}\n\nWelcome officially to EvolusiAI Store 🛍️',
+    id: '🎉 <b>Akun berhasil terhubung!</b>\n━━━━━━━━━━━━━━━━━━\n👤 {name}\n💰 Saldo: <b>{balance}</b>{migrated}\n\nSelamat bergabung resmi di Upbit Store 🛍️',
+    en: '🎉 <b>Account linked successfully!</b>\n━━━━━━━━━━━━━━━━━━\n👤 {name}\n💰 Balance: <b>{balance}</b>{migrated}\n\nWelcome officially to Upbit Store 🛍️',
   },
   migrated: {
     id: '\n🎁 Saldo lama bot <b>{amount}</b> sudah dipindahkan ke akun website kamu.',
     en: '\n🎁 Old bot balance <b>{amount}</b> has been moved to your website account.',
   },
   balance: {
-    id: '💰 <b>Saldo kamu</b>\n\nJumlah: <b>{balance}</b>\nTotal belanja: <b>{spent}</b>\n\n📡 Real-time dari evolusiai.xyz',
-    en: '💰 <b>Your Balance</b>\n\nAmount: <b>{balance}</b>\nTotal spent: <b>{spent}</b>\n\n📡 Real-time from evolusiai.xyz',
+    id: '💰 <b>Saldo kamu</b>\n\nJumlah: <b>{balance}</b>\nTotal belanja: <b>{spent}</b>\n\n📡 Real-time dari upbit.my.id',
+    en: '💰 <b>Your Balance</b>\n\nAmount: <b>{balance}</b>\nTotal spent: <b>{spent}</b>\n\n📡 Real-time from upbit.my.id',
   },
   checkinStatus: {
     id: '📅 <b>Check-in Harian</b>\n\nStreak: <b>{streak}</b> hari\nHadiah hari ini: <b>{reward}</b>\n\n{can}\n\n🔥 Hari ke-7 = bonus Rp 2.000 🎉',
@@ -195,7 +196,7 @@ const S = {
   },
   cycleDone: { id: '\n🏁 Cycle 7 hari selesai — cycle baru dimulai besok!', en: '\n🏁 7-day cycle complete — new cycle starts tomorrow!' },
   ordersHeader: { id: '📦 <b>3 Pesanan Terakhir</b>\n\n', en: '📦 <b>Last 3 Orders</b>\n\n' },
-  noOrders: { id: 'Belum ada pesanan.\n\nYuk belanja di evolusiai.xyz ⚡', en: 'No orders yet.\n\nStart shopping at evolusiai.xyz ⚡' },
+  noOrders: { id: 'Belum ada pesanan.\n\nYuk belanja di upbit.my.id ⚡', en: 'No orders yet.\n\nStart shopping at upbit.my.id ⚡' },
   statusProcessing: { id: '⏳ Diproses', en: '⏳ Processing' },
   statusCompleted: { id: '✅ Selesai', en: '✅ Completed' },
   statusCancelled: { id: '❌ Dibatalkan', en: '❌ Cancelled' },
@@ -219,7 +220,7 @@ const S = {
   payTitle: { id: '🧾 <b>Checkout</b>\n{product} · {tier}\nTotal: <b>{total}</b> <i>(sudah termasuk fee {fee})</i>\n\nMetode pembayaran:', en: '🧾 <b>Checkout</b>\n{product} · {tier}\nTotal: <b>{total}</b> <i>(incl. {fee} fee)</i>\n\nPayment method:' },
   payQris: { id: '📲 Scan QR ini untuk bayar <b>{total}</b>.\n\nSetelah transfer, <b>kirim screenshot bukti</b> ke chat ini. Ketik /cancel untuk batal.', en: '📲 Scan this QR to pay <b>{total}</b>.\n\nAfter transfer, <b>send the payment screenshot</b> to this chat. Type /cancel to abort.' },
   payCrypto: { id: '🪙 Kirim <b>{amount} {symbol}</b> ke:\n<code>{address}</code>\nNetwork: <b>{network}</b>\n\nSetelah transfer, <b>balas chat ini dengan TX Hash</b>. Ketik /cancel untuk batal.', en: '🪙 Send <b>{amount} {symbol}</b> to:\n<code>{address}</code>\nNetwork: <b>{network}</b>\n\nAfter transfer, <b>reply with the TX Hash</b>. Type /cancel to abort.' },
-  payBalShort: { id: '⚠️ Saldo tidak cukup ({balance}). Top up dulu: evolusiai.xyz/balance', en: '⚠️ Insufficient balance ({balance}). Top up first: evolusiai.xyz/balance' },
+  payBalShort: { id: '⚠️ Saldo tidak cukup ({balance}). Top up dulu: upbit.my.id/balance', en: '⚠️ Insufficient balance ({balance}). Top up first: upbit.my.id/balance' },
   proofGot: { id: '📸 Bukti diterima — membuat pesanan…', en: '📸 Proof received — creating order…' },
   proofFail: { id: '⚠️ Gagal memproses foto. Coba kirim ulang.', en: '⚠️ Failed to process the photo. Please resend.' },
   txShort: { id: '⚠️ TX Hash terlalu pendek (min. 10 karakter).', en: '⚠️ TX Hash too short (min. 10 chars).' },
@@ -235,7 +236,7 @@ const S = {
 const s_ = (key, lang, vars = {}) => {
   let text = S[key]?.[lang] ?? S[key]?.id ?? ''
   for (const [k, v] of Object.entries(vars)) text = text.split(`{${k}}`).join(String(v))
-  return text.replaceAll('EvolusiAI', 'Upbit Store').replaceAll('EVOLUSIAI', 'UPBIT STORE')
+  return text
 }
 const rp = (n) => 'Rp ' + (Number(n) || 0).toLocaleString('id-ID')
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -285,12 +286,12 @@ async function menuFor(user, lang, tgId) {
     [{ text: '⬆️ Top Up Saldo', url: STORE_URL + '/balance' }, { text: '💬 Hubungi CS', url: 'https://t.me/evolusi_store' }],
   ]
   if (user) {
-    rows.push([{ text: '🌐 evolusiai.xyz', url: STORE_URL }])
+    rows.push([{ text: '🌐 upbit.my.id', url: STORE_URL }])
     return { text: s_('menuLinked', lang, { name: esc(user.name), balance: rp(user.balance) }), kb: IK(rows) }
   }
   rows.push([
     { text: '🔗 Hubungkan Akun Web', url: `${STORE_URL}/balance?link=${tgId || ''}` },
-    { text: '🌐 evolusiai.xyz', url: STORE_URL },
+    { text: '🌐 upbit.my.id', url: STORE_URL },
   ])
   return { text: s_('menuGuest', lang), kb: IK(rows) }
 }
@@ -852,10 +853,16 @@ export async function handleTelegramUpdate(update) {
       const r = await fetch(`https://api.telegram.org/file/bot${BOT_TOKEN}/${fp}`)
       if (!r.ok) return reply(chatId, s_('proofFail', st2.lang))
       const buf = Buffer.from(await r.arrayBuffer())
+      const safeProof = await sanitizeImageBuffer(buf, {
+        declaredType: r.headers.get('content-type') || 'image/jpeg',
+      })
       const p = await prisma.product.findUnique({ where: { id: st2.buy.pid } })
       if (!p || !p.active || p.stockOut) return reply(chatId, s_('tierGone', st2.lang))
       reply(chatId, s_('proofGot', st2.lang))
-      const proofRef = await saveUpload(buf, { prefix: 'proof', originalname: 'telegram-proof.jpg', contentType: r.headers.get('content-type') || 'image/jpeg' })
+      const proofRef = await saveUpload(safeProof.buffer, {
+        prefix: 'proof', originalname: `telegram-proof${safeProof.extension}`,
+        contentType: safeProof.contentType, sensitive: true,
+      })
       const order = await createBotOrder(user, p, st2.buy.tierIdx, { method: 'qris', proofRef, txHash: null, asset: null, payAmount: null, balanceUsed: 0 })
       if (!order) return reply(chatId, s_('err', st2.lang))
       await setState(chatId, { buy: null })

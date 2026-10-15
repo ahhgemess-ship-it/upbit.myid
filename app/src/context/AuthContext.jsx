@@ -18,8 +18,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [ready, setReady] = useState(false)
 
-  // Saat mount: jika ada token, validasi ke backend (/me) & ambil profil terbaru.
-  // Tidak ada auto guest user — user tetap null sampai login manual.
+  // Saat mount: migrasikan token lama, lalu validasi cookie sesi ke backend.
   useEffect(() => {
     let cancelled = false
     async function boot() {
@@ -28,19 +27,18 @@ export function AuthProvider({ children }) {
         if (cached) setUser(withInitials(cached))
       } catch { /* ignore */ }
 
-      if (getToken()) {
-        try {
-          const { user: fresh } = await api.me()
-          if (!cancelled) {
-            setUser(withInitials(fresh))
-            localStorage.setItem(SESSION_KEY, JSON.stringify(fresh))
-          }
-        } catch {
-          if (!cancelled) {
-            setToken(null)
-            localStorage.removeItem(SESSION_KEY)
-            setUser(null)
-          }
+      try {
+        const response = getToken() ? await api.migrateSession() : await api.me()
+        setToken(null)
+        if (!cancelled) {
+          setUser(withInitials(response.user))
+          localStorage.setItem(SESSION_KEY, JSON.stringify(response.user))
+        }
+      } catch {
+        if (!cancelled) {
+          setToken(null)
+          localStorage.removeItem(SESSION_KEY)
+          setUser(null)
         }
       }
       if (!cancelled) setReady(true)
@@ -51,14 +49,15 @@ export function AuthProvider({ children }) {
 
   // Login Google: kirim credential JWT GSI ke backend untuk diverifikasi.
   const loginWithGoogle = useCallback(async (credential) => {
-    const { token, user: u } = await api.googleLogin(credential)
-    setToken(token)
+    const { user: u } = await api.googleLogin(credential)
+    setToken(null)
     localStorage.setItem(SESSION_KEY, JSON.stringify(u))
     setUser(withInitials(u))
     return u
   }, [])
 
   const logout = useCallback(() => {
+    api.logout().catch(() => {})
     setToken(null)
     localStorage.removeItem(SESSION_KEY)
     setUser(null)

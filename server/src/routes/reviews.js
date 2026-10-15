@@ -4,6 +4,21 @@ import { requireAuth } from '../auth.js'
 
 const router = Router()
 
+export function publicReview(review) {
+  const initial = Array.from(String(review.name || 'P').trim())[0]?.toUpperCase() || 'P'
+  const comment = String(review.comment || '').replace(
+    /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,
+    '[email disembunyikan]',
+  )
+  return {
+    name: `${initial}***`,
+    avatar: null,
+    rating: review.rating,
+    comment,
+    date: review.createdAt,
+  }
+}
+
 // GET /api/reviews/:productId — daftar ulasan + ringkasan
 router.get('/:productId', async (req, res) => {
   const reviews = await prisma.review.findMany({
@@ -15,7 +30,7 @@ router.get('/:productId', async (req, res) => {
   res.json({
     count,
     average: Math.round(avg * 10) / 10,
-    reviews: reviews.map((r) => ({ name: r.name, avatar: r.avatar, rating: r.rating, comment: r.comment, date: r.createdAt })),
+    reviews: reviews.map(publicReview),
   })
 })
 
@@ -50,7 +65,7 @@ router.post('/', requireAuth, async (req, res) => {
     update: { rating: r, comment: comment || '' },
     create: { productId, userId: req.user.id, name: req.user.name, avatar: req.user.picture || null, rating: r, comment: comment || '' },
   })
-  res.json({ review: { name: review.name, avatar: review.avatar, rating: review.rating, comment: review.comment, date: review.createdAt } })
+  res.json({ review: publicReview(review) })
 })
 
 export default router
