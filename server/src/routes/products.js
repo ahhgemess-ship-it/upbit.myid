@@ -41,6 +41,7 @@ export function formatProduct(p, { admin = false, userBalance } = {}) {
     tagline: p.tagline,
     description: p.description,
     features: parseJsonArray(p.features),
+    orderList: parseJsonArray(p.orderList),
     logo: p.logo,
     brand: p.brand,
     badge: p.badge ?? null,

@@ -254,16 +254,21 @@ export default function Checkout() {
       if (useSaldo && balanceDiscount > 0) {
         form.append('useBalance', String(balanceDiscountIdr))
       }
-      const { order } = await api.createOrder(form)
+      const { order, stockOut } = await api.createOrder(form)
       refreshCatalog().catch(() => {})
-      toast(t('co.paymentSent'), 'success', 3200)
-      if (useSaldo && balanceDiscount > 0) fetchBalance().catch(() => {})
+      toast(t(stockOut ? 'co.stockRefunded' : 'co.paymentSent'), 'success', 3200)
+      if (stockOut || (useSaldo && balanceDiscount > 0)) fetchBalance().catch(() => {})
       // Navigasi dulu, baru clear — cegah flash Gate (keranjang kosong) sebelum pindah halaman
       navigate(`/orders/${order.id}`, { replace: true })
       setTimeout(() => clear(), 100)
     } catch (e) {
       setSubmitting(false)
-      toast(e.message || t('co.orderFailed'), 'error')
+      const verificationMessage = {
+        PROOF_REUSED: 'co.proofReused',
+        PAYMENT_NOT_VERIFIED: 'co.proofVerifyFailed',
+        PAYMENT_VERIFY_UNAVAILABLE: 'co.proofVerifyUnavailable',
+      }[e.code]
+      toast(verificationMessage ? t(verificationMessage) : (e.message || t('co.orderFailed')), 'error')
     }
   }
 

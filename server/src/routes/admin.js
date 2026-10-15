@@ -190,6 +190,7 @@ function parseProductBody(b, { partial = false } = {}) {
   set('tagline', b.tagline ?? undefined)
   set('description', b.description ?? undefined)
   if (b.features !== undefined) d.features = JSON.stringify(Array.isArray(b.features) ? b.features : [])
+  if (b.orderList !== undefined) d.orderList = JSON.stringify(Array.isArray(b.orderList) ? b.orderList : [])
   set('logo', b.logo ?? undefined)
   set('brand', b.brand ?? undefined)
   // badge & warna bisa dikosongkan lewat null/'' (mis. admin menghapus badge Private/Sharing)

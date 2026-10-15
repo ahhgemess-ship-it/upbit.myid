@@ -18,7 +18,7 @@ const empty = {
   stock: -1, active: true, discountPercent: 0, discountStart: '', discountEnd: '',
   flashSale: false, stockOut: false, flashPrice: null, flashPriceIntl: null,
   badge: '', badgeColor: '',
-  tiers: [newTier()], features: [''],
+  tiers: [newTier()], features: [''], orderList: [''],
 }
 
 // Produk termasuk flash sale? (sama dengan aturan katalog di data/products.js)
@@ -50,12 +50,18 @@ export default function AdminProducts() {
   const { toast } = useToast()
   const { refresh } = useCatalog()
   const [rows, setRows] = useState(null)
+  const [loadError, setLoadError] = useState(false)
   const [editing, setEditing] = useState(null) // null | 'new' | product
   const [savingRow, setSavingRow] = useState(null) // id produk yang toggle-nya sedang diproses
   // Dua sisi tegas: produk original (katalog toko) vs flash sale (halaman flash).
   const [filter, setFilter] = useState('orig') // 'orig' | 'flash'
 
-  const load = () => api.adminProducts().then((d) => setRows(d.products)).catch(() => setRows([]))
+  const load = () => {
+    setLoadError(false)
+    return api.adminProducts()
+      .then((d) => setRows(d.products))
+      .catch(() => { setRows([]); setLoadError(true) })
+  }
   useEffect(() => { if (isAdmin) load() }, [isAdmin])
 
   if (!ready) return null
@@ -163,6 +169,11 @@ export default function AdminProducts() {
 
       {rows === null ? (
         <p className="text-muted" style={{ marginTop: 28 }}>Memuat…</p>
+      ) : loadError ? (
+        <div className="card" style={{ marginTop: 22, padding: 20 }}>
+          <p style={{ fontWeight: 700 }}>Daftar produk gagal dimuat.</p>
+          <button className="btn-link" style={{ marginTop: 10 }} onClick={load}>Coba muat lagi</button>
+        </div>
       ) : (
         <div className="disc-table" style={{ marginTop: 22 }}>
           {shown.map((p) => {
@@ -268,6 +279,7 @@ function normalize(p) {
       ? p.tiers.map((t) => ({ _uid: uid(), label: t.label, price: t.price, priceIntl: fromCents(t.priceIntl), note: t.note || '' }))
       : [{ _uid: uid(), label: p.period || 'Produk', price: p.price || 0, priceIntl: fromCents(p.priceIntl), note: '' }],
     features: p.features?.length ? p.features : [''],
+    orderList: p.orderList?.length ? p.orderList : (p.features?.length ? p.features : ['']),
   }
 }
 
@@ -277,6 +289,11 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
   const [uploading, setUploading] = useState(false)
   const logoRef = useRef(null)
   const set = (k, v) => setF((s) => ({ ...s, [k]: v }))
+  useEffect(() => {
+    const closeOnEscape = (event) => { if (event.key === 'Escape') onClose() }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [onClose])
 
   // "Harga saat ini" sebagai input langsung:
   //  - flash sale → menulis flashPrice (harga flash tier utama)
@@ -345,6 +362,7 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
   const save = async () => {
     const tiers = f.tiers.filter((t) => t.label.trim()).map((t) => ({ label: t.label.trim(), price: parseInt(t.price, 10) || 0, priceIntl: toCents(t.priceIntl), ...(t.note?.trim() ? { note: t.note.trim() } : {}) }))
     const features = f.features.map((x) => x.trim()).filter(Boolean)
+    const orderList = f.orderList.map((x) => x.trim()).filter(Boolean)
     if (!f.name.trim() || !f.vendor.trim() || !f.category.trim()) { toast('Nama, vendor, kategori wajib', 'error'); return }
     if (!tiers.length) { toast('Minimal 1 tier harga', 'error'); return }
     const payload = {
@@ -366,7 +384,7 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
       badgeColor: f.badge ? badgeColorOf(f.badge) : null,
       flashPrice: f.flashSale ? (parseInt(nowInput, 10) || null) : null,
       flashPriceIntl: f.flashSale ? (parseInt(f.flashPriceIntl, 10) || null) : null,
-      tiers, features,
+      tiers, features, orderList,
     }
     setBusy(true)
     try {
@@ -381,7 +399,7 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h3 className="display" style={{ fontSize: 18 }}>{isNew ? 'TAMBAH PRODUK' : 'EDIT PRODUK'}</h3>
-          <button className="icon-btn" onClick={onClose}><X size={18} /></button>
+          <button className="icon-btn" onClick={onClose} aria-label="Tutup editor produk"><X size={18} /></button>
         </div>
         <div className="modal-body">
           <div className="form-section-title" style={{ marginTop: 0, borderTop: 'none', paddingTop: 0 }}>Identitas</div>
@@ -395,6 +413,20 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
           <Field label="Deskripsi — tampil di halaman detail produk">
             <textarea className="input" rows={3} value={f.description} onChange={(e) => set('description', e.target.value)} style={{ resize: 'vertical' }} placeholder="Jelaskan isi produk, keunggulan, dan ketentuan garansi…" />
           </Field>
+
+          <Field label="Order List — satu baris untuk satu poin di bawah deskripsi">
+            <textarea
+              className="input"
+              rows={5}
+              value={f.orderList.join('\n')}
+              onChange={(e) => set('orderList', e.target.value.split('\n'))}
+              style={{ resize: 'vertical' }}
+              placeholder="Akun premium\nGaransi aktif\nProses sesuai estimasi"
+            />
+          </Field>
+          <p className="text-muted" style={{ fontSize: 12, marginTop: -4 }}>
+            Daftar ini tampil apa adanya pada semua bahasa agar perubahan admin langsung konsisten di katalog.
+          </p>
 
           {/* Gambar produk — via upload, bukan URL */}
           <div className="field">

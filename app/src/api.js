@@ -40,7 +40,9 @@ async function req(path, { method = 'GET', body, form, auth = true } = {}) {
     if (!data.error && [500, 502, 503, 504].includes(res.status)) {
       throw new Error('NETWORK')
     }
-    throw new Error(data.error || 'Terjadi kesalahan pada server')
+    const error = new Error(data.error || 'Terjadi kesalahan pada server')
+    error.code = data.code || ''
+    throw error
   }
   return data
 }

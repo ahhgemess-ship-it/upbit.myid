@@ -14,6 +14,7 @@ import { SAFE_IMAGE_MIMES, sanitizeUploadedImage } from '../imageUpload.js'
 import { toIDR, fromIDR, USD_TO_CNY, USD_TO_IDR, MYR_RATE, PAYMENT_FEE_IDR } from '../money.js'
 import { userRateLimit } from '../rateLimit.js'
 import { sendTelegramToUser } from '../telegramBot.js'
+import { analyzePaymentProof, paymentProofHash, verifyCryptoPayment } from '../paymentVerification.js'
 
 const router = Router()
 
@@ -61,6 +62,10 @@ export function formatOrder(order, { admin = false } = {}) {
       amount: order.paymentAmount,
       txHash: order.paymentTxHash,
       proofName: order.paymentProof ? path.basename(order.paymentProof) : null,
+      verifiedAt: order.proofVerifiedAt,
+      verifiedAmount: order.proofAmount,
+      verifiedCurrency: order.proofCurrency,
+      ...(admin ? { ocrConfidence: order.proofOcrConfidence } : {}),
     },
     ownAccount: order.activation === 'own'
       ? { email: order.ownEmail, note: order.ownNote, ...(admin ? { password: decrypt(order.ownPassword) } : {}) }
@@ -270,10 +275,47 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       balanceUsed = useBalanceAmount
     }
     const total = Math.max(0, totalBeforeBalance - fromIDR(balanceUsed, currency))
-    // Bukti QRIS/crypto bukan konfirmasi settlement. Jika masih ada pembayaran
-    // eksternal, auto-cancel membuat refund REQUESTED agar admin memverifikasi
-    // uang benar-benar masuk sebelum mengkredit Saldo.
-    const needsPaymentVerification = isAutoCancelled && total > 0
+    const externalPaidIdr = toIDR(total, currency)
+    let automaticVerification = null
+    const proofHash = safeProof ? paymentProofHash(safeProof.buffer) : null
+
+    if (proofHash) {
+      const usedProof = await prisma.order.findFirst({ where: { paymentProofHash: proofHash }, select: { id: true } })
+      if (usedProof) {
+        for (const r of reserved) await prisma.product.update({ where: { id: r.id }, data: { stock: { increment: r.qty } } }).catch(() => {})
+        if (couponOk) await prisma.coupon.update({ where: { code: couponRes.code }, data: { usedCount: { decrement: 1 } } }).catch(() => {})
+        return res.status(409).json({ code: 'PROOF_REUSED', error: 'Bukti pembayaran ini sudah pernah digunakan.' })
+      }
+    }
+
+    // Jalur stok-habis tidak menunggu admin. QRIS diverifikasi dari gambar dengan
+    // OCR, sedangkan crypto diverifikasi langsung dari transaksi BSC. Nominal dan
+    // status transaksi wajib cocok sebelum dana eksternal masuk ke SaldoKu.
+    if (isAutoCancelled && externalPaidIdr > 0) {
+      try {
+        if (method === 'qris') {
+          automaticVerification = await analyzePaymentProof(safeProof.buffer, {
+            expectedAmount: externalPaidIdr,
+            currency: 'IDR',
+          })
+        } else {
+          automaticVerification = await verifyCryptoPayment(b.txHash, {
+            asset: b.asset,
+            expectedIdr: externalPaidIdr,
+          })
+        }
+      } catch (error) {
+        console.error('automatic payment verification error:', error)
+        for (const r of reserved) await prisma.product.update({ where: { id: r.id }, data: { stock: { increment: r.qty } } }).catch(() => {})
+        if (couponOk) await prisma.coupon.update({ where: { code: couponRes.code }, data: { usedCount: { decrement: 1 } } }).catch(() => {})
+        return res.status(503).json({ code: 'PAYMENT_VERIFY_UNAVAILABLE', error: 'Verifikasi otomatis sedang tidak tersedia. Coba unggah atau kirim kembali beberapa saat lagi.' })
+      }
+      if (!automaticVerification.accepted) {
+        for (const r of reserved) await prisma.product.update({ where: { id: r.id }, data: { stock: { increment: r.qty } } }).catch(() => {})
+        if (couponOk) await prisma.coupon.update({ where: { code: couponRes.code }, data: { usedCount: { decrement: 1 } } }).catch(() => {})
+        return res.status(422).json({ code: 'PAYMENT_NOT_VERIFIED', error: automaticVerification.reason })
+      }
+    }
 
     // Simpan bukti pembayaran (disk lokal / Vercel Blob) → referensi disimpan di DB.
     const proofRef = safeProof
@@ -297,7 +339,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
             ownNote: activation === 'own' ? (b.ownNote || '').trim() || null : null,
             status: isAutoCancelled ? 'CANCELLED' : 'PROCESSING',
             adminNote: isAutoCancelled ? 'Stok habis' : null,
-            refundStatus: isAutoCancelled ? (needsPaymentVerification ? 'REQUESTED' : 'APPROVED') : 'NONE',
+            refundStatus: isAutoCancelled ? 'APPROVED' : 'NONE',
             refundReason: isAutoCancelled ? 'Stok habis' : null,
             refundAt: isAutoCancelled ? new Date() : null,
             estimate,
@@ -312,6 +354,14 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
             paymentAmount: method === 'crypto' ? (b.amount || null) : null,
             paymentTxHash: method === 'crypto' ? (b.txHash || '').trim() : null,
             paymentProof: proofRef,
+            paymentProofHash: proofHash,
+            proofVerifiedAt: automaticVerification?.accepted ? new Date() : null,
+            proofOcrConfidence: method === 'qris' ? (automaticVerification?.confidence ?? null) : null,
+            proofAmount: automaticVerification?.accepted
+              ? (method === 'crypto' ? automaticVerification.received : String(externalPaidIdr))
+              : null,
+            proofCurrency: automaticVerification?.accepted ? (method === 'crypto' ? String(b.asset || '').toUpperCase() : 'IDR') : null,
+            proofTextHash: automaticVerification?.textHash || null,
             items: { create: validatedItems },
           },
           include: { items: true },
@@ -329,8 +379,20 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
           // Catat produk habis khusus user ini: produk yang dibeli + semua produk
           // yang harganya <= maxBoughtPrice (cascade mulai band bawah 30k).
           await cascadeUserStockOut(tx, req.user.id, maxBoughtPrice, { extraIds: promoItems.map((it) => it.productId) })
-          // Saldo belum pernah didebit pada jalur auto-cancel, jadi tidak boleh
-          // ditambah lagi. Menambahnya di sini menggandakan saldo user.
+          // Saldo internal belum pernah didebit. Yang dikreditkan hanya pembayaran
+          // eksternal yang sudah lolos OCR/verifikasi blockchain.
+          if (externalPaidIdr > 0 && automaticVerification?.accepted) {
+            await tx.user.update({ where: { id: req.user.id }, data: { balance: { increment: externalPaidIdr } } })
+            await tx.balanceTransaction.create({
+              data: {
+                userId: req.user.id,
+                amount: externalPaidIdr,
+                type: 'refund',
+                note: `Refund otomatis pesanan ${o.id}`,
+                orderId: o.id,
+              },
+            })
+          }
         } else if (balanceUsed > 0) {
           // Decrement atomik bersyarat: hanya jalan bila saldo >= jumlah (cegah negatif saat request bersamaan).
           const bal = await tx.user.updateMany({
@@ -354,6 +416,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       // Gagal simpan order → kembalikan reservasi stok & kupon
       for (const r of reserved) await prisma.product.update({ where: { id: r.id }, data: { stock: { increment: r.qty } } }).catch(() => {})
       if (couponOk) await prisma.coupon.update({ where: { code: couponRes.code }, data: { usedCount: { decrement: 1 } } }).catch(() => {})
+      if (e?.code === 'P2002') return res.status(409).json({ code: 'PROOF_REUSED', error: 'Bukti pembayaran atau Tx Hash sudah pernah digunakan.' })
       throw e
     }
 
@@ -364,8 +427,8 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
           : `Rp ${total.toLocaleString('id-ID')}`
 
     if (isAutoCancelled) {
-      const refundMessage = needsPaymentVerification
-        ? 'Stok produk habis. Refund ke Saldo menunggu verifikasi pembayaran oleh admin.'
+      const refundMessage = externalPaidIdr > 0
+        ? `Stok produk habis. Refund Rp ${externalPaidIdr.toLocaleString('id-ID')} sudah masuk ke SaldoKu.`
         : 'Stok produk habis. Saldo internal tidak dipotong.'
       notify(req.user.id, {
         type: 'order_cancelled',
@@ -376,13 +439,13 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       notifyAdmins({
         type: 'admin_refund',
         title: `Pesanan ${order.id} dibatalkan otomatis`,
-        body: needsPaymentVerification ? 'Stok promo habis. Verifikasi pembayaran untuk refund ke Saldo.' : 'Stok promo habis.',
+        body: externalPaidIdr > 0 ? 'Pembayaran terverifikasi otomatis dan refund sudah masuk ke SaldoKu.' : 'Stok promo habis.',
         orderId: order.id,
       })
       sendTelegramToUser(req.user.id, 'notifCancelled', {
         id: order.id,
-        refund: needsPaymentVerification
-          ? '⚠️ Stok habis. Refund ke Saldo menunggu verifikasi pembayaran.'
+        refund: externalPaidIdr > 0
+          ? `⚠️ Stok habis. Refund Rp ${externalPaidIdr.toLocaleString('id-ID')} sudah masuk ke SaldoKu.`
           : '⚠️ Stok habis. Saldo internal tidak dipotong.',
       })
     } else {

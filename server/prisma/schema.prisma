@@ -13,59 +13,65 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  picture   String?
-  role           String   @default("USER") // USER | ADMIN
-  blocked        Boolean  @default(false) // true = akun diblokir admin (tidak bisa login/order)
-  balance        Int      @default(0) // saldo dalam IDR (Rupiah)
-  minWithdraw    Int?     // override minimal total belanja utk tarik saldo, khusus user ini (null = default global)
-  checkInStreak  Int      @default(0) // posisi terakhir di cycle check-in 7 hari (0-6)
-  lastCheckInAt  DateTime? // kapan terakhir check-in
-  telegramId     String?  // ID Telegram user (terisi setelah hubungkan via bot) — 1 bot = 1 akun
-  createdAt      DateTime @default(now())
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  picture       String?
+  role          String    @default("USER") // USER | ADMIN
+  blocked       Boolean   @default(false) // true = akun diblokir admin (tidak bisa login/order)
+  balance       Int       @default(0) // saldo dalam IDR (Rupiah)
+  minWithdraw   Int? // override minimal total belanja utk tarik saldo, khusus user ini (null = default global)
+  checkInStreak Int       @default(0) // posisi terakhir di cycle check-in 7 hari (0-6)
+  lastCheckInAt DateTime? // kapan terakhir check-in
+  telegramId    String? // ID Telegram user (terisi setelah hubungkan via bot) — 1 bot = 1 akun
+  createdAt     DateTime  @default(now())
 
-  orders             Order[]
-  reviews            Review[]
-  notifications      Notification[]
+  orders              Order[]
+  reviews             Review[]
+  notifications       Notification[]
   balanceTransactions BalanceTransaction[]
-  exhaustedProducts  UserProductStock[]
-  telegramLinkCodes  TelegramLinkCode[]
-  topups             TopupRequest[]
+  exhaustedProducts   UserProductStock[]
+  telegramLinkCodes   TelegramLinkCode[]
+  topups              TopupRequest[]
 }
 
 model Order {
-  id            String   @id // nomor pesanan EVO-...
-  userId        String
-  user          User     @relation(fields: [userId], references: [id])
-  deliveryEmail String
-  activation    String   @default("new") // new | own
-  ownEmail      String?
-  ownPassword   String? // dienkripsi at-rest
-  ownNote       String?
-  status        String   @default("PROCESSING") // PROCESSING | COMPLETED | CANCELLED
-  estimate      String?
-  currency      String   @default("IDR") // IDR (lokal) | USD (internasional)
-  subtotal      Int
-  discount      Int      @default(0)
-  couponCode    String?
-  total         Int
-  fee           Int      @default(0) // fee pembayaran (payment gateway), mata uang pesanan
-  paymentMethod String // qris | crypto
-  paymentAsset  String?
-  paymentAmount String?
-  paymentTxHash String?
-  paymentProof  String? // path file bukti
-  adminNote     String?
+  id                 String    @id // nomor pesanan EVO-...
+  userId             String
+  user               User      @relation(fields: [userId], references: [id])
+  deliveryEmail      String
+  activation         String    @default("new") // new | own
+  ownEmail           String?
+  ownPassword        String? // dienkripsi at-rest
+  ownNote            String?
+  status             String    @default("PROCESSING") // PROCESSING | COMPLETED | CANCELLED
+  estimate           String?
+  currency           String    @default("IDR") // IDR (lokal) | USD (internasional)
+  subtotal           Int
+  discount           Int       @default(0)
+  couponCode         String?
+  total              Int
+  fee                Int       @default(0) // fee pembayaran (payment gateway), mata uang pesanan
+  paymentMethod      String // qris | crypto
+  paymentAsset       String?
+  paymentAmount      String?
+  paymentTxHash      String?   @unique
+  paymentProof       String? // path file bukti
+  paymentProofHash   String?   @unique // cegah satu bukti dipakai ulang
+  proofVerifiedAt    DateTime?
+  proofOcrConfidence Int?
+  proofAmount        String?
+  proofCurrency      String?
+  proofTextHash      String?
+  adminNote          String?
   // Pengajuan refund: NONE | REQUESTED | APPROVED | REJECTED
-  refundStatus  String   @default("NONE")
-  refundReason  String?
-  refundNote    String? // catatan admin saat memproses
-  refundAt      DateTime?
-  paidAt        DateTime? // tanggal transaksi/pembayaran (bisa diedit admin untuk struk)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  refundStatus       String    @default("NONE")
+  refundReason       String?
+  refundNote         String? // catatan admin saat memproses
+  refundAt           DateTime?
+  paidAt             DateTime? // tanggal transaksi/pembayaran (bisa diedit admin untuk struk)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   items OrderItem[]
 }
@@ -106,48 +112,49 @@ model Review {
 }
 
 model Product {
-  id              String  @id
+  id              String    @id
   name            String
   vendor          String
   category        String
   tagline         String?
   description     String?
-  features        String  @default("[]") // JSON array string
+  features        String    @default("[]") // JSON array string
+  orderList       String    @default("[]") // daftar yang tampil tepat di bawah deskripsi
   logo            String?
   brand           String?
   badge           String? // label pill kecil di kartu (mis. "STARTER"), opsional
   badgeColor      String? // warna latar badge (hex), opsional
   period          String? // "bln", "12 bln", "paket"
-  rating          Float   @default(5)
-  sold            Int     @default(0)
+  rating          Float     @default(5)
+  sold            Int       @default(0)
   price           Int // harga lokal (IDR)
-  priceIntl       Int     @default(0) // harga internasional (USD, dalam sen)
+  priceIntl       Int       @default(0) // harga internasional (USD, dalam sen)
   estimate        String?
   tiers           String // JSON: [{ "label", "price"(IDR), "priceIntl"(USD sen), "note" }]
-  stock           Int     @default(-1) // -1 = tak terbatas
-  active          Boolean @default(true)
-  flashSale       Boolean @default(false) // tampil di halaman flash sale (idc, tanpa ubah kategori)
-  stockOut        Boolean @default(false) // admin dapat menandai stok habis tanpa menghapus stok tersimpan
-  flashPrice      Int?    // harga khusus Flash Sale (IDR), null = gunakan price
-  flashPriceIntl  Int?    // harga khusus Flash Sale (USD sen), null = gunakan priceIntl
-  discountPercent Int     @default(0) // 0–90%
+  stock           Int       @default(-1) // -1 = tak terbatas
+  active          Boolean   @default(true)
+  flashSale       Boolean   @default(false) // tampil di halaman flash sale (idc, tanpa ubah kategori)
+  stockOut        Boolean   @default(false) // admin dapat menandai stok habis tanpa menghapus stok tersimpan
+  flashPrice      Int? // harga khusus Flash Sale (IDR), null = gunakan price
+  flashPriceIntl  Int? // harga khusus Flash Sale (USD sen), null = gunakan priceIntl
+  discountPercent Int       @default(0) // 0–90%
   discountStart   DateTime?
   discountEnd     DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 }
 
 model Coupon {
-  code       String   @id
+  code       String    @id
   type       String // percent | fixed
   value      Int
   label      String
-  active     Boolean  @default(true)
-  minSpend   Int      @default(0)
-  usageLimit Int      @default(0) // 0 = tak terbatas
-  usedCount  Int      @default(0)
+  active     Boolean   @default(true)
+  minSpend   Int       @default(0)
+  usageLimit Int       @default(0) // 0 = tak terbatas
+  usedCount  Int       @default(0)
   expiresAt  DateTime?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 }
 
 model Notification {

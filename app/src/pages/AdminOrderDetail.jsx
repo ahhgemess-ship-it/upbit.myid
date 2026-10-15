@@ -345,6 +345,12 @@ export default function AdminOrderDetail() {
             <Row label="Email kirim" value={order.deliveryEmail} />
             <Row label="Metode" value={order.payment?.method === 'crypto' ? `Crypto ${order.payment.asset}` : t('co.payQrisChip')} />
             {order.payment?.method === 'crypto' && <Row label="Jumlah" value={`${order.payment.amount} ${order.payment.asset}`} />}
+            {order.payment?.verifiedAt && (
+              <Row
+                label="Verifikasi otomatis"
+                value={`${order.payment.verifiedAmount || ''} ${order.payment.verifiedCurrency || ''}${order.payment.ocrConfidence != null ? ` · OCR ${order.payment.ocrConfidence}%` : ''}`.trim()}
+              />
+            )}
             {order.payment?.txHash && (
               <a href={(CRYPTO.assets.find((a) => a.symbol === order.payment.asset)?.explorer || '') + order.payment.txHash}
                 target="_blank" rel="noreferrer" className="btn-link" style={{ fontSize: 12, marginTop: 4, marginBottom: 10, borderColor: 'var(--indigo)', color: 'var(--indigo)', wordBreak: 'break-all' }}>

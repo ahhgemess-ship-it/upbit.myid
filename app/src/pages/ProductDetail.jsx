@@ -64,6 +64,7 @@ export default function ProductDetail() {
   const related = products.filter((p) => (p._srcId || p.id) !== srcKey && p.category === product.category).slice(0, 3)
   const fallbackRelated = products.filter((p) => (p._srcId || p.id) !== srcKey).slice(0, 3)
   const relatedList = related.length ? related : fallbackRelated
+  const orderList = product.orderList?.length ? product.orderList : product.features
 
   // Tier terpilih dgn diskon (kedua mata uang).
   const chosenTier = () => ({
@@ -154,9 +155,9 @@ export default function ProductDetail() {
             </AnimatePresence>
           </div>
 
-          {/* features */}
+          {/* Daftar isi produk yang dikelola admin dan konsisten di semua bahasa. */}
           <ul style={{ display: 'grid', gap: 10, margin: '22px 0' }}>
-            {product.features.map((f) => (
+            {orderList.map((f) => (
               <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 15 }}>
                 <span style={{
                   display: 'grid', placeItems: 'center', width: 24, height: 24, borderRadius: 999,
