@@ -414,7 +414,7 @@ function ProductForm({ initial, isNew, onClose, onSaved, toast }) {
             <textarea className="input" rows={3} value={f.description} onChange={(e) => set('description', e.target.value)} style={{ resize: 'vertical' }} placeholder="Jelaskan isi produk, keunggulan, dan ketentuan garansi…" />
           </Field>
 
-          <Field label="Order List — satu baris untuk satu poin di bawah deskripsi">
+          <Field label="Order List: satu baris untuk satu poin di bawah deskripsi">
             <textarea
               className="input"
               rows={5}
