@@ -80,22 +80,21 @@ export function formatOrder(order, { admin = false } = {}) {
 // - PENDING   → pembayaran eksternal (QRIS/crypto) BELUM diverifikasi admin: tidak ada uang
 //   asli yang masuk, jadi hanya saldo internal yang terpakai yang boleh dikembalikan.
 //   Merefund sisa pembayaran di status ini = mesin cetak saldo gratis (refund farming).
-// - CANCELLED / refundStatus APPROVED → sudah pernah direfund; jangan refund dua kali.
-// - COMPLETED → pesanan sudah dikirim; refund penuh hanya lewat persetujuan admin.
+// - refundStatus APPROVED → sudah pernah direfund; jangan refund dua kali.
+// - CANCELLED hanya dapat direfund bila refund memang berstatus REQUESTED.
+// - COMPLETED dapat direfund penuh lewat persetujuan admin.
 export function refundableAmount(order, balanceUsed = 0) {
   if (!order) return 0
   if (order.refundStatus === 'APPROVED') return 0
-  if (order.status === 'CANCELLED' || order.status === 'COMPLETED') return 0
+  if (order.status === 'CANCELLED' && order.refundStatus !== 'REQUESTED') return 0
   const used = Math.max(0, balanceUsed || 0)
-  if (order.status === 'PENDING') return used
   return used + Math.max(0, toIDR(order.total, order.currency))
 }
 
 // Cascade stok habis per user: pemakaian harga yang dibeli sebagai batas atas.
 // Setiap purchase di harga X (>= 30k) mengunci SEMUA produk berharga [30k..X]
 // untuk user tersebut. Tidak ada lagi band statis 30k–80k.
-import { STOCK_OUT_MIN, cascadeUserStockOut, effectiveTierPriceIdr, isPriceBelowUserBalance } from '../stockOut.js'
-const isStockOutPrice = (tierPriceIdr) => tierPriceIdr >= STOCK_OUT_MIN
+import { cascadeUserStockOut, effectiveTierPriceIdr, isAutoCancelPrice, isPriceAtOrBelowUserBalance } from '../stockOut.js'
 
 // Trigger STOK HABIS PER USER saat pembayaran berhasil (status COMPLETED):
 // produk yang dibeli + semua produk berharga <= harga beli (>= 30k) untuk user itu.
@@ -208,7 +207,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       // (sama dengan tampilan frontend, yang menampilkan percent = 0).
       const pct = prod.flashSale ? 0 : effectiveDiscount(prod)
       const selectedPriceIdr = effectiveTierPriceIdr(prod, tier, tierIdx >= 0 ? tierIdx : 0)
-      if (isPriceBelowUserBalance(selectedPriceIdr, currentBalance)) {
+      if (isPriceAtOrBelowUserBalance(selectedPriceIdr, currentBalance)) {
         return res.status(409).json({ error: `Stok ${prod.name} sedang habis untuk akun Anda` })
       }
       const unitPrice = salePrice(base, pct)
@@ -221,12 +220,12 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       })
     }
 
-    // Produk dalam band cascade (bawah 30k) → auto stock-out & auto-cancel pesanan.
+    // Produk dalam band 30k–80k → auto stock-out & auto-cancel pesanan.
     // Harga di atas band tetap diproses normal — trigger cascade jalan setelah
     // pembayaran sukses (verifikasi admin / status COMPLETED).
     const promoItems = validatedItems.filter((it) => {
       const idrPrice = currency === 'IDR' ? it.price : toIDR(it.price, currency)
-      return isStockOutPrice(idrPrice)
+      return isAutoCancelPrice(idrPrice)
     })
     const isAutoCancelled = promoItems.length > 0
     const maxBoughtPrice = Math.max(...validatedItems.map((it) => (currency === 'IDR' ? it.price : toIDR(it.price, currency))))
@@ -271,6 +270,10 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       balanceUsed = useBalanceAmount
     }
     const total = Math.max(0, totalBeforeBalance - fromIDR(balanceUsed, currency))
+    // Bukti QRIS/crypto bukan konfirmasi settlement. Jika masih ada pembayaran
+    // eksternal, auto-cancel membuat refund REQUESTED agar admin memverifikasi
+    // uang benar-benar masuk sebelum mengkredit Saldo.
+    const needsPaymentVerification = isAutoCancelled && total > 0
 
     // Simpan bukti pembayaran (disk lokal / Vercel Blob) → referensi disimpan di DB.
     const proofRef = safeProof
@@ -294,7 +297,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
             ownNote: activation === 'own' ? (b.ownNote || '').trim() || null : null,
             status: isAutoCancelled ? 'CANCELLED' : 'PROCESSING',
             adminNote: isAutoCancelled ? 'Stok habis' : null,
-            refundStatus: isAutoCancelled ? 'APPROVED' : 'NONE',
+            refundStatus: isAutoCancelled ? (needsPaymentVerification ? 'REQUESTED' : 'APPROVED') : 'NONE',
             refundReason: isAutoCancelled ? 'Stok habis' : null,
             refundAt: isAutoCancelled ? new Date() : null,
             estimate,
@@ -326,14 +329,8 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
           // Catat produk habis khusus user ini: produk yang dibeli + semua produk
           // yang harganya <= maxBoughtPrice (cascade mulai band bawah 30k).
           await cascadeUserStockOut(tx, req.user.id, maxBoughtPrice, { extraIds: promoItems.map((it) => it.productId) })
-          // Saldo yang dipakai untuk pesanan yang dibatalkan otomatis langsung
-          // dikembalikan — user tidak boleh kehilangan saldo karena stok habis.
-          if (balanceUsed > 0) {
-            await tx.user.update({ where: { id: req.user.id }, data: { balance: { increment: balanceUsed } } })
-            await tx.balanceTransaction.create({
-              data: { userId: req.user.id, amount: balanceUsed, type: 'refund', note: `Refund otomatis — stok habis (pesanan ${o.id})`, orderId: o.id },
-            })
-          }
+          // Saldo belum pernah didebit pada jalur auto-cancel, jadi tidak boleh
+          // ditambah lagi. Menambahnya di sini menggandakan saldo user.
         } else if (balanceUsed > 0) {
           // Decrement atomik bersyarat: hanya jalan bila saldo >= jumlah (cegah negatif saat request bersamaan).
           const bal = await tx.user.updateMany({
@@ -367,21 +364,26 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
           : `Rp ${total.toLocaleString('id-ID')}`
 
     if (isAutoCancelled) {
+      const refundMessage = needsPaymentVerification
+        ? 'Stok produk habis. Refund ke Saldo menunggu verifikasi pembayaran oleh admin.'
+        : 'Stok produk habis. Saldo internal tidak dipotong.'
       notify(req.user.id, {
         type: 'order_cancelled',
         title: `Pesanan ${order.id} dibatalkan`,
-        body: 'Stok produk sedang habis saat pesanan diproses.',
+        body: refundMessage,
         orderId: order.id,
       })
       notifyAdmins({
         type: 'admin_refund',
         title: `Pesanan ${order.id} dibatalkan otomatis`,
-        body: 'Stok promo habis',
+        body: needsPaymentVerification ? 'Stok promo habis. Verifikasi pembayaran untuk refund ke Saldo.' : 'Stok promo habis.',
         orderId: order.id,
       })
       sendTelegramToUser(req.user.id, 'notifCancelled', {
         id: order.id,
-        refund: '⚠️ Stok produk sedang habis saat pesanan diproses.',
+        refund: needsPaymentVerification
+          ? '⚠️ Stok habis. Refund ke Saldo menunggu verifikasi pembayaran.'
+          : '⚠️ Stok habis. Saldo internal tidak dipotong.',
       })
     } else {
       const msg = 'Pembayaran sedang kami verifikasi.'

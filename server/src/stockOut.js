@@ -39,16 +39,21 @@ export function effectiveTierPriceIdr(p = {}, tier = {}, tierIndex = 0) {
   return salePrice(basePrice, discount)
 }
 
-// "Di bawah saldo" bersifat strict: harga yang sama persis dengan saldo masih
-// tersedia. Saldo nol tidak pernah menutup produk.
-export function isPriceBelowUserBalance(priceIdr, balanceIdr) {
+// Harga yang sama dengan atau lebih rendah dari saldo ditutup untuk akun itu.
+// Saldo nol tidak pernah menutup produk.
+export function isPriceAtOrBelowUserBalance(priceIdr, balanceIdr) {
   const price = Number(priceIdr) || 0
   const balance = Number(balanceIdr) || 0
-  return price > 0 && balance > 0 && price < balance
+  return price > 0 && balance > 0 && price <= balance
 }
 
 export function isTierStockOutForBalance(p, tier, tierIndex, balanceIdr) {
-  return isPriceBelowUserBalance(effectiveTierPriceIdr(p, tier, tierIndex), balanceIdr)
+  return isPriceAtOrBelowUserBalance(effectiveTierPriceIdr(p, tier, tierIndex), balanceIdr)
+}
+
+export function isAutoCancelPrice(priceIdr) {
+  const price = Number(priceIdr) || 0
+  return price >= STOCK_OUT_MIN && price <= STOCK_OUT_MAX
 }
 
 // Tandai produk-produk habis untuk SATU user:

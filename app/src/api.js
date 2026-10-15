@@ -83,7 +83,7 @@ const _real = {
   reviews: (productId) => req(`/api/reviews/${productId}`, { auth: false }),
   reviewEligibility: (productId) => req(`/api/reviews/${productId}/eligibility`),
   submitReview: (productId, rating, comment) => req('/api/reviews', { method: 'POST', body: { productId, rating, comment } }),
-  adminStats: () => req('/api/admin/stats'),
+  adminStats: (params = '') => req(`/api/admin/stats${params ? `?${params}` : ''}`),
   adminProducts: () => req('/api/admin/products'),
   adminCreateProduct: (data) => req('/api/admin/products', { method: 'POST', body: data }),
   adminUploadProductImage: (file) => {

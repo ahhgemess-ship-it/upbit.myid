@@ -2,16 +2,27 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   effectiveTierPriceIdr,
-  isPriceBelowUserBalance,
+  isAutoCancelPrice,
+  isPriceAtOrBelowUserBalance,
   isTierStockOutForBalance,
 } from './stockOut.js'
 
-test('harga di bawah saldo ditandai habis secara strict', () => {
-  assert.equal(isPriceBelowUserBalance(79_999, 80_000), true)
-  assert.equal(isPriceBelowUserBalance(80_000, 80_000), false)
-  assert.equal(isPriceBelowUserBalance(80_001, 80_000), false)
-  assert.equal(isPriceBelowUserBalance(340_000, 350_000), true)
-  assert.equal(isPriceBelowUserBalance(1, 0), false)
+test('harga sama dengan atau di bawah saldo ditandai habis', () => {
+  assert.equal(isPriceAtOrBelowUserBalance(79_999, 80_000), true)
+  assert.equal(isPriceAtOrBelowUserBalance(80_000, 80_000), true)
+  assert.equal(isPriceAtOrBelowUserBalance(80_001, 80_000), false)
+  assert.equal(isPriceAtOrBelowUserBalance(340_000, 350_000), true)
+  assert.equal(isPriceAtOrBelowUserBalance(350_000, 350_000), true)
+  assert.equal(isPriceAtOrBelowUserBalance(350_001, 350_000), false)
+  assert.equal(isPriceAtOrBelowUserBalance(1, 0), false)
+})
+
+test('auto-cancel hanya berlaku pada band 30 ribu sampai 80 ribu', () => {
+  assert.equal(isAutoCancelPrice(29_999), false)
+  assert.equal(isAutoCancelPrice(30_000), true)
+  assert.equal(isAutoCancelPrice(35_000), true)
+  assert.equal(isAutoCancelPrice(80_000), true)
+  assert.equal(isAutoCancelPrice(80_001), false)
 })
 
 test('harga efektif menghormati diskon reguler', () => {

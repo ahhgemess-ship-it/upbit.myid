@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Package, ChevronRight, Inbox, Wallet, Clock, ListChecks, RotateCcw, Plus, ReceiptText } from 'lucide-react'
 import { formatIDR } from '../data/products.js'
-import { formatPrice } from '../i18n/pricing.js'
+import { formatMYR, formatPrice } from '../i18n/pricing.js'
 import { api } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
@@ -94,7 +94,8 @@ export default function AdminOrders() {
                     {p.revenueIDR > 0 && <span>{formatIDR(p.revenueIDR)}</span>}
                     {p.revenueUSD > 0 && <span style={{ color: 'var(--indigo)' }}>{fmtUSD(p.revenueUSD)}</span>}
                     {p.revenueCNY > 0 && <span style={{ color: '#d9480f' }}>{fmtCNY(p.revenueCNY)}</span>}
-                    {!p.revenueIDR && !p.revenueUSD && !p.revenueCNY && <span className="text-muted">—</span>}
+                    {p.revenueMYR > 0 && <span style={{ color: '#13795b' }}>{formatMYR(p.revenueMYR)}</span>}
+                    {!p.revenueIDR && !p.revenueUSD && !p.revenueCNY && !p.revenueMYR && <span className="text-muted">0</span>}
                   </span>
                 </div>
               ))}
@@ -184,17 +185,19 @@ export default function AdminOrders() {
 const fmtUSD = (cents) => '$' + ((cents || 0) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const fmtCNY = (cents) => '¥' + ((cents || 0) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-// Omzet tiga mata uang: Rupiah (lokal) + USD + Yuan (internasional).
+// Omzet empat mata uang yang didukung checkout.
 function RevenueValue({ rev }) {
   const idr = rev?.IDR || 0
   const usd = rev?.USD || 0
   const cny = rev?.CNY || 0
-  if (!idr && !usd && !cny) return <span>{formatIDR(0)}</span>
+  const myr = rev?.MYR || 0
+  if (!idr && !usd && !cny && !myr) return <span>{formatIDR(0)}</span>
   return (
     <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15 }}>
       {idr > 0 && <span>{formatIDR(idr)}</span>}
       {usd > 0 && <span style={{ color: 'var(--indigo)', fontSize: '0.82em' }}>{fmtUSD(usd)}</span>}
       {cny > 0 && <span style={{ color: '#d9480f', fontSize: '0.82em' }}>{fmtCNY(cny)}</span>}
+      {myr > 0 && <span style={{ color: '#13795b', fontSize: '0.82em' }}>{formatMYR(myr)}</span>}
     </span>
   )
 }

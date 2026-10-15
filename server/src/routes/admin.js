@@ -16,6 +16,7 @@ import { approveTopup, rejectTopup } from './topup.js'
 import { saveUpload, readUpload } from '../storage.js'
 import { toIDR } from '../money.js'
 import { SAFE_IMAGE_MIMES, sanitizeUploadedImage } from '../imageUpload.js'
+import { jakartaWeekPeriod } from '../statsPeriod.js'
 
 const router = Router()
 
@@ -370,25 +371,36 @@ router.get('/orders/:id/proof', async (req, res) => {
 
 // GET /api/admin/stats
 router.get('/stats', async (req, res) => {
+  const weekly = req.query.range === 'week'
+  const period = weekly ? jakartaWeekPeriod() : null
+  const orderWhere = period ? { createdAt: { gte: period.start, lt: period.end } } : {}
   const [counts, revByCur, pendByCur, completedItems, refundPending, lowStock] = await Promise.all([
-    prisma.order.groupBy({ by: ['status'], _count: true }),
-    prisma.order.groupBy({ by: ['currency'], where: { status: 'COMPLETED' }, _sum: { total: true } }),
-    prisma.order.groupBy({ by: ['currency'], where: { status: 'PROCESSING' }, _sum: { total: true } }),
-    prisma.orderItem.findMany({ where: { order: { status: 'COMPLETED' } }, select: { productId: true, name: true, qty: true, price: true, order: { select: { currency: true } } } }),
+    prisma.order.groupBy({ by: ['status'], where: orderWhere, _count: true }),
+    prisma.order.groupBy({ by: ['currency'], where: { ...orderWhere, status: 'COMPLETED' }, _sum: { total: true } }),
+    prisma.order.groupBy({ by: ['currency'], where: { ...orderWhere, status: 'PROCESSING' }, _sum: { total: true } }),
+    prisma.orderItem.findMany({ where: { order: { ...orderWhere, status: 'COMPLETED' } }, select: { productId: true, name: true, qty: true, price: true, order: { select: { currency: true } } } }),
     prisma.order.count({ where: { refundStatus: 'REQUESTED' } }),
     prisma.product.count({ where: { stock: { gte: 0, lte: 3 } } }),
   ])
   const byStatus = Object.fromEntries(counts.map((c) => [c.status, c._count]))
   const totalOrders = counts.reduce((s, c) => s + c._count, 0)
-  // Omzet dipisah per mata uang (IDR rupiah; USD & CNY dalam sen)
-  const sumByCur = (rows) => { const o = { IDR: 0, USD: 0, CNY: 0 }; for (const r of rows) o[r.currency || 'IDR'] += r._sum.total || 0; return o }
+  // Omzet dipisah per mata uang (IDR rupiah; USD, CNY, dan MYR dalam pecahan 1/100).
+  const sumByCur = (rows) => {
+    const out = { IDR: 0, USD: 0, CNY: 0, MYR: 0 }
+    for (const row of rows) {
+      const currency = Object.hasOwn(out, row.currency) ? row.currency : 'IDR'
+      out[currency] += row._sum.total || 0
+    }
+    return out
+  }
   const map = {}
   for (const it of completedItems) {
     const cur = it.order?.currency || 'IDR'
-    const m = (map[it.productId] ||= { productId: it.productId, name: it.name, qty: 0, revenueIDR: 0, revenueUSD: 0, revenueCNY: 0 })
+    const m = (map[it.productId] ||= { productId: it.productId, name: it.name, qty: 0, revenueIDR: 0, revenueUSD: 0, revenueCNY: 0, revenueMYR: 0 })
     m.qty += it.qty
     if (cur === 'USD') m.revenueUSD += it.qty * it.price
     else if (cur === 'CNY') m.revenueCNY += it.qty * it.price
+    else if (cur === 'MYR') m.revenueMYR += it.qty * it.price
     else m.revenueIDR += it.qty * it.price
   }
   const topProducts = Object.values(map).sort((a, b) => b.qty - a.qty).slice(0, 5)
@@ -397,6 +409,10 @@ router.get('/stats', async (req, res) => {
     revenue: sumByCur(revByCur),
     pendingRevenue: sumByCur(pendByCur),
     topProducts, refundPending, lowStock,
+    period: period
+      ? { range: 'week', start: period.start, end: period.end, timezone: period.timezone }
+      : { range: 'all' },
+    generatedAt: new Date(),
   })
 })
 
@@ -541,6 +557,7 @@ async function cancelOrderHandler(req, res) {
   if (adminNote !== undefined) data.adminNote = adminNote
 
   let order
+  let refundAmount = 0
   // ANTI-REFUND-FARMING: satu pesanan hanya boleh direfund sekali. Tanpa guard ini,
   // klik "Batalkan" berulang (atau cancel setelah auto stock-out refund) menambah saldo
   // lagi setiap kali — itu yang dipakai user untuk farming saldo gratis.
@@ -549,7 +566,7 @@ async function cancelOrderHandler(req, res) {
     // Rollback: kembalikan saldo terpakai + sisa pembayaran, kuota kupon, dan stok.
     const usedTx = await prisma.balanceTransaction.findFirst({ where: { orderId: current.id, type: 'purchase' } })
     const balanceUsed = usedTx ? Math.abs(usedTx.amount) : 0
-    const refundAmount = alreadyRefunded ? 0 : refundableAmount(current, balanceUsed)
+    refundAmount = alreadyRefunded ? 0 : refundableAmount(current, balanceUsed)
     order = await prisma.$transaction(async (tx) => {
       const o = await tx.order.update({ where: { id: current.id }, data, include: { items: true, user: true } })
       if (refundAmount > 0) {
@@ -646,24 +663,23 @@ router.post('/orders/:id/refund', async (req, res) => {
   let updated
   if (action === 'approve') {
     // Kembalikan dana ke Saldo user (saldo terpakai + sisa pembayaran, dikonversi ke IDR).
-    // Idempoten: refund disetujui hanya dijalankan SEKALI per pesanan (anti double-refund).
-    const wasApproved = order.refundStatus === 'APPROVED' || order.status === 'CANCELLED'
+    // Klaim status di dalam transaksi membuat persetujuan idempoten walau dua
+    // request admin tiba bersamaan.
     const usedTx = await prisma.balanceTransaction.findFirst({ where: { orderId: order.id, type: 'purchase' } })
     const balanceUsed = usedTx ? Math.abs(usedTx.amount) : 0
-    const refundAmount = wasApproved ? 0 : refundableAmount(order, balanceUsed)
+    const refundAmount = refundableAmount(order, balanceUsed)
     updated = await prisma.$transaction(async (tx) => {
-      const o = await tx.order.update({
-        where: { id: order.id },
+      const claimed = await tx.order.updateMany({
+        where: { id: order.id, refundStatus: { not: 'APPROVED' } },
         data: { refundStatus: 'APPROVED', refundNote: note, status: 'CANCELLED', refundAt: new Date() },
-        include: { items: true, user: true },
       })
-      if (!wasApproved && refundAmount > 0) {
+      if (claimed.count > 0 && refundAmount > 0) {
         await tx.user.update({ where: { id: order.userId }, data: { balance: { increment: refundAmount } } })
         await tx.balanceTransaction.create({
           data: { userId: order.userId, amount: refundAmount, type: 'refund', note: `Refund disetujui admin — ${order.id}`, orderId: order.id },
         })
       }
-      return o
+      return tx.order.findUnique({ where: { id: order.id }, include: { items: true, user: true } })
     })
   } else {
     updated = await prisma.order.update({
