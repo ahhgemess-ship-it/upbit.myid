@@ -13,6 +13,7 @@
     { "src": "/favicon\\.png", "dest": "/app/favicon.png" },
     { "src": "/favicon\\.ico", "dest": "/app/favicon.ico" },
     { "src": "/favicon\\.svg", "dest": "/app/favicon.svg" },
+    { "src": "/upbit-store-mark\\.png", "dest": "/app/upbit-store-mark.png" },
     { "src": "/logos/(.*)", "dest": "/app/logos/$1" },
     { "src": "/mascots/(.*)", "dest": "/app/mascots/$1" },
     { "handle": "filesystem" },
