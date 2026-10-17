@@ -5,7 +5,7 @@ import {
   Search, ChevronRight, Mail, Calendar, Coins,
   Gift, RefreshCw, ShoppingBag, Banknote, Clock, X, Wallet, Edit3,
   RotateCcw, Ban, Check, AlertCircle, TrendingUp, ArrowUpRight, ArrowDownLeft,
-  User as UserIcon,
+  User as UserIcon, ShieldOff,
 } from 'lucide-react'
 import { api } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -118,6 +118,22 @@ export default function AdminUsers() {
       const res = await api.adminUpdateUser(selectedId, { blocked: !detail.user.blocked })
       setDetail(prev => ({ ...prev, user: { ...prev.user, ...res.user } }))
       setSaveMsg({ type: 'success', text: res.user.blocked ? 'Akun diblokir — user tidak bisa login/order.' : 'Blokir dibuka ✓' })
+    } catch (e) {
+      setSaveMsg({ type: 'error', text: e.message })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const releaseDevices = async () => {
+    const count = detail?.trustedDevices?.length || 0
+    if (!count || !window.confirm(`Lepaskan ${count} perangkat aktif dari akun ini? Semua sesi perangkat tersebut akan dihentikan.`)) return
+    setSaving(true)
+    setSaveMsg(null)
+    try {
+      const res = await api.adminReleaseUserDevices(selectedId)
+      setDetail(prev => ({ ...prev, trustedDevices: [] }))
+      setSaveMsg({ type: 'success', text: `${res.released} perangkat berhasil dilepas.` })
     } catch (e) {
       setSaveMsg({ type: 'error', text: e.message })
     } finally {
@@ -298,6 +314,7 @@ export default function AdminUsers() {
                     <StatCard icon={RotateCcw} label="Refund" value={`${detail.summary.refundCount} (${detail.summary.refundPending} pending)`} />
                     <StatCard icon={Gift} label="Check-in" value={`Streak ${detail.user.checkInStreak}/7`} />
                     <StatCard icon={Clock} label="User sejak" value={new Date(detail.user.createdAt).toLocaleDateString('id-ID', { year: 'numeric', month: 'short' })} />
+                    <StatCard icon={ShieldOff} label="Perangkat aktif" value={detail.trustedDevices?.length || 0} />
                   </div>
 
 
@@ -356,6 +373,12 @@ export default function AdminUsers() {
                           style={{ padding: '9px 20px', fontSize: 13.5, fontWeight: 700, color: detail.user.blocked ? '#16a34a' : '#dc2626' }}>
                           <Ban size={15} /> {detail.user.blocked ? 'Buka Blokir' : 'Blokir Akun'}
                         </button>
+                        {(detail.trustedDevices?.length || 0) > 0 && (
+                          <button onClick={releaseDevices} disabled={saving} className="pill"
+                            style={{ padding: '9px 20px', fontSize: 13.5, fontWeight: 700 }}>
+                            <ShieldOff size={15} /> Lepas Perangkat
+                          </button>
+                        )}
                       </>
                     )}
                   </div>

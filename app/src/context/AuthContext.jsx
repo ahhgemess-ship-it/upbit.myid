@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react'
 import { api, getToken, setToken } from '../api.js'
+import { createDeviceFingerprint } from '../deviceFingerprint.js'
 
 const AuthContext = createContext(null)
 const SESSION_KEY = 'upbit_session'
@@ -49,7 +50,8 @@ export function AuthProvider({ children }) {
 
   // Login Google: kirim credential JWT GSI ke backend untuk diverifikasi.
   const loginWithGoogle = useCallback(async (credential) => {
-    const { user: u } = await api.googleLogin(credential)
+    const deviceFingerprint = await createDeviceFingerprint()
+    const { user: u } = await api.googleLogin(credential, deviceFingerprint)
     setToken(null)
     localStorage.setItem(SESSION_KEY, JSON.stringify(u))
     setUser(withInitials(u))

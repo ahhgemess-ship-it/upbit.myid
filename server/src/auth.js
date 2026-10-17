@@ -31,13 +31,13 @@ export async function verifyGoogleCredential(credential) {
   })
   const p = ticket.getPayload()
   if (!p?.sub || p.email_verified !== true) throw new Error('Email Google belum terverifikasi')
-  return { email: (p.email || '').toLowerCase(), name: p.name || p.email, picture: p.picture || null }
+  return { googleSub: p.sub, email: (p.email || '').toLowerCase(), name: p.name || p.email, picture: p.picture || null }
 }
 
 const sessionTtl = (user) => user.role === 'ADMIN' ? 30 * 60 : 7 * 24 * 60 * 60
 
-export const signToken = (user) => jwt.sign(
-  { uid: user.id, role: user.role },
+export const signToken = (user, deviceId = null) => jwt.sign(
+  { uid: user.id, role: user.role, ...(deviceId ? { did: deviceId } : {}) },
   JWT_SECRET,
   { expiresIn: sessionTtl(user), algorithm: 'HS256' },
 )
@@ -59,11 +59,11 @@ function safeEqual(a, b) {
   return aa.length === bb.length && crypto.timingSafeEqual(aa, bb)
 }
 
-export function setSessionCookies(res, user) {
+export function setSessionCookies(res, user, deviceId = null) {
   const maxAge = sessionTtl(user) * 1000
   const csrf = crypto.randomBytes(32).toString('base64url')
   const base = { secure: IS_PROD, sameSite: 'strict', path: '/', maxAge }
-  res.cookie(SESSION_COOKIE, signToken(user), { ...base, httpOnly: true })
+  res.cookie(SESSION_COOKIE, signToken(user, deviceId), { ...base, httpOnly: true })
   res.cookie(CSRF_COOKIE, csrf, { ...base, httpOnly: false })
 }
 
@@ -89,6 +89,14 @@ export async function requireAuth(req, res, next) {
     const user = await prisma.user.findUnique({ where: { id: payload.uid } })
     if (!user) return res.status(401).json({ error: 'User tidak ditemukan' })
     if (user.blocked) return res.status(403).json({ error: 'Akun diblokir. Hubungi admin jika ini keliru.' })
+    if (payload.did) {
+      const device = await prisma.trustedDevice.findUnique({
+        where: { id: payload.did }, select: { userId: true, releasedAt: true },
+      })
+      if (!device || device.userId !== user.id || device.releasedAt) {
+        return res.status(401).json({ error: 'Sesi perangkat tidak berlaku', code: 'DEVICE_SESSION_INVALID' })
+      }
+    }
     req.user = user
     next()
   } catch {
@@ -105,7 +113,14 @@ export async function optionalAuth(req, res, next) {
     if (!token) return next()
     const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] })
     const user = await prisma.user.findUnique({ where: { id: payload.uid } })
-    if (user && !user.blocked) {
+    let validDevice = true
+    if (user && payload.did) {
+      const device = await prisma.trustedDevice.findUnique({
+        where: { id: payload.did }, select: { userId: true, releasedAt: true },
+      })
+      validDevice = !!device && device.userId === user.id && !device.releasedAt
+    }
+    if (user && !user.blocked && validDevice) {
       req.user = user
     }
   } catch {

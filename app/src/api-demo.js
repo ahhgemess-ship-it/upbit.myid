@@ -270,6 +270,7 @@ export const demoApi = {
       user,
       orders,
       balanceTransactions: history,
+      trustedDevices: [],
       summary: {
         totalSpent,
         totalOrders: orders.length,
@@ -308,6 +309,7 @@ export const demoApi = {
       },
     }
   },
+  adminReleaseUserDevices: async () => ({ ok: true, released: 0 }),
 
   // admin
   adminStats: async () => ({ totalOrders: load(ORDER_KEY).length, totalUsers: 1 }),

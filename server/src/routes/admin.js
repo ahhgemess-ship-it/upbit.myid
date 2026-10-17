@@ -72,6 +72,11 @@ router.get('/users/:id', async (req, res) => {
       include: {
         orders: { orderBy: { createdAt: 'desc' }, take: 20, include: { items: true } },
         balanceTransactions: { orderBy: { createdAt: 'desc' }, take: 30 },
+        trustedDevices: {
+          where: { releasedAt: null },
+          orderBy: { lastSeenAt: 'desc' },
+          select: { id: true, userAgent: true, createdAt: true, lastSeenAt: true },
+        },
       },
     })
     if (!user) return res.status(404).json({ error: 'User tidak ditemukan' })
@@ -92,6 +97,7 @@ router.get('/users/:id', async (req, res) => {
       },
       orders: user.orders,
       balanceTransactions: user.balanceTransactions,
+      trustedDevices: user.trustedDevices,
       summary: {
         totalSpent,
         totalOrders,
@@ -101,6 +107,24 @@ router.get('/users/:id', async (req, res) => {
         refundPending: refundOrders.filter(o => o.refundStatus === 'REQUESTED').length,
       },
     })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
+
+// Melepas semua perangkat aktif agar user dapat mengikat akun lain pada login berikutnya.
+router.post('/users/:id/devices/release', async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true } })
+    if (!user) return res.status(404).json({ error: 'User tidak ditemukan' })
+    const result = await prisma.trustedDevice.updateMany({
+      where: { userId: user.id, releasedAt: null },
+      data: { releasedAt: new Date() },
+    })
+    await prisma.authSecurityEvent.create({
+      data: { userId: user.id, type: 'DEVICES_RELEASED_BY_ADMIN', userAgent: String(req.headers['user-agent'] || '').slice(0, 255) || null },
+    })
+    res.json({ ok: true, released: result.count })
   } catch (e) {
     res.status(500).json({ error: e.message })
   }

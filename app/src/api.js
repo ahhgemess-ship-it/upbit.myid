@@ -68,7 +68,7 @@ function withFallback(realFn, demoFn) {
 
 // Real API calls (pakai server)
 const _real = {
-  googleLogin: (credential) => req('/api/auth/google', { method: 'POST', body: { credential }, auth: false }),
+  googleLogin: (credential, deviceFingerprint = '') => req('/api/auth/google', { method: 'POST', body: { credential, deviceFingerprint }, auth: false }),
   me: () => req('/api/auth/me'),
   migrateSession: () => req('/api/auth/session', { method: 'POST' }),
   logout: () => req('/api/auth/logout', { method: 'POST' }),
@@ -133,6 +133,7 @@ const _real = {
   adminUsers: (params = '') => req(`/api/admin/users${params ? `?${params}` : ''}`),
   adminGetUser: (id) => req(`/api/admin/users/${id}`),
   adminUpdateUser: (id, data) => req(`/api/admin/users/${id}`, { method: 'PATCH', body: data }),
+  adminReleaseUserDevices: (id) => req(`/api/admin/users/${id}/devices/release`, { method: 'POST', body: {} }),
   adminSetBalance: (id, balance, note) => req(`/api/admin/users/${id}`, { method: 'PATCH', body: { balance, adjustNote: note } }),
   // admin settings (pengaturan global toko)
   adminGetSettings: () => req('/api/admin/settings'),
@@ -194,6 +195,7 @@ export const api = {
   adminUsers: _real.adminUsers,
   adminGetUser: _real.adminGetUser,
   adminUpdateUser: _real.adminUpdateUser,
+  adminReleaseUserDevices: _real.adminReleaseUserDevices,
   adminSetBalance: _real.adminSetBalance,
   adminGetSettings: _real.adminGetSettings,
   adminUpdateSettings: _real.adminUpdateSettings,
