@@ -50,7 +50,7 @@ export default function Checkout() {
   const [coupon, setCoupon] = useState(null)
   const [copied, setCopied] = useState('')
   const [proof, setProof] = useState(null) // { name, dataUrl? }
-  const [checkPhase, setCheckPhase] = useState('show') // 'show' | 'loading' | 'done'
+  const [checkPhase] = useState('done') // Foto hanya lampiran, tidak ada pemeriksaan OCR di checkout.
   const [txHash, setTxHash] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const fileRef = useRef(null)
@@ -109,7 +109,7 @@ export default function Checkout() {
   const emailValid = isEmail(email)
   const ownValid = !useOwn || (isEmail(own.email) && own.password.trim().length > 0)
   const cryptoAmount = toCryptoAmount(payableIdrEquiv, asset)
-  const paymentOk = method === 'qris' ? (checkPhase === 'done' && !!proof) : txHash.trim().length >= 10
+  const paymentOk = method === 'qris' ? !!proof : txHash.trim().length >= 10
   const canConfirm = emailValid && ownValid && paymentOk
 
   // definisi langkah (lewati 'aktivasi' bila tak ada produk yang mendukung)
@@ -207,14 +207,6 @@ export default function Checkout() {
     } catch {
       toast(t('co.proofReadFail'), 'error')
     }
-  }
-
-  const handleCheckPayment = () => {
-    setCheckPhase('loading')
-    setTimeout(() => {
-      setCheckPhase('done')
-      toast(t('co.checkSuccess'), 'success', 2000)
-    }, 2000)
   }
 
   const handleConfirm = async () => {
@@ -414,47 +406,21 @@ export default function Checkout() {
                           <div className="text-muted" style={{ fontSize: 11.5, textAlign: 'center' }}>NMID {QRIS.nmid} · Ref #{ref}</div>
                         </div>
 
-                        {checkPhase === 'show' && (
-                          <motion.button
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            whileTap={{ scale: 0.97 }}
-                            onClick={handleCheckPayment}
-                            className="pill pill-indigo"
-                            style={{ width: '100%', marginTop: 18, padding: '14px 20px', fontSize: 15, fontWeight: 600, justifyContent: 'center' }}
-                          >
-                            <Clock size={18} /> {t('co.checkPayment')}
-                          </motion.button>
-                        )}
-
-                        {checkPhase === 'loading' && (
-                          <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            style={{ textAlign: 'center', padding: '24px 0', marginTop: 14 }}
-                          >
-                            <div className="spinner" style={{ width: 32, height: 32, borderWidth: 3, margin: '0 auto 12px' }} />
-                            <p className="text-muted" style={{ fontSize: 14 }}>{t('co.checkingPayment')}</p>
-                          </motion.div>
-                        )}
-
-                        {checkPhase === 'done' && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 12 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.3 }}
-                            style={{ marginTop: 14 }}
-                          >
-                            <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPickFile} />
-                            <button type="button" className={`upload-drop ${proof ? 'has-file' : ''}`} onClick={() => fileRef.current?.click()}>
-                              {proof ? (
-                                <><FileCheck2 size={20} /><span>{proof.name}</span><span className="text-muted" style={{ fontSize: 12 }}>{t('co.clickToChange')}</span></>
-                              ) : (
-                                <><Upload size={20} /><span style={{ fontWeight: 600 }}>{t('co.uploadProofNow')}</span><span className="text-muted" style={{ fontSize: 12 }}>{t('co.maxFile')}</span></>
-                              )}
-                            </button>
-                          </motion.div>
-                        )}
+                        <motion.div
+                          initial={{ opacity: 0, y: 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3 }}
+                          style={{ marginTop: 14 }}
+                        >
+                          <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPickFile} />
+                          <button type="button" className={`upload-drop ${proof ? 'has-file' : ''}`} onClick={() => fileRef.current?.click()}>
+                            {proof ? (
+                              <><FileCheck2 size={20} /><span>{proof.name}</span><span className="text-muted" style={{ fontSize: 12 }}>{t('co.clickToChange')}</span></>
+                            ) : (
+                              <><Upload size={20} /><span style={{ fontWeight: 600 }}>{t('co.uploadProofNow')}</span><span className="text-muted" style={{ fontSize: 12 }}>{t('co.maxFile')}</span></>
+                            )}
+                          </button>
+                        </motion.div>
                       </motion.div>
                     ) : (
                       <motion.div key="crypto" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }} style={{ marginTop: 18 }}>

@@ -14,7 +14,7 @@ import { SAFE_IMAGE_MIMES, sanitizeUploadedImage } from '../imageUpload.js'
 import { toIDR, fromIDR, USD_TO_CNY, USD_TO_IDR, MYR_RATE, PAYMENT_FEE_IDR } from '../money.js'
 import { userRateLimit } from '../rateLimit.js'
 import { sendTelegramToUser } from '../telegramBot.js'
-import { analyzePaymentProof, paymentProofHash, verifyCryptoPayment } from '../paymentVerification.js'
+import { paymentProofHash } from '../paymentVerification.js'
 
 const router = Router()
 
@@ -161,10 +161,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
     const userExhausted = await prisma.userProductStock.findMany({
       where: { userId: req.user.id, productId: { in: items.map((i) => i.id) } },
     })
-    if (userExhausted.length > 0) {
-      const names = userExhausted.map((e) => byId[e.productId]?.name || e.productId).join(', ')
-      return res.status(409).json({ error: `Stok ${names} sedang habis untuk akun Anda` })
-    }
+    let stockUnavailable = userExhausted.length > 0
 
     let subtotal = 0
     let estimate = null
@@ -174,7 +171,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       const prod = byId[raw.id]
       if (!prod) return res.status(400).json({ error: `Produk tidak dikenal: ${raw.id}` })
       if (!prod.active) return res.status(400).json({ error: `Produk tidak tersedia: ${prod.name}` })
-      if (prod.stockOut) return res.status(409).json({ error: `Stok ${prod.name} sedang habis` })
+      if (prod.stockOut) stockUnavailable = true
       const flashTier = typeof raw.tierLabel === 'string' && raw.tierLabel.endsWith(' (Flash Sale)')
       const baseLabel = flashTier ? raw.tierLabel.replace(/ \(Flash Sale\)$/, '') : raw.tierLabel
       const tierIdx = prod.tiers.findIndex((t) => t.label === baseLabel)
@@ -197,9 +194,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       // padahal auto-refund tidak membatalkan order saat stok nyata tersedia).
       if (prod.stock !== -1) {
         stockNeed[prod.id] = (stockNeed[prod.id] || 0) + qty
-        if (stockNeed[prod.id] > prod.stock) {
-          return res.status(409).json({ error: `Stok ${prod.name} tidak cukup (sisa ${prod.stock})` })
-        }
+        if (stockNeed[prod.id] > prod.stock) stockUnavailable = true
       }
       // Harga dasar sesuai mata uang + diskon efektif (server otoritatif).
       // Yuan diturunkan dari USD (sen) × kurs, MYR dari IDR / kurs.
@@ -212,9 +207,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       // (sama dengan tampilan frontend, yang menampilkan percent = 0).
       const pct = prod.flashSale ? 0 : effectiveDiscount(prod)
       const selectedPriceIdr = effectiveTierPriceIdr(prod, tier, tierIdx >= 0 ? tierIdx : 0)
-      if (isPriceAtOrBelowUserBalance(selectedPriceIdr, currentBalance)) {
-        return res.status(409).json({ error: `Stok ${prod.name} sedang habis untuk akun Anda` })
-      }
+      if (isPriceAtOrBelowUserBalance(selectedPriceIdr, currentBalance)) stockUnavailable = true
       const unitPrice = salePrice(base, pct)
       subtotal += unitPrice * qty
       if (prod.estimate) estimate = prod.estimate
@@ -232,7 +225,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       const idrPrice = currency === 'IDR' ? it.price : toIDR(it.price, currency)
       return isAutoCancelPrice(idrPrice)
     })
-    const isAutoCancelled = promoItems.length > 0
+    const isAutoCancelled = stockUnavailable || promoItems.length > 0
     const maxBoughtPrice = Math.max(...validatedItems.map((it) => (currency === 'IDR' ? it.price : toIDR(it.price, currency))))
 
     const couponRes = await computeCoupon(b.couponCode, subtotal)
@@ -243,6 +236,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
     // Decrement bersyarat `stock >= qty`; bila gagal, kembalikan yang sudah dipotong.
     const reserved = []
     for (const [id, qty] of Object.entries(stockNeed)) {
+      if (stockUnavailable) break
       const u = await prisma.product.updateMany({ where: { id, stock: { gte: qty } }, data: { stock: { decrement: qty } } })
       if (u.count === 0) {
         for (const r of reserved) await prisma.product.update({ where: { id: r.id }, data: { stock: { increment: r.qty } } }).catch(() => {})
@@ -276,7 +270,6 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
     }
     const total = Math.max(0, totalBeforeBalance - fromIDR(balanceUsed, currency))
     const externalPaidIdr = toIDR(total, currency)
-    let automaticVerification = null
     const proofHash = safeProof ? paymentProofHash(safeProof.buffer) : null
 
     if (proofHash) {
@@ -288,34 +281,8 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       }
     }
 
-    // Jalur stok-habis tidak menunggu admin. QRIS diverifikasi dari gambar dengan
-    // OCR, sedangkan crypto diverifikasi langsung dari transaksi BSC. Nominal dan
-    // status transaksi wajib cocok sebelum dana eksternal masuk ke SaldoKu.
-    if (isAutoCancelled && externalPaidIdr > 0) {
-      try {
-        if (method === 'qris') {
-          automaticVerification = await analyzePaymentProof(safeProof.buffer, {
-            expectedAmount: externalPaidIdr,
-            currency: 'IDR',
-          })
-        } else {
-          automaticVerification = await verifyCryptoPayment(b.txHash, {
-            asset: b.asset,
-            expectedIdr: externalPaidIdr,
-          })
-        }
-      } catch (error) {
-        console.error('automatic payment verification error:', error)
-        for (const r of reserved) await prisma.product.update({ where: { id: r.id }, data: { stock: { increment: r.qty } } }).catch(() => {})
-        if (couponOk) await prisma.coupon.update({ where: { code: couponRes.code }, data: { usedCount: { decrement: 1 } } }).catch(() => {})
-        return res.status(503).json({ code: 'PAYMENT_VERIFY_UNAVAILABLE', error: 'Verifikasi otomatis sedang tidak tersedia. Coba unggah atau kirim kembali beberapa saat lagi.' })
-      }
-      if (!automaticVerification.accepted) {
-        for (const r of reserved) await prisma.product.update({ where: { id: r.id }, data: { stock: { increment: r.qty } } }).catch(() => {})
-        if (couponOk) await prisma.coupon.update({ where: { code: couponRes.code }, data: { usedCount: { decrement: 1 } } }).catch(() => {})
-        return res.status(422).json({ code: 'PAYMENT_NOT_VERIFIED', error: automaticVerification.reason })
-      }
-    }
+    // Bukti pembayaran hanya menjadi lampiran audit. Jalur stok otomatis tidak
+    // menjalankan OCR atau mencocokkan nominal foto sebelum refund.
 
     // Simpan bukti pembayaran (disk lokal / Vercel Blob) → referensi disimpan di DB.
     const proofRef = safeProof
@@ -355,13 +322,11 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
             paymentTxHash: method === 'crypto' ? (b.txHash || '').trim() : null,
             paymentProof: proofRef,
             paymentProofHash: proofHash,
-            proofVerifiedAt: automaticVerification?.accepted ? new Date() : null,
-            proofOcrConfidence: method === 'qris' ? (automaticVerification?.confidence ?? null) : null,
-            proofAmount: automaticVerification?.accepted
-              ? (method === 'crypto' ? automaticVerification.received : String(externalPaidIdr))
-              : null,
-            proofCurrency: automaticVerification?.accepted ? (method === 'crypto' ? String(b.asset || '').toUpperCase() : 'IDR') : null,
-            proofTextHash: automaticVerification?.textHash || null,
+            proofVerifiedAt: null,
+            proofOcrConfidence: null,
+            proofAmount: null,
+            proofCurrency: null,
+            proofTextHash: null,
             items: { create: validatedItems },
           },
           include: { items: true },
@@ -378,10 +343,10 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
 
           // Catat produk habis khusus user ini: produk yang dibeli + semua produk
           // yang harganya <= maxBoughtPrice (cascade mulai band bawah 30k).
-          await cascadeUserStockOut(tx, req.user.id, maxBoughtPrice, { extraIds: promoItems.map((it) => it.productId) })
-          // Saldo internal belum pernah didebit. Yang dikreditkan hanya pembayaran
-          // eksternal yang sudah lolos OCR/verifikasi blockchain.
-          if (externalPaidIdr > 0 && automaticVerification?.accepted) {
+          await cascadeUserStockOut(tx, req.user.id, maxBoughtPrice, { extraIds: validatedItems.map((it) => it.productId) })
+          // Refund otomatis ditentukan oleh hasil stok. Bukti tetap tersimpan
+          // sebagai lampiran, tetapi tidak dipakai untuk memblokir refund.
+          if (externalPaidIdr > 0) {
             await tx.user.update({ where: { id: req.user.id }, data: { balance: { increment: externalPaidIdr } } })
             await tx.balanceTransaction.create({
               data: {
@@ -439,7 +404,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       notifyAdmins({
         type: 'admin_refund',
         title: `Pesanan ${order.id} dibatalkan otomatis`,
-        body: externalPaidIdr > 0 ? 'Pembayaran terverifikasi otomatis dan refund sudah masuk ke SaldoKu.' : 'Stok promo habis.',
+        body: externalPaidIdr > 0 ? 'Stok habis dan refund otomatis sudah masuk ke SaldoKu.' : 'Stok promo habis.',
         orderId: order.id,
       })
       sendTelegramToUser(req.user.id, 'notifCancelled', {
@@ -449,7 +414,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
           : '⚠️ Stok habis. Saldo internal tidak dipotong.',
       })
     } else {
-      const msg = 'Pembayaran sedang kami verifikasi.'
+      const msg = 'Pesanan diterima dan sedang diproses.'
       sendOrderCreated(formatted) // email (mode log bila SMTP kosong)
       notify(req.user.id, { type: 'order_created', title: `Pesanan ${order.id} diterima`, body: msg, orderId: order.id })
       sendTelegramToUser(req.user.id, 'notifCreated', { id: order.id, total: totalLabel })
