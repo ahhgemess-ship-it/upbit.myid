@@ -54,6 +54,9 @@ ul { list-style: none; }
 }
 .promotion-shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(7,10,28,.96) 0%, rgba(7,10,28,.82) 34%, rgba(7,10,28,.08) 78%, rgba(7,10,28,.18) 100%); }
 .promotion-copy { position: relative; z-index: 1; width: min(570px, 70%); padding: clamp(28px, 5vw, 54px); color: #fff; }
+.promotion-copy-minimal { position: absolute; inset: 0; width: 100%; padding: 0; pointer-events: none; }
+.promotion-copy-minimal .promotion-cta { position: absolute; left: clamp(28px, 5vw, 54px); bottom: 30px; pointer-events: auto; }
+.promotion-sr-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .promotion-brand { display: flex; align-items: center; gap: 9px; margin-bottom: 24px; color: var(--lime); font-family: var(--font-display); font-size: 11px; font-weight: 800; letter-spacing: .13em; }
 .promotion-brand img { width: 26px; height: 26px; object-fit: contain; }
 .promotion-eyebrow { display: inline-flex; align-items: center; gap: 6px; color: var(--lime); font-size: 11px; font-weight: 800; letter-spacing: .14em; }
@@ -72,9 +75,10 @@ ul { list-style: none; }
 @media (max-width: 640px) {
   .promotion-section { padding-top: 24px; }
   .promotion-carousel, .promotion-slide { min-height: 430px; }
-  .promotion-slide { background-position: 62% center; }
+  .promotion-slide { background-position: left center; }
   .promotion-shade { background: linear-gradient(180deg, rgba(7,10,28,.18) 0%, rgba(7,10,28,.78) 45%, rgba(7,10,28,.98) 100%); }
-  .promotion-copy { width: 100%; padding: 28px 24px 58px; margin-top: 132px; }
+  .promotion-copy { width: 100%; padding: 0; margin-top: 0; }
+  .promotion-copy-minimal .promotion-cta { left: 24px; bottom: 60px; }
   .promotion-brand { margin-bottom: 15px; }
   .promotion-title { font-size: clamp(1.9rem, 10vw, 2.7rem); }
   .promotion-note { font-size: 13px; }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowUpRight, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react'
+import { ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 const campaigns = [
@@ -63,15 +63,8 @@ export default function PromotionCarousel() {
             style={{ backgroundImage: `url(${campaign.image})` }}
           >
             <div className="promotion-shade" />
-            <div className="promotion-copy">
-              <div className="promotion-brand">
-                <img src="/upbit-store-mark.png" alt="Upbit Store" />
-                <span>UPBIT STORE</span>
-              </div>
-              <span className="promotion-eyebrow"><Sparkles size={14} /> {campaign.eyebrow}</span>
-              <h2 className="display promotion-title">{campaign.title}</h2>
-              <p className="promotion-offer">{campaign.offer}</p>
-              <p className="promotion-note">{campaign.note}</p>
+            <div className="promotion-copy promotion-copy-minimal">
+              <span className="promotion-sr-text">{campaign.title} · {campaign.offer}. {campaign.note}</span>
               <Link to="/store" className="pill promotion-cta">
                 Lihat promo <span className="pill-ic"><ArrowUpRight size={16} /></span>
               </Link>
