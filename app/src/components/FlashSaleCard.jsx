@@ -42,10 +42,13 @@ export default function FlashSaleCard({ product, index = 0 }) {
   // hash id) supaya kartu flash sale selalu terasa langka, bukan "Stok ∞".
   const realStock = stock >= 0
   const left = realStock ? Math.max(0, stock) : 5 + (hashId(product.id) % 16)
-  const pct = left === 0 ? 100 : Math.min(95, Math.max(5, Math.round(100 - (left / Math.max(left + sold, 1)) * 100)))
   const soldOutByStock = realStock && left === 0
   const unavailable = stockOut || soldOutByStock
-  const almostGone = realStock && left > 0 && left <= Math.max(3, Math.ceil((left + sold) * 0.2))
+  // Status stok habis adalah status visual FE; jangan tampilkan sisa stok DB
+  // ketika katalog sudah dikunci untuk user atau produk tersebut.
+  const displayLeft = unavailable ? 0 : left
+  const pct = displayLeft === 0 ? 100 : Math.min(95, Math.max(5, Math.round(100 - (displayLeft / Math.max(displayLeft + sold, 1)) * 100)))
+  const almostGone = realStock && displayLeft > 0 && displayLeft <= Math.max(3, Math.ceil((displayLeft + sold) * 0.2))
 
   const sale = amountFor({ price: selTier.price, priceIntl: selTier.priceIntl }, region)
   const orig = amountFor({ price: selTier.original, priceIntl: selTier.originalIntl }, region)
@@ -138,7 +141,7 @@ export default function FlashSaleCard({ product, index = 0 }) {
             <span className={almostGone ? 'sale-hot' : ''}>
               {almostGone ? t('flash.almostGone') : t('flash.soldLabel')} {sold}
             </span>
-            <span className="text-muted">{`${t('flash.left')} ${left}`}</span>
+            <span className="text-muted">{`${t('flash.left')} ${displayLeft}`}</span>
           </div>
         </div>
 
