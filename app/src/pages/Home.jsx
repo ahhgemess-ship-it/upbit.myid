@@ -6,6 +6,7 @@ import Marquee from '../components/Marquee.jsx'
 import ProductCard from '../components/ProductCard.jsx'
 import FlashSaleCard from '../components/FlashSaleCard.jsx'
 import Countdown from '../components/Countdown.jsx'
+import PromotionCarousel from '../components/PromotionCarousel.jsx'
 import Asterisk from '../components/Asterisk.jsx'
 import { useCatalog } from '../context/CatalogContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
@@ -42,6 +43,8 @@ export default function Home() {
       <div style={{ marginTop: 30 }}>
         <Marquee />
       </div>
+
+      <PromotionCarousel />
 
       {/* Banner privasi akun */}
       <section className="container" style={{ paddingTop: 32 }}>
