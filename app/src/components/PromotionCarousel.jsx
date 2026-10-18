@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 const campaigns = [
   {
     image: '/promotions/gemini-ultra.png',
+    mobileImage: '/promotions/gemini-ultra-mobile.png',
     eyebrow: 'PRIVATE ACCESS',
     title: 'Gemini Ultra',
     offer: '6 Bulan Private',
@@ -14,6 +15,7 @@ const campaigns = [
   },
   {
     image: '/promotions/gemini-pro.png',
+    mobileImage: '/promotions/gemini-pro-mobile.png',
     eyebrow: 'LONG-TERM VALUE',
     title: 'Gemini',
     offer: '18 Bulan Pro',
@@ -22,6 +24,7 @@ const campaigns = [
   },
   {
     image: '/promotions/chatgpt-plus.png',
+    mobileImage: '/promotions/chatgpt-plus-mobile.png',
     eyebrow: 'LIMITED CAMPAIGN',
     title: 'ChatGPT Plus',
     offer: '1 Bulan · Diskon up to 90%',
@@ -60,14 +63,16 @@ export default function PromotionCarousel() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -26 }}
             transition={{ duration: 0.45, ease: 'easeOut' }}
-            style={{ backgroundImage: `url(${campaign.image})` }}
           >
-            <div className="promotion-copy promotion-copy-minimal">
-              <span className="promotion-sr-text">{campaign.title} · {campaign.offer}. {campaign.note}</span>
-              <Link to="/store" className="pill promotion-cta">
-                Lihat promo <span className="pill-ic"><ArrowUpRight size={16} /></span>
-              </Link>
-            </div>
+            <picture className="promotion-art" aria-hidden="true">
+              <source media="(max-width: 640px)" srcSet={campaign.mobileImage} />
+              <img src={campaign.image} alt="" />
+            </picture>
+            <Link
+              to="/store"
+              className="promotion-link"
+              aria-label={`Lihat promo ${campaign.title}, ${campaign.offer}`}
+            />
           </motion.div>
         </AnimatePresence>
 
