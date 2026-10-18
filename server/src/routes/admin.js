@@ -247,6 +247,7 @@ function parseProductBody(b, { partial = false } = {}) {
   return d
 }
 const slugify = (s) => (s || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)
+const randomPublicStock = () => 2 + Math.floor(Math.random() * 19) // 2–20, inclusive
 
 // ══════════════════ ORDER MANAGEMENT: tambah & edit manual ══════════════════
 
@@ -457,7 +458,7 @@ router.post('/products', async (req, res) => {
   const firstTier = (Array.isArray(b.tiers) ? b.tiers : [])[0] || {}
   if (data.price === undefined) data.price = parseInt(firstTier.price, 10) || 0
   if (data.priceIntl === undefined) data.priceIntl = parseInt(firstTier.priceIntl, 10) || 0
-  if (data.stock === undefined) data.stock = -1
+  if (data.stock === undefined || data.stock === -1) data.stock = randomPublicStock()
   try {
     const p = await prisma.product.create({ data: { id, ...data } })
     res.status(201).json({ product: formatProduct(p, { admin: true }) })

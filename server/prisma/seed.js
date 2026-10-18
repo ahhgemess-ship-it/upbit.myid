@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client'
 import { products } from '../../app/src/data/products.js'
 
 const prisma = new PrismaClient()
+const randomPublicStock = () => 2 + Math.floor(Math.random() * 19) // 2–20, inclusive
 
 async function main() {
   // Katalog dipecah per tier — hapus produk lama agar id lama tidak menumpuk.
@@ -62,7 +63,7 @@ async function main() {
     await prisma.product.upsert({
       where: { id: p.id },
       update: adminPriced ? data : { ...data, ...flashData },
-      create: { id: p.id, stock: -1, active: true, sold, flashSale: p.category === 'Promo', ...data, ...flashData },
+      create: { id: p.id, stock: randomPublicStock(), active: true, sold, flashSale: p.category === 'Promo', ...data, ...flashData },
     })
   }
   // Kupon TIDAK di-seed — dibuat oleh admin lewat panel.
