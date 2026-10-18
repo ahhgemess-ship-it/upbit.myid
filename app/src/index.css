@@ -46,16 +46,16 @@ ul { list-style: none; }
 .section { padding: 84px 0; }
 .promotion-section { padding-top: 32px; }
 .promotion-carousel {
-  position: relative; min-height: 354px; overflow: hidden; border: 1.5px solid var(--ink);
-  border-radius: 28px; background: var(--ink); box-shadow: var(--shadow-lift);
+  position: relative; aspect-ratio: 2.25 / 1; overflow: hidden; border: 1.5px solid var(--ink);
+  border-radius: 28px; background: var(--surface); box-shadow: var(--shadow);
 }
 .promotion-slide {
-  position: absolute; inset: 0; min-height: 354px; background-position: center; background-size: cover;
+  position: absolute; inset: 0; background-position: center; background-size: cover;
 }
-.promotion-shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(7,10,28,.96) 0%, rgba(7,10,28,.82) 34%, rgba(7,10,28,.08) 78%, rgba(7,10,28,.18) 100%); }
 .promotion-copy { position: relative; z-index: 1; width: min(570px, 70%); padding: clamp(28px, 5vw, 54px); color: #fff; }
 .promotion-copy-minimal { position: absolute; inset: 0; width: 100%; padding: 0; pointer-events: none; }
-.promotion-copy-minimal .promotion-cta { position: absolute; left: clamp(28px, 5vw, 54px); bottom: 30px; pointer-events: auto; }
+.promotion-copy-minimal .promotion-cta { position: absolute; right: 28px; bottom: 24px; pointer-events: auto; background: var(--surface); border-color: var(--ink); color: var(--ink); box-shadow: 0 2px 0 rgba(43,43,40,.14); }
+.promotion-copy-minimal .promotion-cta .pill-ic { background: var(--ink); color: var(--lime); }
 .promotion-sr-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .promotion-brand { display: flex; align-items: center; gap: 9px; margin-bottom: 24px; color: var(--lime); font-family: var(--font-display); font-size: 11px; font-weight: 800; letter-spacing: .13em; }
 .promotion-brand img { width: 26px; height: 26px; object-fit: contain; }
@@ -65,24 +65,25 @@ ul { list-style: none; }
 .promotion-note { max-width: 390px; margin-top: 9px; color: rgba(255,255,255,.73); font-size: 14px; }
 .promotion-cta { margin-top: 24px; background: var(--lime); border-color: var(--lime); color: var(--ink); }
 .promotion-cta .pill-ic { background: var(--ink); color: var(--lime); }
-.promotion-arrow { position: absolute; z-index: 3; top: 50%; display: grid; place-items: center; width: 40px; height: 40px; transform: translateY(-50%); border: 1px solid rgba(255,255,255,.45); border-radius: 999px; background: rgba(7,10,28,.55); color: #fff; backdrop-filter: blur(8px); transition: background .2s ease, transform .2s ease; }
-.promotion-arrow:hover { background: var(--indigo); transform: translateY(-50%) scale(1.06); }
+.promotion-arrow { position: absolute; z-index: 3; top: 50%; display: grid; place-items: center; width: 40px; height: 40px; transform: translateY(-50%); border: 1.5px solid var(--ink); border-radius: 999px; background: var(--surface); color: var(--ink); transition: background .2s ease, color .2s ease, transform .2s ease; }
+.promotion-arrow:hover { background: var(--ink); color: var(--lime); transform: translateY(-50%) scale(1.06); }
 .promotion-prev { left: 18px; }
 .promotion-next { right: 18px; }
 .promotion-dots { position: absolute; z-index: 3; right: 28px; bottom: 22px; display: flex; gap: 7px; }
-.promotion-dots button { width: 26px; height: 5px; border-radius: 99px; background: rgba(255,255,255,.38); transition: width .25s ease, background .25s ease; }
+.promotion-dots button { width: 26px; height: 5px; border-radius: 99px; background: rgba(43,43,40,.34); transition: width .25s ease, background .25s ease; }
 .promotion-dots button.is-active { width: 48px; background: var(--lime); }
 @media (max-width: 640px) {
   .promotion-section { padding-top: 24px; }
-  .promotion-carousel, .promotion-slide { min-height: 430px; }
+  .promotion-carousel { aspect-ratio: auto; min-height: 430px; }
+  .promotion-slide { min-height: 430px; }
   .promotion-slide { background-position: left center; }
   .promotion-shade { background: linear-gradient(180deg, rgba(7,10,28,.18) 0%, rgba(7,10,28,.78) 45%, rgba(7,10,28,.98) 100%); }
   .promotion-copy { width: 100%; padding: 0; margin-top: 0; }
-  .promotion-copy-minimal .promotion-cta { left: 24px; bottom: 60px; }
+  .promotion-copy-minimal .promotion-cta { right: 18px; bottom: 18px; }
   .promotion-brand { margin-bottom: 15px; }
   .promotion-title { font-size: clamp(1.9rem, 10vw, 2.7rem); }
   .promotion-note { font-size: 13px; }
-  .promotion-arrow { top: 25px; transform: none; width: 36px; height: 36px; }
+  .promotion-arrow { top: 18px; transform: none; width: 40px; height: 40px; }
   .promotion-arrow:hover { transform: scale(1.06); }
   .promotion-prev { left: auto; right: 62px; }
   .promotion-next { right: 20px; }

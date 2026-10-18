@@ -62,7 +62,6 @@ export default function PromotionCarousel() {
             transition={{ duration: 0.45, ease: 'easeOut' }}
             style={{ backgroundImage: `url(${campaign.image})` }}
           >
-            <div className="promotion-shade" />
             <div className="promotion-copy promotion-copy-minimal">
               <span className="promotion-sr-text">{campaign.title} · {campaign.offer}. {campaign.note}</span>
               <Link to="/store" className="pill promotion-cta">
