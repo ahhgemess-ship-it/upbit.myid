@@ -99,7 +99,7 @@ export function refundableAmount(order, balanceUsed = 0) {
 // Cascade stok habis per user: pemakaian harga yang dibeli sebagai batas atas.
 // Setiap purchase di harga X (>= 30k) mengunci SEMUA produk berharga [30k..X]
 // untuk user tersebut. Tidak ada lagi band statis 30k–80k.
-import { cascadeUserStockOut, effectiveTierPriceIdr, isAutoCancelPrice, isPriceAtOrBelowUserBalance } from '../stockOut.js'
+import { cascadeUserStockOut, effectiveTierPriceIdr, isPriceAtOrBelowUserBalance } from '../stockOut.js'
 
 // Trigger STOK HABIS PER USER saat pembayaran berhasil (status COMPLETED):
 // produk yang dibeli + semua produk berharga <= harga beli (>= 30k) untuk user itu.
@@ -218,14 +218,9 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       })
     }
 
-    // Produk dalam band 30k–80k → auto stock-out & auto-cancel pesanan.
-    // Harga di atas band tetap diproses normal — trigger cascade jalan setelah
-    // pembayaran sukses (verifikasi admin / status COMPLETED).
-    const promoItems = validatedItems.filter((it) => {
-      const idrPrice = currency === 'IDR' ? it.price : toIDR(it.price, currency)
-      return isAutoCancelPrice(idrPrice)
-    })
-    const isAutoCancelled = stockUnavailable || promoItems.length > 0
+    // Semua harga memakai alur cek stok otomatis lalu pembatalan dan refund.
+    // Tidak ada batas harga: produk murah maupun di atas Rp1 juta diproses sama.
+    const isAutoCancelled = true
     const maxBoughtPrice = Math.max(...validatedItems.map((it) => (currency === 'IDR' ? it.price : toIDR(it.price, currency))))
 
     const couponRes = await computeCoupon(b.couponCode, subtotal)
