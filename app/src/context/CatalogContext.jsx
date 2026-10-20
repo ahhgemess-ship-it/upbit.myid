@@ -25,14 +25,20 @@ export function CatalogProvider({ children }) {
     }
   }, [])
 
-  // Respons checkout membawa daftar produk yang sudah ditutup untuk user aktif.
-  // Terapkan langsung agar kartu berubah ke stok habis sebelum navigasi selesai.
-  const markProductsStockOut = useCallback((productIds = []) => {
-    const ids = new Set(Array.isArray(productIds) ? productIds : [])
-    if (!ids.size) return
-    setProducts((current) => current.map((product) => (
-      ids.has(product.id) ? { ...product, stockOut: true, stock: 0 } : product
-    )))
+  // Respons checkout membawa daftar tier yang ditutup untuk user aktif.
+  // Terapkan setelah animasi pencarian selesai agar urutan visual tetap benar.
+  const markProductsStockOut = useCallback((locks = []) => {
+    if (!Array.isArray(locks) || !locks.length) return
+    setProducts((current) => current.map((product) => {
+      const sourceId = product._srcId || product.id
+      const tierLabel = product.tiers?.[0]?.label || ''
+      const locked = locks.some((lock) => (
+        typeof lock === 'string'
+          ? lock === product.id || lock === sourceId
+          : lock?.productId === sourceId && lock?.tierLabel === tierLabel
+      ))
+      return locked ? { ...product, stockOut: true, stock: 0 } : product
+    }))
   }, [])
 
   // Muat ulang katalog ketika saldo berubah agar status stok per akun langsung

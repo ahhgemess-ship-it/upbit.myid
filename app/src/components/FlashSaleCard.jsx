@@ -92,7 +92,7 @@ export default function FlashSaleCard({ product, index = 0 }) {
           }}>
             <div style={{ textAlign: 'center' }}>
               <Ban size={36} style={{ color: 'var(--muted)', margin: '0 auto 8px' }} />
-              <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--muted)', display: 'block' }}>Stok Habis</span>
+              <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--muted)', display: 'block' }}>{t('stock.cardEmpty')}</span>
             </div>
           </div>
         )}

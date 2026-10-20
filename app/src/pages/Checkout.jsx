@@ -14,7 +14,6 @@ import { api } from '../api.js'
 import { useCart } from '../context/CartContext.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useBalance } from '../context/BalanceContext.jsx'
-import { useCatalog } from '../context/CatalogContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 import { localizeTier } from '../i18n/productContent.js'
@@ -26,8 +25,7 @@ export default function Checkout() {
   const navigate = useNavigate()
   const { items, clear } = useCart()
   const { user } = useAuth()
-  const { balance, fetchBalance, applyBalance } = useBalance()
-  const { refresh: refreshCatalog, markProductsStockOut } = useCatalog()
+  const { balance } = useBalance()
   const { toast } = useToast()
   const [useSaldo, setUseSaldo] = useState(false)
   const { t } = useLang()
@@ -254,16 +252,15 @@ export default function Checkout() {
       if (useSaldo && balanceDiscount > 0) {
         form.append('useBalance', String(balanceDiscountIdr))
       }
-      const { order, stockOut, balance: updatedBalance, exhaustedProductIds } = await api.createOrder(form)
-      if (stockOut) {
-        applyBalance(updatedBalance)
-        markProductsStockOut(exhaustedProductIds)
-      }
-      refreshCatalog().catch(() => {})
-      toast(t(stockOut ? 'co.stockRefunded' : 'co.paymentSent'), 'success', 3200)
-      if (stockOut || (useSaldo && balanceDiscount > 0)) fetchBalance().catch(() => {})
+      const { order, stockOut, balance: updatedBalance, exhaustedTiers } = await api.createOrder(form)
+      if (!stockOut) toast(t('co.paymentSent'), 'success', 3200)
       // Navigasi dulu, baru clear — cegah flash Gate (keranjang kosong) sebelum pindah halaman
-      navigate(`/orders/${order.id}`, { replace: true })
+      navigate(`/orders/${order.id}`, {
+        replace: true,
+        state: stockOut
+          ? { stockResult: { balance: updatedBalance, exhaustedTiers: exhaustedTiers || [] } }
+          : null,
+      })
       setTimeout(() => clear(), 100)
     } catch (e) {
       setSubmitting(false)

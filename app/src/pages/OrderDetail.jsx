@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   CheckCircle2, Clock, Copy, Check, KeyRound, User as UserIcon,
@@ -12,20 +12,25 @@ import { CRYPTO } from '../data/payment.js'
 import { api } from '../api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useBalance } from '../context/BalanceContext.jsx'
+import { useCatalog } from '../context/CatalogContext.jsx'
 import { useToast } from '../context/ToastContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 import { localizeTier } from '../i18n/productContent.js'
 
 export default function OrderDetail() {
   const { id } = useParams()
+  const location = useLocation()
+  const navigate = useNavigate()
   const { user, ready } = useAuth()
-  const { balance } = useBalance()
+  const { applyBalance, fetchBalance } = useBalance()
+  const { markProductsStockOut, refresh: refreshCatalog } = useCatalog()
   const { toast } = useToast()
   const { t } = useLang()
   const [order, setOrder] = useState(null)
   const [state, setState] = useState('loading') // loading | ok | missing
   const [stockAnimation, setStockAnimation] = useState('searching') // searching | found | done
   const [copied, setCopied] = useState('')
+  const resultApplied = useRef(false)
 
   const showStockAnim = order && (order.status === 'PROCESSING' || (order.status === 'CANCELLED' && order.refundReason === 'Stok habis'))
   const isStockOutOrder = order && order.status === 'CANCELLED' && order.refundReason === 'Stok habis'
@@ -42,6 +47,21 @@ export default function OrderDetail() {
     }, 3000)
     return () => clearTimeout(t1)
   }, [order?.id, showStockAnim])
+
+  useEffect(() => {
+    const result = location.state?.stockResult
+    if (stockAnimation !== 'found' || !isStockOutOrder || !result || resultApplied.current) return
+    resultApplied.current = true
+    applyBalance(result.balance)
+    markProductsStockOut(result.exhaustedTiers || [])
+    refreshCatalog().catch(() => {})
+    fetchBalance().catch(() => {})
+    toast(t('co.stockRefunded'), 'success', 3200)
+    navigate(location.pathname, { replace: true, state: null })
+  }, [
+    applyBalance, fetchBalance, isStockOutOrder, location.pathname, location.state,
+    markProductsStockOut, navigate, refreshCatalog, stockAnimation, t, toast,
+  ])
 
   useEffect(() => {
     if (!ready) return
@@ -63,6 +83,7 @@ export default function OrderDetail() {
   const done = order.status === 'COMPLETED'
   const processing = order.status === 'PROCESSING'
   const cancelled = order.status === 'CANCELLED'
+  const visuallySearching = showStockAnim && stockAnimation === 'searching'
 
   const copy = async (text, tag) => {
     try {
@@ -76,8 +97,8 @@ export default function OrderDetail() {
     ? (CRYPTO.assets.find((a) => a.symbol === order.payment.asset)?.explorer || '')
     : ''
 
-  const statusLabel = done ? t('status.completed') : cancelled ? t('status.cancelled') : t('status.processing')
-  const statusCls = done ? 'st-done' : cancelled ? 'st-pending' : 'st-proc'
+  const statusLabel = visuallySearching ? t('stock.searching') : done ? t('status.completed') : cancelled ? t('status.cancelled') : t('status.processing')
+  const statusCls = done ? 'st-done' : visuallySearching ? 'st-proc' : cancelled ? 'st-pending' : 'st-proc'
 
   return (
     <div className="container section" style={{ maxWidth: 880 }}>
@@ -91,7 +112,7 @@ export default function OrderDetail() {
           display: 'grid', placeItems: 'center', width: 56, height: 56, borderRadius: 999,
           background: done ? 'var(--lime)' : 'var(--surface-2)', border: '1.5px solid var(--ink)', flexShrink: 0,
         }}>
-          {done ? <CheckCircle2 size={28} strokeWidth={2.4} /> : cancelled ? <XCircle size={26} /> : <Clock size={26} />}
+          {done ? <CheckCircle2 size={28} strokeWidth={2.4} /> : visuallySearching ? <Search size={26} /> : cancelled ? <XCircle size={26} /> : <Clock size={26} />}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -99,7 +120,8 @@ export default function OrderDetail() {
             <span className={`order-status ${statusCls}`}>{statusLabel}</span>
           </div>
           <p className="text-muted" style={{ fontSize: 13.5, marginTop: 4 }}>
-            {done ? t('od.doneDesc')
+            {visuallySearching ? t('stock.searchingDesc')
+              : done ? t('od.doneDesc')
               : cancelled ? t('od.cancelledDesc')
                 : `${t('od.processingDesc')}${order.estimate ? ` · ${t('od.estimate')} ${order.estimate}` : ''}.`}
           </p>
@@ -256,14 +278,14 @@ export default function OrderDetail() {
         </div>
       )}
 
-      {order.adminNote && (
+      {order.adminNote && !visuallySearching && (
         <div className="trust-band" style={{ marginBottom: 18 }}>
           <ShieldCheck size={16} color="var(--indigo)" />
-          <span style={{ fontSize: 13 }}>{t('od.adminNote')} {order.adminNote}</span>
+          <span style={{ fontSize: 13 }}>{t('od.adminNote')} {isStockOutOrder ? t('stock.empty') : order.adminNote}</span>
         </div>
       )}
 
-      <RefundSection order={order} onUpdated={setOrder} toast={toast} />
+      {!visuallySearching && <RefundSection order={order} onUpdated={setOrder} toast={toast} stockOut={isStockOutOrder} />}
 
       <div className="order-detail-grid">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -341,7 +363,7 @@ export default function OrderDetail() {
   )
 }
 
-function RefundSection({ order, onUpdated, toast }) {
+function RefundSection({ order, onUpdated, toast, stockOut = false }) {
   const { t } = useLang()
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
@@ -360,7 +382,7 @@ function RefundSection({ order, onUpdated, toast }) {
         <RotateCcw size={16} />
         <div style={{ flex: 1 }}>
           <strong style={{ fontSize: 13 }}>{map.label}</strong>
-          {order.refundReason && <div className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>{t('rf.yourReason')} {order.refundReason}</div>}
+          {order.refundReason && <div className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>{t('rf.yourReason')} {stockOut ? t('stock.empty') : order.refundReason}</div>}
           {order.refundNote && <div className="text-muted" style={{ fontSize: 12, marginTop: 2 }}>{t('rf.adminNote')} {order.refundNote}</div>}
         </div>
       </div>

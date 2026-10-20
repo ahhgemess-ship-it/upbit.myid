@@ -96,7 +96,7 @@ model Order {
   paymentAmount      String?
   paymentTxHash      String?   @unique
   paymentProof       String? // path file bukti
-  paymentProofHash   String?   @unique // cegah satu bukti dipakai ulang
+  paymentProofHash   String?   @unique // fingerprint bukti lama; checkout web baru menyimpan null
   proofVerifiedAt    DateTime?
   proofOcrConfidence Int?
   proofAmount        String?

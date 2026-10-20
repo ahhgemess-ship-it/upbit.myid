@@ -35,6 +35,8 @@ function splitFamily(p) {
     priceIntl: tier.priceIntl,
     // Status berbasis saldo melekat pada plan/tier, bukan seluruh keluarga.
     balanceStockOut: tier.balanceStockOut ?? false,
+    stockOut: Boolean(p.stockOut || tier.stockOut),
+    stock: p.stockOut || tier.stockOut ? 0 : p.stock,
     // Harga flash hanya milik paket utama (pertama); plan lain memakai harga katalognya.
     ...(i === 0 ? {} : { flashPrice: null, flashPriceIntl: null }),
     tiers: [tier],

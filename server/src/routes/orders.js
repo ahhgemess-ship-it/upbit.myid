@@ -14,7 +14,6 @@ import { SAFE_IMAGE_MIMES, sanitizeUploadedImage } from '../imageUpload.js'
 import { toIDR, fromIDR, USD_TO_CNY, USD_TO_IDR, MYR_RATE, PAYMENT_FEE_IDR } from '../money.js'
 import { userRateLimit } from '../rateLimit.js'
 import { sendTelegramToUser } from '../telegramBot.js'
-import { paymentProofHash } from '../paymentVerification.js'
 
 const router = Router()
 
@@ -99,17 +98,25 @@ export function refundableAmount(order, balanceUsed = 0) {
 // Cascade stok habis per user: pemakaian harga yang dibeli sebagai batas atas.
 // Setiap purchase di harga X (>= 30k) mengunci SEMUA produk berharga [30k..X]
 // untuk user tersebut. Tidak ada lagi band statis 30k–80k.
-import { cascadeUserStockOut, effectiveTierPriceIdr, isPriceAtOrBelowUserBalance } from '../stockOut.js'
+import {
+  cascadeUserStockOut,
+  effectiveTierPriceIdr,
+  isPriceAtOrBelowUserBalance,
+  isTierLocked,
+  shouldAutoCancelWebOrder,
+} from '../stockOut.js'
 
 // Trigger STOK HABIS PER USER saat pembayaran berhasil (status COMPLETED):
 // produk yang dibeli + semua produk berharga <= harga beli (>= 30k) untuk user itu.
 export async function triggerStockOutForOrder(order) {
   try {
     const items = order.items || []
-    const ids = [...new Set(items.map((it) => it.productId).filter(Boolean))]
-    if (!ids.length || !order.userId) return []
+    const tiers = items
+      .filter((it) => it.productId)
+      .map((it) => ({ productId: it.productId, tierLabel: it.tierLabel }))
+    if (!tiers.length || !order.userId) return []
     const maxIdr = Math.max(...items.map((it) => toIDR(it.price, order.currency)))
-    return await cascadeUserStockOut(null, order.userId, maxIdr, { extraIds: ids })
+    return await cascadeUserStockOut(null, order.userId, maxIdr, { extraTiers: tiers })
   } catch (e) {
     console.error('trigger stock-out error:', e)
     return []
@@ -159,9 +166,11 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
 
     // Cek jika produk sudah habis untuk user ini
     const userExhausted = await prisma.userProductStock.findMany({
-      where: { userId: req.user.id, productId: { in: items.map((i) => i.id) } },
+      where: { userId: req.user.id },
+      select: { productId: true },
     })
-    let stockUnavailable = userExhausted.length > 0
+    const userExhaustedSet = new Set(userExhausted.map((entry) => entry.productId))
+    let stockUnavailable = false
 
     let subtotal = 0
     let estimate = null
@@ -176,6 +185,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       const baseLabel = flashTier ? raw.tierLabel.replace(/ \(Flash Sale\)$/, '') : raw.tierLabel
       const tierIdx = prod.tiers.findIndex((t) => t.label === baseLabel)
       const tier = tierIdx >= 0 ? prod.tiers[tierIdx] : prod.tiers[0]
+      if (isTierLocked(userExhaustedSet, prod.id, tier?.label)) stockUnavailable = true
       // Harga flash hanya untuk tier utama (pertama) — konsisten dengan tampilan detail
       // produk. Tier lain selalu memakai harga katalognya, apa pun labelnya.
       // flashPrice harus > 0 untuk dianggap promo (0/null = pakai harga normal),
@@ -220,7 +230,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
 
     // Semua harga memakai alur cek stok otomatis lalu pembatalan dan refund.
     // Tidak ada batas harga: produk murah maupun di atas Rp1 juta diproses sama.
-    const isAutoCancelled = true
+    const isAutoCancelled = shouldAutoCancelWebOrder()
     const maxBoughtPrice = Math.max(...validatedItems.map((it) => (currency === 'IDR' ? it.price : toIDR(it.price, currency))))
 
     const couponRes = await computeCoupon(b.couponCode, subtotal)
@@ -265,17 +275,6 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
     }
     const total = Math.max(0, totalBeforeBalance - fromIDR(balanceUsed, currency))
     const externalPaidIdr = toIDR(total, currency)
-    const proofHash = safeProof ? paymentProofHash(safeProof.buffer) : null
-
-    if (proofHash) {
-      const usedProof = await prisma.order.findFirst({ where: { paymentProofHash: proofHash }, select: { id: true } })
-      if (usedProof) {
-        for (const r of reserved) await prisma.product.update({ where: { id: r.id }, data: { stock: { increment: r.qty } } }).catch(() => {})
-        if (couponOk) await prisma.coupon.update({ where: { code: couponRes.code }, data: { usedCount: { decrement: 1 } } }).catch(() => {})
-        return res.status(409).json({ code: 'PROOF_REUSED', error: 'Bukti pembayaran ini sudah pernah digunakan.' })
-      }
-    }
-
     // Bukti pembayaran hanya menjadi lampiran audit. Jalur stok otomatis tidak
     // menjalankan OCR atau mencocokkan nominal foto sebelum refund.
 
@@ -316,7 +315,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
             paymentAmount: method === 'crypto' ? (b.amount || null) : null,
             paymentTxHash: method === 'crypto' ? (b.txHash || '').trim() : null,
             paymentProof: proofRef,
-            paymentProofHash: proofHash,
+            paymentProofHash: null,
             proofVerifiedAt: null,
             proofOcrConfidence: null,
             proofAmount: null,
@@ -327,7 +326,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
           include: { items: true },
         })
 
-        let exhaustedProductIds = []
+        let exhaustedTiers = []
         if (isAutoCancelled) {
           // Kembalikan reservasi stok global karena order langsung dibatalkan otomatis
           for (const r of reserved) {
@@ -339,7 +338,9 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
 
           // Catat produk habis khusus user ini: produk yang dibeli + semua produk
           // yang harganya <= maxBoughtPrice (cascade mulai band bawah 30k).
-          exhaustedProductIds = await cascadeUserStockOut(tx, req.user.id, maxBoughtPrice, { extraIds: validatedItems.map((it) => it.productId) })
+          exhaustedTiers = await cascadeUserStockOut(tx, req.user.id, maxBoughtPrice, {
+            extraTiers: validatedItems.map((it) => ({ productId: it.productId, tierLabel: it.tierLabel })),
+          })
           // Refund otomatis ditentukan oleh hasil stok. Bukti tetap tersimpan
           // sebagai lampiran, tetapi tidak dipakai untuk memblokir refund.
           if (externalPaidIdr > 0) {
@@ -377,7 +378,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
         })
         return {
           order: o,
-          exhaustedProductIds,
+          exhaustedTiers,
           balance: balanceOwnerAfterOrder?.balance ?? currentBalance,
         }
       })
@@ -385,11 +386,11 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       // Gagal simpan order → kembalikan reservasi stok & kupon
       for (const r of reserved) await prisma.product.update({ where: { id: r.id }, data: { stock: { increment: r.qty } } }).catch(() => {})
       if (couponOk) await prisma.coupon.update({ where: { code: couponRes.code }, data: { usedCount: { decrement: 1 } } }).catch(() => {})
-      if (e?.code === 'P2002') return res.status(409).json({ code: 'PROOF_REUSED', error: 'Bukti pembayaran atau Tx Hash sudah pernah digunakan.' })
+      if (e?.code === 'P2002') return res.status(409).json({ error: 'Tx Hash ini sudah pernah digunakan.' })
       throw e
     }
 
-    const { order, exhaustedProductIds, balance: userBalance } = transactionResult
+    const { order, exhaustedTiers, balance: userBalance } = transactionResult
 
     const formatted = formatOrder(order)
     const totalLabel =
@@ -430,7 +431,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       order: formatted,
       stockOut: isAutoCancelled,
       balance: userBalance,
-      exhaustedProductIds,
+      exhaustedTiers,
     })
   } catch (e) {
     console.error('create order error:', e)

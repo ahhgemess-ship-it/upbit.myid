@@ -4,7 +4,11 @@ import {
   effectiveTierPriceIdr,
   isAutoCancelPrice,
   isPriceAtOrBelowUserBalance,
+  isTierLocked,
   isTierStockOutForBalance,
+  shouldAutoCancelWebOrder,
+  tierLocksAtOrBelow,
+  tierStockKey,
 } from './stockOut.js'
 
 test('harga sama dengan atau di bawah saldo ditandai habis', () => {
@@ -17,12 +21,40 @@ test('harga sama dengan atau di bawah saldo ditandai habis', () => {
   assert.equal(isPriceAtOrBelowUserBalance(1, 0), false)
 })
 
-test('auto-cancel hanya berlaku pada band 30 ribu sampai 80 ribu', () => {
+test('band lama bot Telegram tetap 30 ribu sampai 80 ribu', () => {
   assert.equal(isAutoCancelPrice(29_999), false)
   assert.equal(isAutoCancelPrice(30_000), true)
   assert.equal(isAutoCancelPrice(35_000), true)
   assert.equal(isAutoCancelPrice(80_000), true)
   assert.equal(isAutoCancelPrice(80_001), false)
+})
+
+test('checkout web auto-cancel untuk semua harga', () => {
+  assert.equal(shouldAutoCancelWebOrder(1), true)
+  assert.equal(shouldAutoCancelWebOrder(35_000), true)
+  assert.equal(shouldAutoCancelWebOrder(1_500_000), true)
+})
+
+test('kunci tier murah tidak menutup tier mahal dalam keluarga yang sama', () => {
+  const product = {
+    id: 'chatgpt-plus',
+    price: 199_000,
+    tiers: [
+      { label: '3 Bulan', price: 199_000 },
+      { label: '6 Bulan', price: 260_000 },
+      { label: '1 Tahun', price: 851_000 },
+    ],
+  }
+  const locks = tierLocksAtOrBelow([product], 199_000)
+  const lockSet = new Set(locks.map((lock) => lock.key))
+  assert.equal(isTierLocked(lockSet, product.id, '3 Bulan'), true)
+  assert.equal(isTierLocked(lockSet, product.id, '6 Bulan'), false)
+  assert.equal(isTierLocked(lockSet, product.id, '1 Tahun'), false)
+})
+
+test('format kunci lama tetap menutup seluruh keluarga untuk kompatibilitas', () => {
+  assert.equal(isTierLocked(new Set(['chatgpt-plus']), 'chatgpt-plus', '1 Tahun'), true)
+  assert.equal(tierStockKey('chatgpt-plus', '1 Tahun'), 'chatgpt-plus::tier::1%20Tahun')
 })
 
 test('harga efektif menghormati diskon reguler', () => {

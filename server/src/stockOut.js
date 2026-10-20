@@ -56,15 +56,85 @@ export function isAutoCancelPrice(priceIdr) {
   return price >= STOCK_OUT_MIN && price <= STOCK_OUT_MAX
 }
 
+// Checkout web selalu memakai alur pencarian stok lalu batal + refund, berapa
+// pun harga produknya. Helper terpisah ini sengaja tidak mengubah band lama
+// yang masih dipakai bot Telegram.
+export function shouldAutoCancelWebOrder() {
+  return true
+}
+
+const TIER_KEY_MARKER = '::tier::'
+
+export function tierStockKey(productId, tierLabel) {
+  return `${productId}${TIER_KEY_MARKER}${encodeURIComponent(String(tierLabel || ''))}`
+}
+
+export function isTierLocked(lockSet, productId, tierLabel) {
+  if (!lockSet?.size || !productId) return false
+  // ID induk adalah format lama dan tetap berarti seluruh keluarga terkunci.
+  return lockSet.has(productId) || lockSet.has(tierStockKey(productId, tierLabel))
+}
+
+export function tiersOfProduct(p = {}) {
+  let tiers = []
+  try {
+    tiers = typeof p.tiers === 'string' ? JSON.parse(p.tiers || '[]') : (Array.isArray(p.tiers) ? p.tiers : [])
+  } catch { tiers = [] }
+  return tiers.length
+    ? tiers
+    : [{ label: p.period || 'Produk', price: p.price, priceIntl: p.priceIntl || 0 }]
+}
+
+export function tierLocksAtOrBelow(products = [], maxIdr, { min = STOCK_OUT_MIN } = {}) {
+  const locks = []
+  if (Number(maxIdr) < min) return locks
+  for (const product of products) {
+    tiersOfProduct(product).forEach((tier, tierIndex) => {
+      const price = effectiveTierPriceIdr(product, tier, tierIndex)
+      if (price >= min && price <= maxIdr) {
+        locks.push({ productId: product.id, tierLabel: tier.label, key: tierStockKey(product.id, tier.label) })
+      }
+    })
+  }
+  return locks
+}
+
 // Tandai produk-produk habis untuk SATU user:
 //   - produk yang dibeli (extraIds), ditambah
 //   - semua produk aktif yang punya harga di [min, maxIdr].
 // `tx` opsional (Prisma transaction client); tanpa tx → prisma global.
-export async function cascadeUserStockOut(tx, userId, maxIdr, { min = STOCK_OUT_MIN, extraIds = [] } = {}) {
+export async function cascadeUserStockOut(tx, userId, maxIdr, { min = STOCK_OUT_MIN, extraIds = [], extraTiers = null } = {}) {
   const db = tx || prisma
   // Produk yang dibeli sendiri selalu tercatat habis, terlepas dari harganya.
   // Cascade ke produk LAIN hanya berlaku bila harga beli mencapai batas bawah band.
   if (!userId) return []
+  // Jalur lama tetap tersedia khusus pemanggil lama (termasuk Telegram). Jalur
+  // web/admin mengirim extraTiers agar satu plan tidak menutup seluruh keluarga.
+  if (Array.isArray(extraTiers)) {
+    const products = maxIdr >= min
+      ? await db.product.findMany({ where: { active: true } })
+      : []
+    const locks = new Map()
+    for (const lock of tierLocksAtOrBelow(products, maxIdr, { min })) locks.set(lock.key, lock)
+    for (const tier of extraTiers) {
+      if (!tier?.productId) continue
+      const lock = {
+        productId: tier.productId,
+        tierLabel: tier.tierLabel || '',
+        key: tierStockKey(tier.productId, tier.tierLabel || ''),
+      }
+      locks.set(lock.key, lock)
+    }
+    for (const lock of locks.values()) {
+      await db.userProductStock.upsert({
+        where: { userId_productId: { userId, productId: lock.key } },
+        create: { userId, productId: lock.key },
+        update: {},
+      })
+    }
+    return [...locks.values()]
+  }
+
   const ids = new Set(extraIds)
   if (maxIdr >= min) {
     const products = await db.product.findMany({ where: { active: true } })

@@ -101,8 +101,8 @@ export default function ProductCard({ product: rawProduct, index = 0 }) {
           }}>
             <div style={{ textAlign: 'center' }}>
               <Ban size={36} style={{ color: 'var(--muted)', margin: '0 auto 8px' }} />
-              <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--muted)', display: 'block' }}>Stok Habis</span>
-              <span style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 2 }}>Tunggu restock berikutnya</span>
+              <span style={{ fontWeight: 800, fontSize: 15, color: 'var(--muted)', display: 'block' }}>{t('stock.cardEmpty')}</span>
+              <span style={{ fontSize: 12, color: 'var(--muted)', display: 'block', marginTop: 2 }}>{t('stock.cardWait')}</span>
             </div>
           </div>
         )}

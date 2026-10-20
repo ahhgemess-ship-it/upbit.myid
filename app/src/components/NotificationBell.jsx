@@ -121,12 +121,18 @@ export default function NotificationBell({ variant = 'desktop' }) {
               ) : (
                 items.map((n) => {
                   const Ic = ICON[n.type] || Bell
+                  const cancelledTitle = n.type === 'order_cancelled'
+                    ? `${t('notif.orderCancelled')} ${n.orderId || ''}`.trim()
+                    : n.title
+                  const cancelledBody = n.type === 'order_cancelled'
+                    ? t('notif.orderCancelledBody')
+                    : n.body
                   return (
                     <button key={n.id} onClick={() => openItem(n)} className={`notif-item ${n.read ? '' : 'is-unread'}`}>
                       <span className="notif-ic"><Ic size={16} /></span>
                       <span style={{ flex: 1, minWidth: 0 }}>
-                        <span className="notif-title">{n.title}</span>
-                        {n.body && <span className="notif-body">{n.body}</span>}
+                        <span className="notif-title">{cancelledTitle}</span>
+                        {cancelledBody && <span className="notif-body">{cancelledBody}</span>}
                         <span className="notif-time">{timeAgo(n.createdAt, t)}</span>
                       </span>
                       {!n.read && <span className="notif-unread-dot" />}
