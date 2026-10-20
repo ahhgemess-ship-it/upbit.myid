@@ -25,6 +25,16 @@ export function CatalogProvider({ children }) {
     }
   }, [])
 
+  // Respons checkout membawa daftar produk yang sudah ditutup untuk user aktif.
+  // Terapkan langsung agar kartu berubah ke stok habis sebelum navigasi selesai.
+  const markProductsStockOut = useCallback((productIds = []) => {
+    const ids = new Set(Array.isArray(productIds) ? productIds : [])
+    if (!ids.size) return
+    setProducts((current) => current.map((product) => (
+      ids.has(product.id) ? { ...product, stockOut: true, stock: 0 } : product
+    )))
+  }, [])
+
   // Muat ulang katalog ketika saldo berubah agar status stok per akun langsung
   // mengikuti top-up, refund, check-in, atau pemakaian saldo.
   useEffect(() => { refresh() }, [refresh, user?.id, balance, balanceLoaded])
@@ -66,8 +76,8 @@ export function CatalogProvider({ children }) {
   const categories = useMemo(() => [...new Set(balanceAwareProducts.map((p) => p.category))], [balanceAwareProducts])
 
   const value = useMemo(
-    () => ({ products: balanceAwareProducts, getProduct, discountFor, categories, loaded, refresh }),
-    [balanceAwareProducts, getProduct, discountFor, categories, loaded, refresh],
+    () => ({ products: balanceAwareProducts, getProduct, discountFor, categories, loaded, refresh, markProductsStockOut }),
+    [balanceAwareProducts, getProduct, discountFor, categories, loaded, refresh, markProductsStockOut],
   )
   return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>
 }

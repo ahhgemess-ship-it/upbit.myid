@@ -287,9 +287,9 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       : null
 
     const activation = b.activation === 'own' ? 'own' : 'new'
-    let order
+    let transactionResult
     try {
-      order = await prisma.$transaction(async (tx) => {
+      transactionResult = await prisma.$transaction(async (tx) => {
         const o = await tx.order.create({
           data: {
             id: makeOrderId(),
@@ -327,6 +327,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
           include: { items: true },
         })
 
+        let exhaustedProductIds = []
         if (isAutoCancelled) {
           // Kembalikan reservasi stok global karena order langsung dibatalkan otomatis
           for (const r of reserved) {
@@ -338,7 +339,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
 
           // Catat produk habis khusus user ini: produk yang dibeli + semua produk
           // yang harganya <= maxBoughtPrice (cascade mulai band bawah 30k).
-          await cascadeUserStockOut(tx, req.user.id, maxBoughtPrice, { extraIds: validatedItems.map((it) => it.productId) })
+          exhaustedProductIds = await cascadeUserStockOut(tx, req.user.id, maxBoughtPrice, { extraIds: validatedItems.map((it) => it.productId) })
           // Refund otomatis ditentukan oleh hasil stok. Bukti tetap tersimpan
           // sebagai lampiran, tetapi tidak dipakai untuk memblokir refund.
           if (externalPaidIdr > 0) {
@@ -370,7 +371,15 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
             },
           })
         }
-        return o
+        const balanceOwnerAfterOrder = await tx.user.findUnique({
+          where: { id: req.user.id },
+          select: { balance: true },
+        })
+        return {
+          order: o,
+          exhaustedProductIds,
+          balance: balanceOwnerAfterOrder?.balance ?? currentBalance,
+        }
       })
     } catch (e) {
       // Gagal simpan order → kembalikan reservasi stok & kupon
@@ -379,6 +388,8 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       if (e?.code === 'P2002') return res.status(409).json({ code: 'PROOF_REUSED', error: 'Bukti pembayaran atau Tx Hash sudah pernah digunakan.' })
       throw e
     }
+
+    const { order, exhaustedProductIds, balance: userBalance } = transactionResult
 
     const formatted = formatOrder(order)
     const totalLabel =
@@ -415,7 +426,12 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
       sendTelegramToUser(req.user.id, 'notifCreated', { id: order.id, total: totalLabel })
       notifyAdmins({ type: 'admin_new_order', title: `Pesanan baru ${order.id}`, body: `${formatted.items.length} item · ${totalLabel}`, orderId: order.id })
     }
-    res.status(201).json({ order: formatted, stockOut: isAutoCancelled })
+    res.status(201).json({
+      order: formatted,
+      stockOut: isAutoCancelled,
+      balance: userBalance,
+      exhaustedProductIds,
+    })
   } catch (e) {
     console.error('create order error:', e)
     if (e.message === 'Saldo tidak mencukupi') {

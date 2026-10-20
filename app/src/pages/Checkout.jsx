@@ -26,8 +26,8 @@ export default function Checkout() {
   const navigate = useNavigate()
   const { items, clear } = useCart()
   const { user } = useAuth()
-  const { balance, fetchBalance } = useBalance()
-  const { refresh: refreshCatalog } = useCatalog()
+  const { balance, fetchBalance, applyBalance } = useBalance()
+  const { refresh: refreshCatalog, markProductsStockOut } = useCatalog()
   const { toast } = useToast()
   const [useSaldo, setUseSaldo] = useState(false)
   const { t } = useLang()
@@ -254,7 +254,11 @@ export default function Checkout() {
       if (useSaldo && balanceDiscount > 0) {
         form.append('useBalance', String(balanceDiscountIdr))
       }
-      const { order, stockOut } = await api.createOrder(form)
+      const { order, stockOut, balance: updatedBalance, exhaustedProductIds } = await api.createOrder(form)
+      if (stockOut) {
+        applyBalance(updatedBalance)
+        markProductsStockOut(exhaustedProductIds)
+      }
       refreshCatalog().catch(() => {})
       toast(t(stockOut ? 'co.stockRefunded' : 'co.paymentSent'), 'success', 3200)
       if (stockOut || (useSaldo && balanceDiscount > 0)) fetchBalance().catch(() => {})

@@ -44,6 +44,15 @@ export function BalanceProvider({ children }) {
     }
   }, [user])
 
+  // Terapkan saldo otoritatif dari respons transaksi tanpa menunggu request
+  // balance berikutnya. Ini mencegah saldo refund terlihat terlambat setelah checkout.
+  const applyBalance = useCallback((nextBalance) => {
+    const parsed = Number(nextBalance)
+    if (!Number.isFinite(parsed)) return
+    setBalance(Math.max(0, Math.round(parsed)))
+    setLoaded(true)
+  }, [])
+
   // ──────────── Check‑in API ────────────
   const fetchCheckInStatus = useCallback(async () => {
     if (!user) return
@@ -98,14 +107,14 @@ export function BalanceProvider({ children }) {
   const value = useMemo(() => ({
     balance, totalSpent,
     history, loaded,
-    fetchBalance, fetchHistory,
+    fetchBalance, fetchHistory, applyBalance,
     // Check-in
     checkInStreak, canCheckIn, checkInReward, checkInBonus, checkInCycle,
     fetchCheckInStatus, doCheckIn,
   }), [
     balance, totalSpent,
     history, loaded,
-    fetchBalance, fetchHistory,
+    fetchBalance, fetchHistory, applyBalance,
     checkInStreak, canCheckIn, checkInReward, checkInBonus, checkInCycle,
     fetchCheckInStatus, doCheckIn,
   ])
