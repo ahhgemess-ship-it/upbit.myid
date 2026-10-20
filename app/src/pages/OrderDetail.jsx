@@ -26,8 +26,9 @@ export default function OrderDetail() {
   const { markProductsStockOut, refresh: refreshCatalog } = useCatalog()
   const { toast } = useToast()
   const { t } = useLang()
-  const [order, setOrder] = useState(null)
-  const [state, setState] = useState('loading') // loading | ok | missing
+  const seededOrder = useRef(location.state?.order?.id === id ? location.state.order : null)
+  const [order, setOrder] = useState(seededOrder.current)
+  const [state, setState] = useState(seededOrder.current ? 'ok' : 'loading') // loading | ok | missing
   const [stockAnimation, setStockAnimation] = useState('searching') // searching | found | done
   const [copied, setCopied] = useState('')
   const resultApplied = useRef(false)
@@ -69,7 +70,7 @@ export default function OrderDetail() {
     let on = true
     api.getOrder(id)
       .then((d) => { if (on) { setOrder(d.order); setState('ok') } })
-      .catch(() => on && setState('missing'))
+      .catch(() => { if (on && !seededOrder.current) setState('missing') })
     return () => { on = false }
   }, [id, user, ready])
 

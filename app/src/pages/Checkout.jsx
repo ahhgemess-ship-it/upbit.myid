@@ -257,9 +257,12 @@ export default function Checkout() {
       // Navigasi dulu, baru clear — cegah flash Gate (keranjang kosong) sebelum pindah halaman
       navigate(`/orders/${order.id}`, {
         replace: true,
-        state: stockOut
-          ? { stockResult: { balance: updatedBalance, exhaustedTiers: exhaustedTiers || [] } }
-          : null,
+        state: {
+          order,
+          ...(stockOut
+            ? { stockResult: { balance: updatedBalance, exhaustedTiers: exhaustedTiers || [] } }
+            : {}),
+        },
       })
       setTimeout(() => clear(), 100)
     } catch (e) {
