@@ -58,6 +58,24 @@ export function AuthProvider({ children }) {
     return u
   }, [])
 
+  const loginWithPassword = useCallback(async (identifier, password) => {
+    const deviceFingerprint = await createDeviceFingerprint()
+    const { user: u } = await api.passwordLogin(identifier, password, deviceFingerprint)
+    setToken(null)
+    localStorage.setItem(SESSION_KEY, JSON.stringify(u))
+    setUser(withInitials(u))
+    return u
+  }, [])
+
+  const registerWithPassword = useCallback(async (payload) => {
+    const deviceFingerprint = await createDeviceFingerprint()
+    const { user: u } = await api.passwordRegister(payload, deviceFingerprint)
+    setToken(null)
+    localStorage.setItem(SESSION_KEY, JSON.stringify(u))
+    setUser(withInitials(u))
+    return u
+  }, [])
+
   const logout = useCallback(() => {
     api.logout().catch(() => {})
     setToken(null)
@@ -66,8 +84,8 @@ export function AuthProvider({ children }) {
   }, [])
 
   const value = useMemo(
-    () => ({ user, ready, isAdmin: user?.role === 'ADMIN', loginWithGoogle, logout }),
-    [user, ready, loginWithGoogle, logout],
+    () => ({ user, ready, isAdmin: user?.role === 'ADMIN', loginWithGoogle, loginWithPassword, registerWithPassword, logout }),
+    [user, ready, loginWithGoogle, loginWithPassword, registerWithPassword, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

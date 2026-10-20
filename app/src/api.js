@@ -69,6 +69,8 @@ function withFallback(realFn, demoFn) {
 // Real API calls (pakai server)
 const _real = {
   googleLogin: (credential, deviceFingerprint = '') => req('/api/auth/google', { method: 'POST', body: { credential, deviceFingerprint }, auth: false }),
+  passwordRegister: (payload, deviceFingerprint = '') => req('/api/auth/register', { method: 'POST', body: { ...payload, deviceFingerprint }, auth: false }),
+  passwordLogin: (identifier, password, deviceFingerprint = '') => req('/api/auth/login', { method: 'POST', body: { identifier, password, deviceFingerprint }, auth: false }),
   me: () => req('/api/auth/me'),
   migrateSession: () => req('/api/auth/session', { method: 'POST' }),
   logout: () => req('/api/auth/logout', { method: 'POST' }),
@@ -143,6 +145,8 @@ const _real = {
 // API publik: auto fallback ke API lokal saat backend mati
 export const api = {
   googleLogin: _real.googleLogin,
+  passwordRegister: _real.passwordRegister,
+  passwordLogin: _real.passwordLogin,
   me: _real.me,
   migrateSession: _real.migrateSession,
   logout: _real.logout,
