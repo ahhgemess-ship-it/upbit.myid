@@ -41,17 +41,19 @@ const passwordLoginLimiter = rateLimit({
 const publicUser = (u) => ({ id: u.id, email: u.email, username: u.username, name: u.name, picture: u.picture, role: u.role })
 
 const isProduction = process.env.NODE_ENV === 'production' || !!process.env.VERCEL
-const trustedOrigins = (process.env.CLIENT_ORIGIN
-  ? process.env.CLIENT_ORIGIN.split(',')
-  : isProduction
-    ? ['https://upbit.my.id', 'https://www.upbit.my.id']
-    : ['http://localhost:5173', 'http://127.0.0.1:5173'])
+const defaultTrustedOrigins = isProduction
+  ? ['https://upbit.my.id', 'https://www.upbit.my.id']
+  : ['http://localhost:5173', 'http://127.0.0.1:5173']
+const trustedOrigins = [...defaultTrustedOrigins, ...(process.env.CLIENT_ORIGIN || '').split(',')]
   .map((origin) => origin.trim())
   .filter(Boolean)
 
 function requireTrustedOrigin(req, res, next) {
   const origin = req.get('origin')
-  if ((!origin && !isProduction) || trustedOrigins.includes(origin)) return next()
+  const forwardedProtocol = String(req.get('x-forwarded-proto') || '').split(',')[0].trim()
+  const requestProtocol = forwardedProtocol || req.protocol
+  const requestOrigin = req.get('host') ? `${requestProtocol}://${req.get('host')}` : ''
+  if ((!origin && !isProduction) || trustedOrigins.includes(origin) || origin === requestOrigin) return next()
   return res.status(403).json({ error: 'Origin permintaan tidak diizinkan' })
 }
 

@@ -553,9 +553,12 @@ ul { list-style: none; }
 .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 7px; }
 .field-pw { position: relative; }
 .field-pw .toggle-pw {
-  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-  display: grid; place-items: center; color: var(--muted);
+  position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; color: var(--ink-soft);
 }
+.field-pw .toggle-pw:hover { background: var(--surface-2); color: var(--ink); }
+.field-pw .toggle-pw:focus-visible { outline: 3px solid var(--indigo); outline-offset: 2px; }
+.field-pw .input { padding-right: 56px; }
 .auth-error {
   display: flex; align-items: center; gap: 8px;
   background: #fdeceb; border: 1.5px solid #e05a4f; color: #9c2a20;

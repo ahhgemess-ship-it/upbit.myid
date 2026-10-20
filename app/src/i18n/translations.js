@@ -127,6 +127,8 @@ export const T = {
   'auth.submitting': { en: 'Please wait', id: 'Mohon tunggu' },
   'auth.orContinue': { en: 'or continue with', id: 'atau lanjut dengan' },
   'auth.manualFailed': { en: 'Account access could not be completed. Try again.', id: 'Akses akun belum dapat diproses. Coba lagi.' },
+  'auth.showPassword': { en: 'Show password', id: 'Tampilkan password' },
+  'auth.hidePassword': { en: 'Hide password', id: 'Sembunyikan password' },
 
   // ---------- Produk / kartu ----------
   'product.buyNow': { en: 'Buy Now', zh: '立即购买', ja: '今すぐ購入', id: 'Beli Sekarang', ru: 'Купить', ms: 'Beli Sekarang', hi: 'अभी खरीदें', de: 'Kaufen', vi: 'Mua ngay' },

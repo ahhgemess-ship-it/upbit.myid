@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { AlertCircle, ShieldCheck, Zap, BadgeCheck } from 'lucide-react'
+import { AlertCircle, ShieldCheck, Zap, BadgeCheck, Eye, EyeOff } from 'lucide-react'
 import Asterisk from '../components/Asterisk.jsx'
 import GoogleButton from '../components/GoogleButton.jsx'
 import AuthMascot from '../components/AuthMascot.jsx'
@@ -20,6 +20,8 @@ export default function Auth() {
   const [error, setError] = useState('')
   const [mode, setMode] = useState('login')
   const [pending, setPending] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false)
   const [form, setForm] = useState({ username: '', email: '', password: '', passwordConfirm: '' })
 
   const onGoogleDone = () => navigate(redirectTo, { replace: true })
@@ -157,13 +159,23 @@ export default function Auth() {
             </div>
             <div className="field">
               <label htmlFor="auth-password">{t('auth.password')}</label>
-              <input id="auth-password" className="input" type="password" value={form.password} onChange={updateForm('password')} autoComplete={isRegistering ? 'new-password' : 'current-password'} minLength="10" maxLength="128" required placeholder={t('auth.passwordPlaceholder')} />
+              <div className="field-pw">
+                <input id="auth-password" className="input" type={showPassword ? 'text' : 'password'} value={form.password} onChange={updateForm('password')} autoComplete={isRegistering ? 'new-password' : 'current-password'} minLength="10" maxLength="128" required placeholder={t('auth.passwordPlaceholder')} />
+                <button type="button" className="toggle-pw" aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')} aria-pressed={showPassword} onClick={() => setShowPassword((shown) => !shown)}>
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               {isRegistering && <p className="auth-field-hint">{t('auth.passwordHint')}</p>}
             </div>
             {isRegistering && (
               <div className="field">
                 <label htmlFor="auth-password-confirm">{t('auth.passwordConfirm')}</label>
-                <input id="auth-password-confirm" className="input" type="password" value={form.passwordConfirm} onChange={updateForm('passwordConfirm')} autoComplete="new-password" minLength="10" maxLength="128" required placeholder={t('auth.passwordConfirmPlaceholder')} />
+                <div className="field-pw">
+                  <input id="auth-password-confirm" className="input" type={showPasswordConfirm ? 'text' : 'password'} value={form.passwordConfirm} onChange={updateForm('passwordConfirm')} autoComplete="new-password" minLength="10" maxLength="128" required placeholder={t('auth.passwordConfirmPlaceholder')} />
+                  <button type="button" className="toggle-pw" aria-label={showPasswordConfirm ? t('auth.hidePassword') : t('auth.showPassword')} aria-pressed={showPasswordConfirm} onClick={() => setShowPasswordConfirm((shown) => !shown)}>
+                    {showPasswordConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
             )}
             <button className="pill pill-solid auth-submit" type="submit" disabled={pending}>
