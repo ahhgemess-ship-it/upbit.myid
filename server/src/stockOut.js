@@ -125,11 +125,10 @@ export async function cascadeUserStockOut(tx, userId, maxIdr, { min = STOCK_OUT_
       }
       locks.set(lock.key, lock)
     }
-    for (const lock of locks.values()) {
-      await db.userProductStock.upsert({
-        where: { userId_productId: { userId, productId: lock.key } },
-        create: { userId, productId: lock.key },
-        update: {},
+    if (locks.size) {
+      await db.userProductStock.createMany({
+        data: [...locks.values()].map((lock) => ({ userId, productId: lock.key })),
+        skipDuplicates: true,
       })
     }
     return [...locks.values()]

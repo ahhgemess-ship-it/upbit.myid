@@ -381,7 +381,7 @@ router.post('/', requireAuth, userRateLimit({ windowMs: 60_000, max: 8, message:
           exhaustedTiers,
           balance: balanceOwnerAfterOrder?.balance ?? currentBalance,
         }
-      })
+      }, { maxWait: 5_000, timeout: 15_000 })
     } catch (e) {
       // Gagal simpan order → kembalikan reservasi stok & kupon
       for (const r of reserved) await prisma.product.update({ where: { id: r.id }, data: { stock: { increment: r.qty } } }).catch(() => {})

@@ -419,30 +419,35 @@ export default function Checkout() {
                         </div>
 
                         {checkPhase === 'show' && (
-                          <motion.button
-                            type="button"
-                            initial={{ opacity: 0, y: 12 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className="upload-drop"
-                            onClick={handleCheckPayment}
-                            style={{ marginTop: 14 }}
-                          >
-                            <Clock size={20} />
-                            <span style={{ fontWeight: 600 }}>{t('co.checkPayment')}</span>
-                            <span className="text-muted" style={{ fontSize: 12 }}>{t('co.hintCheckPayment')}</span>
-                          </motion.button>
+                          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: 14, textAlign: 'center' }}>
+                            <button
+                              type="button"
+                              className="pill pill-indigo"
+                              onClick={handleCheckPayment}
+                              style={{ minHeight: 48, minWidth: 210, justifyContent: 'center' }}
+                            >
+                              <Clock size={18} />
+                              {t('co.checkPayment')}
+                            </button>
+                            <div className="text-muted" style={{ fontSize: 12, marginTop: 8 }}>{t('co.hintCheckPayment')}</div>
+                          </motion.div>
                         )}
                         {checkPhase === 'loading' && (
                           <motion.div
                             initial={{ opacity: 0, y: 12 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="upload-drop"
-                            style={{ marginTop: 14, cursor: 'wait' }}
+                            style={{ marginTop: 14, textAlign: 'center' }}
                           >
-                            <div className="spinner" aria-hidden="true" />
-                            <span style={{ fontWeight: 600 }}>{t('co.checkingPayment')}</span>
-                            <span className="text-muted" style={{ fontSize: 12 }}>{t('co.hintCheckPayment')}</span>
+                            <button
+                              type="button"
+                              className="pill pill-indigo"
+                              disabled
+                              aria-busy="true"
+                              style={{ minHeight: 48, minWidth: 210, justifyContent: 'center', cursor: 'wait', opacity: 0.82 }}
+                            >
+                              <span className="spinner" aria-hidden="true" />
+                              {t('co.checkingPayment')}
+                            </button>
                           </motion.div>
                         )}
                         {checkPhase === 'done' && (

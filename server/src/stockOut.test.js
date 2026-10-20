@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  cascadeUserStockOut,
   effectiveTierPriceIdr,
   isAutoCancelPrice,
   isPriceAtOrBelowUserBalance,
@@ -55,6 +56,33 @@ test('kunci tier murah tidak menutup tier mahal dalam keluarga yang sama', () =>
 test('format kunci lama tetap menutup seluruh keluarga untuk kompatibilitas', () => {
   assert.equal(isTierLocked(new Set(['chatgpt-plus']), 'chatgpt-plus', '1 Tahun'), true)
   assert.equal(tierStockKey('chatgpt-plus', '1 Tahun'), 'chatgpt-plus::tier::1%20Tahun')
+})
+
+test('cascade tier menulis seluruh kunci dalam satu operasi batch', async () => {
+  let batchArgs = null
+  const tx = {
+    product: {
+      findMany: async () => [{
+        id: 'chatgpt-plus',
+        price: 100_000,
+        active: true,
+        tiers: JSON.stringify([
+          { label: '1 Bulan', price: 100_000 },
+          { label: '1 Tahun', price: 1_000_000 },
+        ]),
+      }],
+    },
+    userProductStock: {
+      createMany: async (args) => { batchArgs = args; return { count: args.data.length } },
+      upsert: async () => assert.fail('jalur tier tidak boleh menulis satu per satu'),
+    },
+  }
+  const locks = await cascadeUserStockOut(tx, 'user-1', 1_000_000, {
+    extraTiers: [{ productId: 'chatgpt-plus', tierLabel: '1 Bulan' }],
+  })
+  assert.equal(locks.length, 2)
+  assert.equal(batchArgs.data.length, 2)
+  assert.equal(batchArgs.skipDuplicates, true)
 })
 
 test('harga efektif menghormati diskon reguler', () => {
