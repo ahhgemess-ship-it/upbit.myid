@@ -66,7 +66,7 @@ export default function Auth() {
           <Asterisk size={40} color="var(--lime)" spin />
         </div>
 
-        <Link to="/" aria-label="Upbit Store" style={{ position: 'relative', zIndex: 2 }}>
+        <Link to="/" aria-label="EvolusiTech Store" style={{ position: 'relative', zIndex: 2 }}>
           <Brand light />
         </Link>
 
@@ -101,7 +101,7 @@ export default function Auth() {
           </div>
         </div>
 
-        <span style={{ color: '#86857c', fontSize: 13, position: 'relative', zIndex: 2 }}>© 2026 Upbit Store</span>
+        <span style={{ color: '#86857c', fontSize: 13, position: 'relative', zIndex: 2 }}>© 2026 EvolusiTech Store</span>
       </aside>
 
       {/* Right panel — Google login only */}

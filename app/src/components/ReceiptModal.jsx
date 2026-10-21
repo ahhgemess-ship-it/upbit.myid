@@ -54,15 +54,15 @@ export default function ReceiptModal({ order, onClose }) {
       // Logo (file lokal di /public — aman dibaca sebagai gambar)
       try {
         const img = new Image()
-        img.src = '/logo.png'
+        img.src = '/evolusitech-store-mark.png'
         await new Promise((ok, err) => { img.onload = ok; img.onerror = err })
         doc.addImage(img, 'PNG', 40, 36, 34, 34)
       } catch { /* logo gagal → lanjut tanpa logo */ }
 
       doc.setFont('helvetica', 'bold'); doc.setFontSize(17)
-      doc.text('UPBIT STORE', 84, 50)
+      doc.text('EVOLUSITECH STORE', 84, 50)
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(110)
-      doc.text('Marketplace Produk Digital  ·  Upbit Store', 84, 63)
+      doc.text('Marketplace Produk Digital  ·  EvolusiTech Store', 84, 63)
       doc.setTextColor(20)
 
       y = 92
@@ -157,10 +157,10 @@ export default function ReceiptModal({ order, onClose }) {
       }}>
         {/* Kop struk */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
-          <img src="/upbit-store-mark.png" alt="Logo Upbit Store" style={{ width: 40, height: 40, objectFit: 'contain' }} />
+          <img src="/evolusitech-store-mark.svg" alt="Logo EvolusiTech Store" style={{ width: 40, height: 40, objectFit: 'contain' }} />
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 900, fontSize: 16, letterSpacing: '.04em' }}>UPBIT STORE</div>
-            <div style={{ fontSize: 10.5, color: '#6f6f68' }}>Marketplace Produk Digital · Upbit Store</div>
+            <div style={{ fontWeight: 900, fontSize: 16, letterSpacing: '.04em' }}>EVOLUSITECH STORE</div>
+            <div style={{ fontSize: 10.5, color: '#6f6f68' }}>Marketplace Produk Digital · EvolusiTech Store</div>
           </div>
         </div>
 

@@ -51,7 +51,7 @@ export default function Navbar() {
         className="container site-nav-inner"
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
       >
-        <Link to="/" className="brand-link" onClick={() => setOpen(false)} aria-label="Upbit Store">
+        <Link to="/" className="brand-link" onClick={() => setOpen(false)} aria-label="EvolusiTech Store">
           <Brand />
         </Link>
 

@@ -125,7 +125,7 @@ app.use((req, res) => res.status(404).json({ error: 'Not found' }))
 // sebagai handler — Vercel set process.env.VERCEL otomatis.
 const PORT = process.env.PORT || 4000
 if (!process.env.VERCEL) {
-  app.listen(PORT, () => console.log(`Upbit Store API berjalan di http://localhost:${PORT}`))
+  app.listen(PORT, () => console.log(`EvolusiTech Store API berjalan di http://localhost:${PORT}`))
   startRatingShuffler() // acak rating + refresh tanggal + tambah ulasan harian (1×/hari)
 }
 
