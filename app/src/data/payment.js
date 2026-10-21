@@ -1,4 +1,4 @@
-// Konfigurasi pembayaran EvolusiTech Store.
+// Konfigurasi pembayaran Upbit Store.
 // Dua metode: QRIS & Crypto (BNB / USDT on BNB Smart Chain).
 
 // Fee pembayaran (payment gateway) — flat Rupiah, ditambahkan ke total saat checkout.
@@ -22,7 +22,7 @@ function crc16(str) {
 }
 
 export const QRIS = {
-  merchant: 'EvolusiTech Store',
+  merchant: 'Upbit Store',
   nmid: 'ID1026568515229',
   // QRIS DINAMIS: sisipkan nominal (tag 54), ubah jadi dynamic (POI 11→12),
   // lalu hitung ulang CRC. Hasilnya nominal terisi otomatis di app pembayaran

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════
-// BOT TELEGRAM EVOLUSITECH STORE — versi serverless (webhook, tanpa VPS)
+// BOT TELEGRAM UPBIT STORE — versi serverless (webhook, tanpa VPS)
 // Satu dompet dengan website: saldo, check-in, order = database Neon.
 // State percakapan disimpan di tabel TelegramState (serverless tanpa memori).
 // SetWebhook:
@@ -137,20 +137,20 @@ const LANGS = {
 }
 const S = {
   welcome: {
-    id: '✨ <b>Selamat Datang di EvolusiTech Store!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Tamu (Guest)</b>\n💰 Saldo: <b>Rp 0 (Mode Tamu)</b>\n🔗 Status: <b>Belum Tertaut</b>\n\n🛍️ <i>Jelajahi katalog & flash sale langsung di bawah!</i>\n💡 <i>Tautkan akun website kapan saja untuk sinkronisasi saldo & check-in.</i>\n\nPilih menu di bawah 👇',
-    en: '✨ <b>Welcome to EvolusiTech Store!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest</b>\n💰 Balance: <b>Rp 0 (Guest Mode)</b>\n🔗 Status: <b>Not Linked</b>\n\n🛍️ <i>Browse products & flash sale below!</i>\n💡 <i>Link your website account anytime to sync balance & check-in.</i>\n\nPick a menu below 👇',
+    id: '✨ <b>Selamat Datang di Upbit Store!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Tamu (Guest)</b>\n💰 Saldo: <b>Rp 0 (Mode Tamu)</b>\n🔗 Status: <b>Belum Tertaut</b>\n\n🛍️ <i>Jelajahi katalog & flash sale langsung di bawah!</i>\n💡 <i>Tautkan akun website kapan saja untuk sinkronisasi saldo & check-in.</i>\n\nPilih menu di bawah 👇',
+    en: '✨ <b>Welcome to Upbit Store!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest</b>\n💰 Balance: <b>Rp 0 (Guest Mode)</b>\n🔗 Status: <b>Not Linked</b>\n\n🛍️ <i>Browse products & flash sale below!</i>\n💡 <i>Link your website account anytime to sync balance & check-in.</i>\n\nPick a menu below 👇',
   },
   menuLinked: {
-    id: '✨ <b>EvolusiTech Store — Bot Resmi</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Saldo: <b>{balance}</b>\n🔗 Status: <b>Terhubung ke Website ✅</b>\n\nSilakan pilih menu di bawah untuk berbelanja 👇',
-    en: '✨ <b>EvolusiTech Store — Official Bot</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Balance: <b>{balance}</b>\n🔗 Status: <b>Connected to Website ✅</b>\n\nPick a menu below 👇',
+    id: '✨ <b>Upbit Store — Bot Resmi</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Saldo: <b>{balance}</b>\n🔗 Status: <b>Terhubung ke Website ✅</b>\n\nSilakan pilih menu di bawah untuk berbelanja 👇',
+    en: '✨ <b>Upbit Store — Official Bot</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Balance: <b>{balance}</b>\n🔗 Status: <b>Connected to Website ✅</b>\n\nPick a menu below 👇',
   },
   menuGuest: {
-    id: '✨ <b>Selamat Datang di EvolusiTech Store!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Tamu (Guest)</b>\n💰 Saldo: <b>Rp 0 (Mode Tamu)</b>\n🔗 Status: <b>Belum Tertaut</b>\n\n🛍️ <i>Jelajahi katalog & flash sale langsung di bawah!</i>\n💡 <i>Tautkan akun websitemu kapan saja untuk sinkronisasi saldo & check-in.</i>\n\nPilih menu di bawah 👇',
-    en: '✨ <b>Welcome to EvolusiTech Store!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest</b>\n💰 Balance: <b>Rp 0 (Guest Mode)</b>\n🔗 Status: <b>Not Linked</b>\n\n🛍️ <i>Browse products & flash sale below!</i>\n💡 <i>Link your website account anytime to sync balance & check-in.</i>\n\nPick a menu below 👇',
+    id: '✨ <b>Selamat Datang di Upbit Store!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Tamu (Guest)</b>\n💰 Saldo: <b>Rp 0 (Mode Tamu)</b>\n🔗 Status: <b>Belum Tertaut</b>\n\n🛍️ <i>Jelajahi katalog & flash sale langsung di bawah!</i>\n💡 <i>Tautkan akun websitemu kapan saja untuk sinkronisasi saldo & check-in.</i>\n\nPilih menu di bawah 👇',
+    en: '✨ <b>Welcome to Upbit Store!</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>Guest</b>\n💰 Balance: <b>Rp 0 (Guest Mode)</b>\n🔗 Status: <b>Not Linked</b>\n\n🛍️ <i>Browse products & flash sale below!</i>\n💡 <i>Link your website account anytime to sync balance & check-in.</i>\n\nPick a menu below 👇',
   },
   menu: {
-    id: '✨ <b>EvolusiTech Store</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Saldo: <b>{balance}</b>\n\nPilih menu di bawah 👇',
-    en: '✨ <b>EvolusiTech Store</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Balance: <b>{balance}</b>\n\nPick a menu below 👇',
+    id: '✨ <b>Upbit Store</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Saldo: <b>{balance}</b>\n\nPilih menu di bawah 👇',
+    en: '✨ <b>Upbit Store</b>\n━━━━━━━━━━━━━━━━━━\n👤 <b>{name}</b>\n💰 Balance: <b>{balance}</b>\n\nPick a menu below 👇',
   },
   notLinked: {
     id: '🔐 <b>Akun belum terhubung</b>\n\nTekan tombol <b>🔗 Hubungkan Akun Website</b> di bawah ini → kamu dibawa ke website → setelah login, akun otomatis tersambung ke Telegram ini.\n\n✨ Bebas pakai Telegram siapa saja — asal jadi!',
@@ -173,8 +173,8 @@ const S = {
     en: '🔐 <b>Link Account to Complete Order</b>\n━━━━━━━━━━━━━━━━━━\nA website account is required so login credentials can be securely delivered to your email.\n\nTap below to link your website account in 1 click, or buy directly on the website:',
   },
   linked: {
-    id: '🎉 <b>Akun berhasil terhubung!</b>\n━━━━━━━━━━━━━━━━━━\n👤 {name}\n💰 Saldo: <b>{balance}</b>{migrated}\n\nSelamat bergabung resmi di EvolusiTech Store 🛍️',
-    en: '🎉 <b>Account linked successfully!</b>\n━━━━━━━━━━━━━━━━━━\n👤 {name}\n💰 Balance: <b>{balance}</b>{migrated}\n\nWelcome officially to EvolusiTech Store 🛍️',
+    id: '🎉 <b>Akun berhasil terhubung!</b>\n━━━━━━━━━━━━━━━━━━\n👤 {name}\n💰 Saldo: <b>{balance}</b>{migrated}\n\nSelamat bergabung resmi di Upbit Store 🛍️',
+    en: '🎉 <b>Account linked successfully!</b>\n━━━━━━━━━━━━━━━━━━\n👤 {name}\n💰 Balance: <b>{balance}</b>{migrated}\n\nWelcome officially to Upbit Store 🛍️',
   },
   migrated: {
     id: '\n🎁 Saldo lama bot <b>{amount}</b> sudah dipindahkan ke akun website kamu.',
@@ -264,7 +264,7 @@ async function spendOf(userId) {
 // Fitur tarik saldo (withdraw) dihapus — saldo hanya untuk belanja di toko.
 
 // ── Menu utama ──
-const BANNER_URL = STORE_URL + '/evolusitech-store-mark.png'
+const BANNER_URL = STORE_URL + '/logo.png'
 // Peta emoji kategori biar tombol katalog lebih hidup
 const CAT_EMOJI = [
   [/ai|asisten|assistant|chatbot/i, '🤖'],

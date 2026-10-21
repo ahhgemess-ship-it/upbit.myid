@@ -1,4 +1,4 @@
-// Katalog produk digital EvolusiTech Store — berdasarkan PRD (prdproduk.md).
+// Katalog produk digital Upbit Store — berdasarkan PRD (prdproduk.md).
 // Harga asli/sumber otoritatif dalam IDR (Rupiah). Kurs pasar perkiraan (Sep 2026):
 // 1 USD ≈ Rp 17.650. Semua harga USD/CNY/MYR DITURUNKAN dari harga Rp memakai kurs ini,
 // supaya konsisten di setiap negara — harga Rp tidak pernah berubah mengikuti kurs.

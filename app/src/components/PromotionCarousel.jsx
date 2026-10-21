@@ -47,7 +47,7 @@ export default function PromotionCarousel() {
   const move = (delta) => setActive((i) => (i + delta + campaigns.length) % campaigns.length)
 
   return (
-    <section className="container promotion-section" aria-label="Campaign promosi EvolusiTech Store">
+    <section className="container promotion-section" aria-label="Campaign promosi Upbit Store">
       <div
         className={`promotion-carousel promotion-${campaign.tone}`}
         onMouseEnter={() => setPaused(true)}

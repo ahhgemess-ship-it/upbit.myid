@@ -1,4 +1,4 @@
-// Klien API EvolusiTech Store. Sesi utama memakai cookie HttpOnly; token lama hanya
+// Klien API Upbit Store. Sesi utama memakai cookie HttpOnly; token lama hanya
 // dipakai satu kali untuk migrasi agar pengguna lama tidak langsung keluar.
 import { API_BASE } from './config.js'
 import { demoApi } from './api-demo.js'

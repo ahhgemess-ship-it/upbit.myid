@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
-  <title id="title">EvolusiTech Store</title>
-  <desc id="desc">Monogram ET berwarna indigo dan lime</desc>
-  <path fill="#2b2b28" d="M17 8h62a9 9 0 0 1 9 9v62a9 9 0 0 1-9 9H17a9 9 0 0 1-9-9V17a9 9 0 0 1 9-9Z"/>
-  <path fill="#4f46e5" d="M14 5h62a9 9 0 0 1 9 9v62a9 9 0 0 1-9 9H14a9 9 0 0 1-9-9V14a9 9 0 0 1 9-9Z"/>
-  <path fill="#f7f4ee" d="M20 20h32v10H31v10h18v10H31v11h21v10H20V20Z"/>
-  <path fill="#c5f82a" d="M51 20h26v10h-8v41H58V30h-7V20Z"/>
-  <circle cx="74" cy="73" r="4" fill="#c5f82a"/>
-</svg>

@@ -2,7 +2,7 @@
   "name": "upbit-store",
   "private": true,
   "version": "1.0.0",
-  "description": "EvolusiTech Store, marketplace produk digital (frontend dan backend dalam satu repo).",
+  "description": "Upbit Store, marketplace produk digital (frontend dan backend dalam satu repo).",
   "engines": {
     "node": ">=22.12"
   },

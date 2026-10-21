@@ -42,9 +42,9 @@ export default function AdminLayout({ children }) {
       {/* ===== Sidebar ===== */}
       <aside className={`admin-sidebar ${open ? 'is-open' : ''}`}>
         <div className="admin-brand">
-          <span className="admin-brand-mark"><img src="/evolusitech-store-mark.svg" alt="" width="28" height="28" /></span>
+          <span className="admin-brand-mark"><img src="/upbit-store-mark.png" alt="" width="28" height="28" /></span>
           <div>
-            <div className="admin-brand-name">EvolusiTech Store</div>
+            <div className="admin-brand-name">Upbit Store</div>
             <div className="admin-brand-sub">Admin Panel</div>
           </div>
           <button className="admin-sidebar-close" onClick={() => setOpen(false)} aria-label="Tutup menu">
