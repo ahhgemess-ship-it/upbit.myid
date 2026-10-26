@@ -7,13 +7,7 @@ import { durationBadge } from '../i18n/productContent.js'
 import { useCart } from '../context/CartContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 import { usePricing, amountFor } from '../i18n/pricing.js'
-
-// Hash FNV-1a sederhana → angka deterministik per id produk (stabil antar refresh).
-const hashId = (s) => {
-  let h = 0x811c9dc5
-  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) }
-  return h >>> 0
-}
+import { displayStockRange, remainingDisplayStock } from '../data/displayStock.js'
 
 export default function FlashSaleCard({ product, index = 0 }) {
   const { addItem } = useCart()
@@ -35,20 +29,18 @@ export default function FlashSaleCard({ product, index = 0 }) {
   }
 
   const stock = Number.isFinite(product.stock) ? product.stock : -1
-  const sold = Math.max(0, Number(product.sold) || 0)
-  // `stock` dari DB adalah stok tersisa, bukan kuota awal. Jangan dikurangi `sold` lagi.
-  // Produk unlimited (stock = -1) TETAP dipakai apa adanya untuk logika order;
-  // untuk tampilan, sisa stoknya ditampilkan 5–20 (deterministik per produk via
-  // hash id) supaya kartu flash sale selalu terasa langka, bukan "Stok ∞".
   const realStock = stock >= 0
-  const left = realStock ? Math.max(0, stock) : 5 + (hashId(product.id) % 16)
-  const soldOutByStock = realStock && left === 0
+  const soldOutByStock = realStock && stock === 0
   const unavailable = stockOut || soldOutByStock
-  // Status stok habis adalah status visual FE; jangan tampilkan sisa stok DB
-  // ketika katalog sudah dikunci untuk user atau produk tersebut.
-  const displayLeft = unavailable ? 0 : left
-  const pct = displayLeft === 0 ? 100 : Math.min(95, Math.max(5, Math.round(100 - (displayLeft / Math.max(displayLeft + sold, 1)) * 100)))
-  const almostGone = realStock && displayLeft > 0 && displayLeft <= Math.max(3, Math.ceil((displayLeft + sold) * 0.2))
+  const displayLeft = remainingDisplayStock({
+    id: product.id,
+    priceIdr: product.salePrice,
+    stock,
+    unavailable,
+  })
+  const { max: displayMax } = displayStockRange(product.salePrice)
+  const pct = displayLeft === 0 ? 100 : Math.max(0, Math.round(100 - (displayLeft / displayMax) * 100))
+  const almostGone = displayLeft > 0 && displayLeft <= 3
 
   const sale = amountFor({ price: selTier.price, priceIntl: selTier.priceIntl }, region)
   const orig = amountFor({ price: selTier.original, priceIntl: selTier.originalIntl }, region)
@@ -139,7 +131,7 @@ export default function FlashSaleCard({ product, index = 0 }) {
           </div>
           <div className="sale-stock-label">
             <span className={almostGone ? 'sale-hot' : ''}>
-              {almostGone ? t('flash.almostGone') : t('flash.soldLabel')} {sold}
+              {almostGone ? t('flash.almostGone') : ''}
             </span>
             <span className="text-muted">{`${t('flash.left')} ${displayLeft}`}</span>
           </div>

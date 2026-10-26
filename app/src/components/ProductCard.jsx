@@ -10,6 +10,7 @@ import { useDiscount } from '../context/CatalogContext.jsx'
 import { useLang } from '../context/LanguageContext.jsx'
 import { localizedProduct, localizeTier, localizePeriod, durationBadge } from '../i18n/productContent.js'
 import { usePricing } from '../i18n/pricing.js'
+import { remainingDisplayStock } from '../data/displayStock.js'
 
 export default function ProductCard({ product: rawProduct, index = 0 }) {
   const { addItem } = useCart()
@@ -41,6 +42,12 @@ export default function ProductCard({ product: rawProduct, index = 0 }) {
   const percent = isFlashSale ? 0 : discountFor(product.id)
   const tierBase = amountOf(effectiveTier)
   const salePrice = applyDiscount(tierBase, percent)
+  const displayStock = remainingDisplayStock({
+    id: product.id,
+    priceIdr: applyDiscount(effectiveTier.price, percent),
+    stock: stockNum,
+    unavailable: habis,
+  })
 
   // Durasi utama dengan harga setelah diskon (kedua mata uang), supaya keranjang konsisten.
   const chosenTier = () => ({
@@ -149,7 +156,7 @@ export default function ProductCard({ product: rawProduct, index = 0 }) {
           <div className="pc-rating" style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
             <Star size={15} fill="var(--lime-deep)" stroke="var(--ink)" strokeWidth={1.4} />
             <span style={{ fontSize: 13, fontWeight: 600 }}>{product.rating}</span>
-            <span className="text-muted pc-sold" style={{ fontSize: 13 }}>· {product.sold.toLocaleString('id-ID')} {t('product.sold')}</span>
+            <span className="text-muted pc-sold" style={{ fontSize: 13 }}>· {t('flash.left')} {displayStock}</span>
           </div>
 
           <div className="pc-price-row">
